@@ -8,7 +8,7 @@ dev:
 
 build:
 	cd web && npm ci && npm run build
-	cp -r web/dist cmd/plumenote/static
+	rm -rf cmd/plumenote/static && cp -r web/dist cmd/plumenote/static
 	CGO_ENABLED=0 go build -o bin/plumenote ./cmd/plumenote
 
 test:
