@@ -1,10 +1,10 @@
 # PlumeNote — Agent Instructions
 
 ## Stack
-- **Backend**: Go 1.24, Chi v5, pgx v5, sqlc, bcrypt + JWT HS256
+- **Backend**: Go 1.25, Chi v5, pgx v5, sqlc, bcrypt + JWT HS256
 - **Frontend**: React 19, Vite, Tailwind CSS 4, shadcn/ui, TipTap 3
 - **Database**: PostgreSQL 18 (JSONB, UUIDv7)
-- **Search**: Meilisearch CE v1.12 (full-text, typo-tolerant)
+- **Search**: Meilisearch CE v1.37 (full-text, typo-tolerant)
 - **Proxy**: Caddy v2 (HTTPS auto, SPA fallback)
 - **Infra**: Docker Compose (4 containers), self-hosted
 

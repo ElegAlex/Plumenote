@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
 
   plumenote-search:
-    image: getmeili/meilisearch:v1.12
+    image: getmeili/meilisearch:v1.37
     container_name: plumenote-search
     environment:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-plumenote-master-key-change-me}

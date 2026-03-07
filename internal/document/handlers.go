@@ -18,6 +18,7 @@ import (
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/meilisearch/meilisearch-go"
 )
 
 const (
@@ -543,7 +544,7 @@ func (h *handler) deleteDocument(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		if h.deps.Meili != nil {
 			idx := h.deps.Meili.Index(meiliIndex)
-			_, _ = idx.DeleteDocument(docID)
+			_, _ = idx.DeleteDocument(docID, nil)
 		}
 	}()
 
@@ -976,7 +977,8 @@ func (h *handler) indexDocument(docID string) {
 	}
 
 	idx := h.deps.Meili.Index(meiliIndex)
-	if _, err := idx.AddDocuments([]SearchDocument{sd}, "id"); err != nil {
+	pk := "id"
+	if _, err := idx.AddDocuments([]SearchDocument{sd}, &meilisearch.DocumentOptions{PrimaryKey: &pk}); err != nil {
 		log.Printf("indexDocument: failed to index doc %s in Meilisearch: %v", docID, err)
 	}
 }
@@ -986,7 +988,7 @@ func (h *handler) configureMeiliIndex() {
 		return
 	}
 	idx := h.deps.Meili.Index(meiliIndex)
-	_, _ = idx.UpdateFilterableAttributes(&[]string{"domain_id", "type_id", "visibility"})
+	_, _ = idx.UpdateFilterableAttributes(&[]interface{}{"domain_id", "type_id", "visibility"})
 	_, _ = idx.UpdateSearchableAttributes(&[]string{"title", "body_text", "tags"})
 	_, _ = idx.UpdateSortableAttributes(&[]string{"created_at", "updated_at", "view_count"})
 }

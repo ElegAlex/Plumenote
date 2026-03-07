@@ -83,13 +83,20 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 			return
 		}
 
-		// Collect document IDs for batch freshness lookup
-		docIDs := make([]string, 0, len(searchRes.Hits))
+		// Decode hits into generic maps
+		type hitMap = map[string]interface{}
+		decodedHits := make([]hitMap, 0, len(searchRes.Hits))
 		for _, hit := range searchRes.Hits {
-			m, ok := hit.(map[string]interface{})
-			if !ok {
+			var m hitMap
+			if err := hit.Decode(&m); err != nil {
 				continue
 			}
+			decodedHits = append(decodedHits, m)
+		}
+
+		// Collect document IDs for batch freshness lookup
+		docIDs := make([]string, 0, len(decodedHits))
+		for _, m := range decodedHits {
 			if id, ok := m["id"].(string); ok {
 				docIDs = append(docIDs, id)
 			}
@@ -99,12 +106,8 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 		greenDays, yellowDays := readFreshnessConfig(r.Context(), deps)
 		freshnessMap := batchFreshness(r.Context(), deps, docIDs, greenDays, yellowDays)
 
-		results := make([]searchResult, 0, len(searchRes.Hits))
-		for _, hit := range searchRes.Hits {
-			m, ok := hit.(map[string]interface{})
-			if !ok {
-				continue
-			}
+		results := make([]searchResult, 0, len(decodedHits))
+		for _, m := range decodedHits {
 			formatted := mapToFormatted(m)
 
 			sr := searchResult{
