@@ -1,0 +1,79 @@
+services:
+  plumenote-app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: plumenote-app
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-plumenote}:${POSTGRES_PASSWORD:-plumenote}@plumenote-db:5432/${POSTGRES_DB:-plumenote}?sslmode=disable
+      MEILI_URL: http://plumenote-search:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-plumenote-master-key-change-me}
+      JWT_SECRET: ${JWT_SECRET:-plumenote-jwt-secret-change-me}
+      LISTEN_ADDR: ":8080"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      plumenote-db:
+        condition: service_healthy
+      plumenote-search:
+        condition: service_healthy
+    restart: unless-stopped
+
+  plumenote-db:
+    image: postgres:18-alpine
+    container_name: plumenote-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-plumenote}
+      POSTGRES_USER: ${POSTGRES_USER:-plumenote}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plumenote}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-plumenote}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  plumenote-search:
+    image: getmeili/meilisearch:v1.12
+    container_name: plumenote-search
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-plumenote-master-key-change-me}
+      MEILI_ENV: development
+    volumes:
+      - meilidata:/meili_data
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  plumenote-caddy:
+    image: caddy:2-alpine
+    container_name: plumenote-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - plumenote-app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  meilidata:
+  uploads:
+  caddy_data:
+  caddy_config:
