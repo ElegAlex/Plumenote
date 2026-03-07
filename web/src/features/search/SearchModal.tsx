@@ -69,9 +69,9 @@ function sanitizeHighlight(html: string): string {
 // --- Freshness badge ---
 
 const FRESHNESS: Record<string, { icon: string; label: string; className: string }> = {
-  green: { icon: '\u{1F7E2}', label: 'A jour', className: 'text-green-600' },
+  green: { icon: '\u{1F7E2}', label: 'A jour', className: 'text-[#2D8B4E]' },
   yellow: { icon: '\u{1F7E1}', label: 'A verifier', className: 'text-orange-500' },
-  red: { icon: '\u{1F534}', label: 'Obsolete', className: 'text-red-600' },
+  red: { icon: '\u{1F534}', label: 'Obsolete', className: 'text-red' },
 }
 
 // --- Component ---
@@ -234,15 +234,15 @@ export default function SearchModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-ink/50 backdrop-blur-sm"
       onClick={handleBackdropClick}
       onKeyDown={handleKeyDown}
     >
-      <div className="w-full max-w-[600px] bg-white rounded-xl shadow-2xl flex flex-col max-h-[70vh]">
+      <div className="w-full max-w-[600px] bg-bg rounded-xl shadow-2xl flex flex-col max-h-[70vh]">
         {/* Search input */}
         <div className="flex items-center border-b px-4">
           <svg
-            className="w-5 h-5 text-gray-400 shrink-0"
+            className="w-5 h-5 text-ink-45 shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -263,11 +263,11 @@ export default function SearchModal({
             className="flex-1 text-lg py-3 px-3 outline-none bg-transparent"
           />
           {isLoading && (
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0 mr-2" />
+            <div className="w-4 h-4 border-2 border-blue border-t-transparent rounded-full animate-spin shrink-0 mr-2" />
           )}
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 shrink-0 p-1"
+            className="text-ink-45 hover:text-ink-70 shrink-0 p-1"
             aria-label="Fermer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -286,7 +286,7 @@ export default function SearchModal({
           <select
             value={domainFilter}
             onChange={(e) => setDomainFilter(e.target.value)}
-            className="border rounded px-2 py-1 text-sm bg-white"
+            className="border rounded px-2 py-1 text-sm bg-bg"
           >
             <option value="">Tous les domaines</option>
             {domains.map((d) => (
@@ -298,7 +298,7 @@ export default function SearchModal({
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="border rounded px-2 py-1 text-sm bg-white"
+            className="border rounded px-2 py-1 text-sm bg-bg"
           >
             <option value="">Tous les types</option>
             <option value="procedure">Procedure</option>
@@ -313,7 +313,7 @@ export default function SearchModal({
                 setDomainFilter('')
                 setTypeFilter('')
               }}
-              className="text-blue-600 hover:text-blue-800 text-sm"
+              className="text-blue hover:text-blue/80 text-sm"
             >
               Reinitialiser
             </button>
@@ -322,7 +322,7 @@ export default function SearchModal({
 
         {/* Results info */}
         {hasResults && processingTime !== null && (
-          <div className="px-4 py-1.5 text-xs text-gray-500">
+          <div className="px-4 py-1.5 text-xs text-ink-45">
             {total} resultat{total !== 1 ? 's' : ''} en {(processingTime / 1000).toFixed(1)}s
           </div>
         )}
@@ -330,7 +330,7 @@ export default function SearchModal({
         {/* Results list */}
         <div className="overflow-y-auto flex-1">
           {hasResults && results.length === 0 && !isLoading && (
-            <div className="px-4 py-8 text-center text-gray-500">
+            <div className="px-4 py-8 text-center text-ink-45">
               <p>
                 Aucun resultat pour &laquo;&nbsp;{query}&nbsp;&raquo;. Essayez avec d&apos;autres
                 mots-cles ou creez une page.
@@ -340,7 +340,7 @@ export default function SearchModal({
                   navigate(`/documents/new?title=${encodeURIComponent(query)}`)
                   onClose()
                 }}
-                className="mt-3 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
+                className="mt-3 inline-flex items-center gap-1 text-blue hover:text-blue/80 font-medium"
               >
                 + Creer cette page
               </button>
@@ -360,7 +360,7 @@ export default function SearchModal({
                 }}
                 onClick={() => openResult(result)}
                 className={`py-3 px-4 cursor-pointer transition ${
-                  isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-blue/10 ring-1 ring-blue/30' : 'hover:bg-ink-05'
                 }`}
                 role="option"
                 aria-selected={isSelected}
@@ -368,14 +368,14 @@ export default function SearchModal({
                 {/* Title + freshness */}
                 <div className="flex items-center gap-2">
                   <span
-                    className="font-semibold text-gray-900"
+                    className="font-semibold text-ink"
                     dangerouslySetInnerHTML={{ __html: sanitizeHighlight(result.title) }}
                   />
                   <span className={`text-xs ${fresh.className}`}>{fresh.icon}</span>
                 </div>
 
                 {/* Meta line */}
-                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                <div className="flex items-center gap-3 mt-1 text-xs text-ink-45">
                   {domain && (
                     <span className="flex items-center gap-1">
                       <span
@@ -398,7 +398,7 @@ export default function SearchModal({
                 {/* Highlight excerpt */}
                 {result.body_text_highlight && (
                   <p
-                    className="mt-1 text-sm text-gray-600 line-clamp-2"
+                    className="mt-1 text-sm text-ink-70 line-clamp-2"
                     dangerouslySetInnerHTML={{ __html: sanitizeHighlight(result.body_text_highlight) }}
                   />
                 )}
@@ -408,16 +408,16 @@ export default function SearchModal({
         </div>
 
         {/* Footer hint */}
-        <div className="px-4 py-2 border-t text-xs text-gray-400 flex items-center gap-4">
+        <div className="px-4 py-2 border-t text-xs text-ink-45 flex items-center gap-4">
           <span>
-            <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[10px]">{'\u2191\u2193'}</kbd>{' '}
+            <kbd className="px-1 py-0.5 bg-ink-05 rounded text-[10px]">{'\u2191\u2193'}</kbd>{' '}
             naviguer
           </span>
           <span>
-            <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[10px]">{'\u23CE'}</kbd> ouvrir
+            <kbd className="px-1 py-0.5 bg-ink-05 rounded text-[10px]">{'\u23CE'}</kbd> ouvrir
           </span>
           <span>
-            <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[10px]">esc</kbd> fermer
+            <kbd className="px-1 py-0.5 bg-ink-05 rounded text-[10px]">esc</kbd> fermer
           </span>
         </div>
       </div>

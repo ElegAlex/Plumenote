@@ -119,7 +119,7 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
   )
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-white" onContextMenu={handleContextMenu}>
+    <div className="border rounded-lg overflow-hidden bg-bg" onContextMenu={handleContextMenu}>
       <Toolbar editor={editor} documentId={documentId} />
       <EditorContent editor={editor} />
       {ctxMenu && editor && (

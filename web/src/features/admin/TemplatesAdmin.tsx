@@ -94,22 +94,22 @@ export default function TemplatesAdmin() {
     }
   }
 
-  if (loading) return <p className="text-gray-500">Chargement...</p>
+  if (loading) return <p className="text-ink-45">Chargement...</p>
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Templates</h2>
-        <button onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+        <h2 className="text-lg font-semibold text-ink">Templates</h2>
+        <button onClick={openCreate} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
           + Nouveau template
         </button>
       </div>
 
-      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {error && <p className="text-red text-sm mb-4">{error}</p>}
 
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-gray-500">
+          <tr className="border-b border-ink-10 text-left text-ink-45">
             <th className="py-3 pr-4 font-medium">Nom</th>
             <th className="py-3 pr-4 font-medium">Type</th>
             <th className="py-3 pr-4 font-medium">Utilisations</th>
@@ -118,63 +118,63 @@ export default function TemplatesAdmin() {
         </thead>
         <tbody>
           {templates.map((t) => (
-            <tr key={t.id} className="border-b border-gray-100 even:bg-gray-50 hover:bg-gray-100">
+            <tr key={t.id} className="border-b border-ink-05 even:bg-bg hover:bg-ink-05">
               <td className="py-3 pr-4">
-                <div className="font-medium text-gray-900">{t.name}</div>
-                {t.description && <div className="text-gray-500 text-xs mt-0.5">{t.description}</div>}
+                <div className="font-medium text-ink">{t.name}</div>
+                {t.description && <div className="text-ink-45 text-xs mt-0.5">{t.description}</div>}
               </td>
-              <td className="py-3 pr-4 text-gray-600">{t.type}</td>
-              <td className="py-3 pr-4 text-gray-600">{t.usage_count}</td>
+              <td className="py-3 pr-4 text-ink-70">{t.type}</td>
+              <td className="py-3 pr-4 text-ink-70">{t.usage_count}</td>
               <td className="py-3 text-right space-x-2">
-                <button onClick={() => openEdit(t)} className="text-blue-600 hover:text-blue-800 text-sm">Modifier</button>
-                <button onClick={() => setDeleteConfirm(t.id)} className="text-red-600 hover:text-red-800 text-sm">Supprimer</button>
+                <button onClick={() => openEdit(t)} className="text-blue hover:text-blue/80 text-sm">Modifier</button>
+                <button onClick={() => setDeleteConfirm(t.id)} className="text-red hover:text-red/80 text-sm">Supprimer</button>
               </td>
             </tr>
           ))}
           {templates.length === 0 && (
-            <tr><td colSpan={4} className="py-8 text-center text-gray-400">Aucun template</td></tr>
+            <tr><td colSpan={4} className="py-8 text-center text-ink-45">Aucun template</td></tr>
           )}
         </tbody>
       </table>
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setShowForm(false)}>
+          <div className="bg-bg rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-ink mb-4">
               {editing ? 'Modifier le template' : 'Nouveau template'}
             </h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                <label className="block text-sm font-medium text-ink-70 mb-1">Nom</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-ink-70 mb-1">Description</label>
                 <input
                   type="text"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <label className="block text-sm font-medium text-ink-70 mb-1">Type</label>
                 <input
                   type="text"
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contenu du template</label>
+                <label className="block text-sm font-medium text-ink-70 mb-1">Contenu du template</label>
                 <TipTapEditor
                   content={form.content}
                   documentId={null}
@@ -183,13 +183,13 @@ export default function TemplatesAdmin() {
               </div>
             </div>
 
-            {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
+            {error && <p className="text-red text-sm mt-3">{error}</p>}
 
             <div className="flex justify-end space-x-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
                 Annuler
               </button>
-              <button onClick={save} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700">
+              <button onClick={save} className="px-4 py-2 text-sm text-white bg-blue rounded-md hover:bg-blue/90">
                 {editing ? 'Enregistrer' : 'Creer'}
               </button>
             </div>
@@ -199,17 +199,17 @@ export default function TemplatesAdmin() {
 
       {/* Delete confirmation modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmer la suppression</h3>
-            <p className="text-sm text-gray-600 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-bg rounded-lg shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-ink mb-2">Confirmer la suppression</h3>
+            <p className="text-sm text-ink-70 mb-4">
               Le template ne sera plus propose lors de la creation de pages. Les documents existants ne seront pas impactes.
             </p>
             <div className="flex justify-end space-x-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
                 Annuler
               </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">
+              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm text-white bg-red rounded-md hover:bg-red/90">
                 Supprimer
               </button>
             </div>

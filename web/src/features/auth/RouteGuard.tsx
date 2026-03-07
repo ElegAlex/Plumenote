@@ -7,7 +7,7 @@ export default function RouteGuard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Chargement...</p>
+        <p className="text-ink-45">Chargement...</p>
       </div>
     )
   }

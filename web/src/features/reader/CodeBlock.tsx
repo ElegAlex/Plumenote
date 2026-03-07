@@ -56,18 +56,18 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
     <div className="relative group my-4">
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded bg-ink-70 text-ink-45 hover:bg-ink-70 opacity-0 group-hover:opacity-100 transition-opacity"
       >
         {copied ? 'Copie !' : 'Copier'}
       </button>
 
       {shikiLang && html ? (
         <div
-          className="rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-gray-900"
+          className="rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-[#1a1a2e]"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono">
+        <pre className="bg-[#1a1a2e] text-ink rounded-lg p-4 overflow-x-auto text-sm font-mono">
           <code>{normalizedCode}</code>
         </pre>
       )}

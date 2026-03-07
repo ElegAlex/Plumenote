@@ -133,24 +133,24 @@ const SlashList = forwardRef<SlashListRef, SlashListProps>(({ items, command }, 
 
   if (!items.length) {
     return (
-      <div className="bg-white rounded-lg shadow-lg border p-3 text-sm text-gray-500">
+      <div className="bg-bg rounded-lg shadow-lg border p-3 text-sm text-ink-45">
         Aucune commande trouvee
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg border overflow-hidden min-w-[220px] max-h-[300px] overflow-y-auto">
+    <div className="bg-bg rounded-lg shadow-lg border overflow-hidden min-w-[220px] max-h-[300px] overflow-y-auto">
       {items.map((item, i) => (
         <button
           key={item.title}
-          className={`flex items-center gap-3 w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'}`}
+          className={`flex items-center gap-3 w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue/10 text-blue' : 'hover:bg-ink-05'}`}
           onClick={() => select(i)}
         >
           <span className="w-6 text-center text-base flex-shrink-0">{item.icon}</span>
           <div>
             <div className="font-medium">{item.title}</div>
-            <div className="text-xs text-gray-400">{item.description}</div>
+            <div className="text-xs text-ink-45">{item.description}</div>
           </div>
         </button>
       ))}

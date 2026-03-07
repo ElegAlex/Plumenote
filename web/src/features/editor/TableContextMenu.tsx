@@ -46,7 +46,7 @@ export default function TableContextMenu({ editor, x, y, onClose }: TableContext
   return (
     <div
       ref={ref}
-      className="fixed z-50 bg-white border rounded-lg shadow-lg py-1 min-w-[220px]"
+      className="fixed z-50 bg-bg border rounded-lg shadow-lg py-1 min-w-[220px]"
       style={{ left: posX, top: posY }}
     >
       {(ACTIONS as readonly ActionItem[]).map((item, i) =>
@@ -56,7 +56,7 @@ export default function TableContextMenu({ editor, x, y, onClose }: TableContext
           <button
             key={item.label}
             type="button"
-            className="block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 text-gray-700"
+            className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ink-05 text-ink-70"
             onClick={() => {
               item.action(editor)
               onClose()

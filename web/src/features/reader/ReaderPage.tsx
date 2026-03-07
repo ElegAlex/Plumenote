@@ -159,7 +159,7 @@ export default function ReaderPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-gray-500">Chargement...</p>
+        <p className="text-ink-45">Chargement...</p>
       </div>
     )
   }
@@ -167,7 +167,7 @@ export default function ReaderPage() {
   if (error || !doc) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-red-500">{error || 'Document introuvable'}</p>
+        <p className="text-red">{error || 'Document introuvable'}</p>
       </div>
     )
   }
@@ -226,7 +226,7 @@ export default function ReaderPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-2 bg-gray-900 text-white rounded-lg shadow-lg text-sm">
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2 bg-[#1a1a2e] text-white rounded-lg shadow-lg text-sm">
           {toast}
         </div>
       )}

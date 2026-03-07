@@ -1,2 +1,45 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+@theme {
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-display: 'Archivo Black', sans-serif;
+
+  --color-bg: #F7F6F3;
+  --color-bg-content: #FBFBF9;
+  --color-ink: #1C1C1C;
+  --color-ink-70: rgba(28, 28, 28, 0.7);
+  --color-ink-45: rgba(28, 28, 28, 0.45);
+  --color-ink-10: rgba(28, 28, 28, 0.1);
+  --color-ink-05: rgba(28, 28, 28, 0.05);
+  --color-ink-hover: #FAFAF8;
+
+  --color-blue: #2B5797;
+  --color-red: #C23B22;
+  --color-amber: #D4952A;
+  --color-gray-dark: #404040;
+  --color-gray-mid: #8B8B8B;
+}
+
+::selection {
+  background: var(--color-blue);
+  color: #fff;
+}
+
+body {
+  font-family: var(--font-mono);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  margin: 0;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

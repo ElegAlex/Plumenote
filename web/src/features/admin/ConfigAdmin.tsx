@@ -64,50 +64,50 @@ export default function ConfigAdmin() {
     }
   }
 
-  if (loading) return <p className="text-gray-500">Chargement...</p>
+  if (loading) return <p className="text-ink-45">Chargement...</p>
 
   return (
     <div className="space-y-8">
       {/* Freshness thresholds */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Seuils de fraicheur</h2>
-        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 max-w-lg">
+        <h2 className="text-lg font-semibold text-ink mb-4">Seuils de fraicheur</h2>
+        <div className="bg-bg border border-ink-10 rounded-lg p-6 space-y-4 max-w-lg">
           <div className="flex items-center space-x-3">
-            <span className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
-            <label className="text-sm text-gray-700 flex-shrink-0 w-40">Frais : moins de</label>
+            <span className="w-3 h-3 rounded-full bg-[#2D8B4E]/100 flex-shrink-0" />
+            <label className="text-sm text-ink-70 flex-shrink-0 w-40">Frais : moins de</label>
             <input
               type="number"
               min={1}
               value={freshness.green_days}
               onChange={(e) => setFreshness({ ...freshness, green_days: parseInt(e.target.value) || 0 })}
-              className="w-20 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-20 border border-ink-10 rounded-md px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
-            <span className="text-sm text-gray-500">jours</span>
+            <span className="text-sm text-ink-45">jours</span>
           </div>
 
           <div className="flex items-center space-x-3">
             <span className="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0" />
-            <label className="text-sm text-gray-700 flex-shrink-0 w-40">A verifier : jusqu'a</label>
+            <label className="text-sm text-ink-70 flex-shrink-0 w-40">A verifier : jusqu'a</label>
             <input
               type="number"
               min={1}
               value={freshness.yellow_days}
               onChange={(e) => setFreshness({ ...freshness, yellow_days: parseInt(e.target.value) || 0 })}
-              className="w-20 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-20 border border-ink-10 rounded-md px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
-            <span className="text-sm text-gray-500">jours</span>
+            <span className="text-sm text-ink-45">jours</span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <span className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
-            <label className="text-sm text-gray-700 flex-shrink-0 w-40">Perime : plus de</label>
-            <span className="text-sm text-gray-600 font-medium">{freshness.yellow_days} jours</span>
+            <span className="w-3 h-3 rounded-full bg-red/100 flex-shrink-0" />
+            <label className="text-sm text-ink-70 flex-shrink-0 w-40">Perime : plus de</label>
+            <span className="text-sm text-ink-70 font-medium">{freshness.yellow_days} jours</span>
           </div>
 
-          {freshnessError && <p className="text-red-600 text-sm">{freshnessError}</p>}
-          {freshnessSuccess && <p className="text-green-600 text-sm">{freshnessSuccess}</p>}
+          {freshnessError && <p className="text-red text-sm">{freshnessError}</p>}
+          {freshnessSuccess && <p className="text-[#2D8B4E] text-sm">{freshnessSuccess}</p>}
 
-          <button onClick={saveFreshness} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+          <button onClick={saveFreshness} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
             Sauvegarder
           </button>
         </div>
@@ -115,23 +115,23 @@ export default function ConfigAdmin() {
 
       {/* Ticket URL */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">URL du systeme de tickets</h2>
-        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 max-w-lg">
+        <h2 className="text-lg font-semibold text-ink mb-4">URL du systeme de tickets</h2>
+        <div className="bg-bg border border-ink-10 rounded-lg p-6 space-y-4 max-w-lg">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL du portail de tickets (GLPI)</label>
+            <label className="block text-sm font-medium text-ink-70 mb-1">URL du portail de tickets (GLPI)</label>
             <input
               type="text"
               value={ticketUrl}
               onChange={(e) => setTicketUrl(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
               placeholder="https://glpi.example.com/front/ticket.form.php"
             />
           </div>
 
-          {ticketError && <p className="text-red-600 text-sm">{ticketError}</p>}
-          {ticketSuccess && <p className="text-green-600 text-sm">{ticketSuccess}</p>}
+          {ticketError && <p className="text-red text-sm">{ticketError}</p>}
+          {ticketSuccess && <p className="text-[#2D8B4E] text-sm">{ticketSuccess}</p>}
 
-          <button onClick={saveTicketUrl} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+          <button onClick={saveTicketUrl} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
             Sauvegarder
           </button>
         </div>

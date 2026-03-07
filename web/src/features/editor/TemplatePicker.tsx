@@ -39,14 +39,14 @@ export default function TemplatePicker({ editor, visible, onUsed }: TemplatePick
   }
 
   return (
-    <div className="bg-gray-50 border rounded-lg p-4 mb-4">
+    <div className="bg-bg border rounded-lg p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-700">Demarrer avec un modele</h3>
+        <h3 className="text-sm font-medium text-ink-70">Demarrer avec un modele</h3>
         {!showAll && templates.length > 5 && (
           <button
             type="button"
             onClick={() => setShowAll(true)}
-            className="text-sm text-blue-600 hover:text-blue-700"
+            className="text-sm text-blue hover:text-blue"
           >
             + Voir tous
           </button>
@@ -58,11 +58,11 @@ export default function TemplatePicker({ editor, visible, onUsed }: TemplatePick
             key={t.id}
             type="button"
             onClick={() => apply(t)}
-            className="text-left p-3 bg-white border rounded-lg hover:border-blue-300 hover:shadow-sm transition-colors"
+            className="text-left p-3 bg-bg border rounded-lg hover:border-blue/30 hover:shadow-sm transition-colors"
           >
-            <div className="font-medium text-sm text-gray-800 truncate">{t.name}</div>
+            <div className="font-medium text-sm text-ink truncate">{t.name}</div>
             {t.description && (
-              <div className="text-xs text-gray-500 mt-1 line-clamp-2">{t.description}</div>
+              <div className="text-xs text-ink-45 mt-1 line-clamp-2">{t.description}</div>
             )}
           </button>
         ))}

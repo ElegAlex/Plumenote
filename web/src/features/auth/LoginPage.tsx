@@ -30,20 +30,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">PlumeNote</h1>
-        <p className="text-gray-500 text-center text-sm mb-6">Connectez-vous pour acceder a votre espace</p>
+    <div className="min-h-screen flex items-center justify-center bg-bg">
+      <div className="max-w-md w-full bg-bg rounded-lg shadow-sm border border-ink-10 p-8">
+        <h1 className="text-2xl font-bold text-ink text-center mb-2">PlumeNote</h1>
+        <p className="text-ink-45 text-center text-sm mb-6">Connectez-vous pour acceder a votre espace</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">
+            <div className="bg-red/10 border border-red/30 text-red text-sm rounded-md px-4 py-3">
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="username" className="block text-sm font-medium text-ink-70 mb-1">
               Identifiant
             </label>
             <input
@@ -54,12 +54,12 @@ export default function LoginPage() {
               required
               autoFocus
               autoComplete="username"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-ink-10 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-ink-70 mb-1">
               Mot de passe
             </label>
             <input
@@ -69,14 +69,14 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-ink-10 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2 px-4 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? 'Connexion...' : 'Se connecter'}
           </button>

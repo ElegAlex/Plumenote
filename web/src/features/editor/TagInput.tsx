@@ -84,17 +84,17 @@ export default function TagInput({ value, onChange }: TagInputProps) {
 
   return (
     <div className="relative">
-      <div className="flex flex-wrap items-center gap-1.5 border rounded-lg px-2 py-1.5 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+      <div className="flex flex-wrap items-center gap-1.5 border rounded-lg px-2 py-1.5 bg-bg focus-within:ring-2 focus-within:ring-blue focus-within:border-blue">
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-sm px-2 py-0.5 rounded"
+            className="inline-flex items-center gap-1 bg-blue/10 text-blue text-sm px-2 py-0.5 rounded"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
-              className="text-blue-500 hover:text-blue-700"
+              className="text-blue hover:text-blue"
             >
               x
             </button>
@@ -112,12 +112,12 @@ export default function TagInput({ value, onChange }: TagInputProps) {
         />
       </div>
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-10 left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute z-10 left-0 right-0 mt-1 bg-bg border rounded-lg shadow-lg overflow-hidden">
           {suggestions.map((s, i) => (
             <button
               key={s.name}
               type="button"
-              className={`block w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'}`}
+              className={`block w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue/10 text-blue' : 'hover:bg-ink-05'}`}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => addTag(s.name)}
             >

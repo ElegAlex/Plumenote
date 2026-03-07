@@ -26,35 +26,35 @@ export default function PublicHomePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">PlumeNote</h1>
-        <p className="text-sm text-gray-500">Pas besoin de compte pour consulter les guides</p>
+        <h1 className="text-2xl font-bold font-display text-ink mb-1">PlumeNote</h1>
+        <p className="text-sm text-ink-45">Pas besoin de compte pour consulter les guides</p>
       </div>
 
       <div
         onClick={() => navigate('/search')}
-        className="flex items-center px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-400 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+        className="flex items-center px-4 py-3 bg-bg border border-ink-10 rounded-lg text-sm text-ink-45 cursor-pointer hover:border-ink-10 hover:shadow-sm transition-all"
       >
-        <kbd className="text-xs bg-gray-100 rounded px-1.5 py-0.5 mr-3 font-mono text-gray-500">Ctrl+K</kbd>
+        <kbd className="text-xs bg-ink-05 rounded px-1.5 py-0.5 mr-3 font-mono text-ink-45">Ctrl+K</kbd>
         Rechercher dans la base de connaissances...
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Guides populaires</h2>
+        <h2 className="text-lg font-semibold text-ink mb-4">Guides populaires</h2>
         {docs.length === 0 ? (
-          <p className="text-sm text-gray-500">Aucun guide disponible pour le moment.</p>
+          <p className="text-sm text-ink-45">Aucun guide disponible pour le moment.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {docs.map((doc) => (
               <Link
                 key={doc.id}
                 to={`/documents/${doc.slug}`}
-                className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
+                className="bg-bg border border-ink-10 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <FreshnessBadge badge={doc.freshness_badge} />
-                  <span className="text-sm font-medium text-gray-900 truncate">{doc.title}</span>
+                  <span className="text-sm font-medium text-ink truncate">{doc.title}</span>
                 </div>
-                <p className="text-xs text-gray-500">{doc.view_count} consultation{doc.view_count !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-ink-45">{doc.view_count} consultation{doc.view_count !== 1 ? 's' : ''}</p>
               </Link>
             ))}
           </div>
@@ -62,13 +62,13 @@ export default function PublicHomePage() {
       </section>
 
       {ticketUrl && (
-        <section className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-          <p className="text-sm text-gray-600 mb-3">Vous ne trouvez pas ce que vous cherchez ?</p>
+        <section className="bg-bg border border-ink-10 rounded-lg p-6 text-center">
+          <p className="text-sm text-ink-70 mb-3">Vous ne trouvez pas ce que vous cherchez ?</p>
           <a
             href={ticketUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90 transition-colors"
           >
             Ouvrir un ticket support
           </a>

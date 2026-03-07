@@ -22,7 +22,7 @@ function Btn({ onClick, active, title, children }: BtnProps) {
       onClick={onClick}
       title={title}
       className={`p-2 rounded text-sm font-medium transition-colors ${
-        active ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-700'
+        active ? 'bg-blue/10 text-blue' : 'hover:bg-ink-05 text-ink-70'
       }`}
     >
       {children}
@@ -31,7 +31,7 @@ function Btn({ onClick, active, title, children }: BtnProps) {
 }
 
 function Sep() {
-  return <div className="w-px h-6 bg-gray-200 mx-1" />
+  return <div className="w-px h-6 bg-ink-10 mx-1" />
 }
 
 export default function Toolbar({ editor, documentId }: ToolbarProps) {
@@ -82,7 +82,7 @@ export default function Toolbar({ editor, documentId }: ToolbarProps) {
   }
 
   return (
-    <div className="sticky top-0 z-10 bg-white border-b px-3 py-1.5 flex items-center gap-0.5 flex-wrap">
+    <div className="sticky top-0 z-10 bg-bg border-b px-3 py-1.5 flex items-center gap-0.5 flex-wrap">
       <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Gras (Ctrl+B)">
         B
       </Btn>
@@ -155,14 +155,14 @@ export default function Toolbar({ editor, documentId }: ToolbarProps) {
           Alert
         </Btn>
         {showAlertMenu && (
-          <div className="absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg overflow-hidden z-20">
-            <button type="button" onClick={() => insertAlert('tip')} className="block w-full text-left px-3 py-2 text-sm hover:bg-blue-50">
+          <div className="absolute top-full left-0 mt-1 bg-bg border rounded-lg shadow-lg overflow-hidden z-20">
+            <button type="button" onClick={() => insertAlert('tip')} className="block w-full text-left px-3 py-2 text-sm hover:bg-blue/10">
               Info
             </button>
             <button type="button" onClick={() => insertAlert('warning')} className="block w-full text-left px-3 py-2 text-sm hover:bg-amber-50">
               Attention
             </button>
-            <button type="button" onClick={() => insertAlert('danger')} className="block w-full text-left px-3 py-2 text-sm hover:bg-red-50">
+            <button type="button" onClick={() => insertAlert('danger')} className="block w-full text-left px-3 py-2 text-sm hover:bg-red/10">
               Danger
             </button>
           </div>

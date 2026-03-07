@@ -32,9 +32,9 @@ export const AlertBlock = Node.create({
   renderHTML({ HTMLAttributes }) {
     const type = HTMLAttributes['data-alert-type'] || 'tip'
     const styles: Record<AlertType, string> = {
-      tip: 'bg-blue-50 border-blue-200',
+      tip: 'bg-blue/10 border-blue/30',
       warning: 'bg-amber-50 border-amber-200',
-      danger: 'bg-red-50 border-red-200',
+      danger: 'bg-red/10 border-red/30',
     }
     const icons: Record<AlertType, string> = {
       tip: '\u{1F4A1}',

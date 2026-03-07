@@ -94,6 +94,60 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		json.NewEncoder(w).Encode(map[string]string{"url": url})
 	})
 
+	// Public stats (no auth)
+	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {
+		type statsResp struct {
+			Documents     int `json:"documents"`
+			SearchesMonth int `json:"searches_month"`
+			Contributors  int `json:"contributors"`
+			UpdatesMonth  int `json:"updates_month"`
+		}
+		var s statsResp
+		_ = deps.DB.QueryRow(r.Context(),
+			"SELECT COUNT(*) FROM documents").Scan(&s.Documents)
+		_ = deps.DB.QueryRow(r.Context(),
+			"SELECT COUNT(*) FROM search_log WHERE created_at >= date_trunc('month', CURRENT_DATE)").Scan(&s.SearchesMonth)
+		_ = deps.DB.QueryRow(r.Context(),
+			"SELECT COUNT(DISTINCT author_id) FROM documents").Scan(&s.Contributors)
+		_ = deps.DB.QueryRow(r.Context(),
+			"SELECT COUNT(*) FROM documents WHERE updated_at >= date_trunc('month', CURRENT_DATE)").Scan(&s.UpdatesMonth)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(s)
+	})
+
+	// Public document types listing (no auth)
+	r.Get("/api/document-types", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := deps.DB.Query(r.Context(),
+			"SELECT id, name, slug, icon, sort_order FROM document_types ORDER BY sort_order, name")
+		if err != nil {
+			http.Error(w, "internal error", 500)
+			return
+		}
+		defer rows.Close()
+
+		type dt struct {
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Slug      string `json:"slug"`
+			Icon      string `json:"icon"`
+			SortOrder int    `json:"sort_order"`
+		}
+		var list []dt
+		for rows.Next() {
+			var d dt
+			if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Icon, &d.SortOrder); err != nil {
+				continue
+			}
+			list = append(list, d)
+		}
+		if list == nil {
+			list = []dt{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(list)
+	})
+
 	// API sub-routers
 	r.Mount("/api/auth", auth.Router(deps))
 	r.Mount("/api/documents", document.Router(deps))

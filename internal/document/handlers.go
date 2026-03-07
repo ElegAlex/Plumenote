@@ -226,6 +226,10 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 		ViewCount      int        `json:"view_count"`
 		LastVerifiedAt *time.Time `json:"last_verified_at"`
 		FreshnessBadge string     `json:"freshness_badge"`
+		TypeName       *string    `json:"type_name"`
+		TypeSlug       *string    `json:"type_slug"`
+		DomainName     *string    `json:"domain_name"`
+		DomainColor    *string    `json:"domain_color"`
 		CreatedAt      time.Time  `json:"created_at"`
 		UpdatedAt      time.Time  `json:"updated_at"`
 	}
@@ -234,7 +238,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 	var docs []docSummary
 	for rows.Next() {
 		var d docSummary
-		if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.DomainID, &d.TypeID, &d.AuthorID, &d.Visibility, &d.ViewCount, &d.LastVerifiedAt, &d.CreatedAt, &d.UpdatedAt, &d.AuthorName); err != nil {
+		if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.DomainID, &d.TypeID, &d.AuthorID, &d.Visibility, &d.ViewCount, &d.LastVerifiedAt, &d.CreatedAt, &d.UpdatedAt, &d.AuthorName, &d.TypeName, &d.TypeSlug, &d.DomainName, &d.DomainColor); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to scan document")
 			return
 		}
@@ -274,9 +278,13 @@ func (h *handler) buildListQuery(domainID, typeID, orderBy string, limit, offset
 	query := fmt.Sprintf(`
 		SELECT d.id, d.title, d.slug, d.domain_id, d.type_id, d.author_id, d.visibility,
 		       d.view_count, d.last_verified_at, d.created_at, d.updated_at,
-		       u.display_name AS author_name
+		       u.display_name AS author_name,
+		       dt.name AS type_name, dt.slug AS type_slug,
+		       dom.name AS domain_name, dom.color AS domain_color
 		FROM documents d
 		JOIN users u ON u.id = d.author_id
+		LEFT JOIN document_types dt ON dt.id = d.type_id
+		LEFT JOIN domains dom ON dom.id = d.domain_id
 		WHERE 1=1 %s
 		ORDER BY %s
 		LIMIT $1 OFFSET $2`, where, orderBy)
@@ -304,23 +312,28 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		Freshness      string          `json:"freshness"`
 		CreatedAt      time.Time       `json:"created_at"`
 		UpdatedAt      time.Time       `json:"updated_at"`
-		DomainName     string          `json:"domain_name"`
-		DomainSlug     string          `json:"domain_slug"`
-		DomainColor    string          `json:"domain_color"`
+		DomainName     *string         `json:"domain_name"`
+		DomainSlug     *string         `json:"domain_slug"`
+		DomainColor    *string         `json:"domain_color"`
+		TypeName       *string         `json:"type_name"`
+		TypeSlug       *string         `json:"type_slug"`
 	}
 	err := h.deps.DB.QueryRow(r.Context(),
 		`SELECT d.id, d.title, d.slug, d.body, d.body_text, d.domain_id, d.type_id,
 		        d.author_id, u.display_name, d.visibility, d.view_count,
 		        d.last_verified_at, d.last_verified_by, d.created_at, d.updated_at,
-		        dom.name, dom.slug, dom.color
+		        dom.name, dom.slug, dom.color,
+		        dt.name, dt.slug
 		 FROM documents d
 		 JOIN users u ON u.id = d.author_id
-		 JOIN domains dom ON dom.id = d.domain_id
+		 LEFT JOIN domains dom ON dom.id = d.domain_id
+		 LEFT JOIN document_types dt ON dt.id = d.type_id
 		 WHERE d.slug = $1`, slug,
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID,
 		&doc.AuthorID, &doc.AuthorName, &doc.Visibility, &doc.ViewCount,
 		&doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.CreatedAt, &doc.UpdatedAt,
-		&doc.DomainName, &doc.DomainSlug, &doc.DomainColor)
+		&doc.DomainName, &doc.DomainSlug, &doc.DomainColor,
+		&doc.TypeName, &doc.TypeSlug)
 	if err == pgx.ErrNoRows {
 		writeError(w, http.StatusNotFound, "document not found")
 		return
@@ -368,9 +381,11 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		LastVerifiedBy *string    `json:"last_verified_by"`
 		FreshnessBadge string     `json:"freshness_badge"`
 		Tags           []tagDTO   `json:"tags"`
-		DomainName     string     `json:"domain_name"`
-		DomainSlug     string     `json:"domain_slug"`
-		DomainColor    string     `json:"domain_color"`
+		DomainName     *string    `json:"domain_name"`
+		DomainSlug     *string    `json:"domain_slug"`
+		DomainColor    *string    `json:"domain_color"`
+		TypeName       *string    `json:"type_name"`
+		TypeSlug       *string    `json:"type_slug"`
 		CreatedAt      time.Time  `json:"created_at"`
 		UpdatedAt      time.Time  `json:"updated_at"`
 	}{
@@ -385,6 +400,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		LastVerifiedAt: doc.LastVerifiedAt, LastVerifiedBy: doc.LastVerifiedBy,
 		FreshnessBadge: doc.Freshness, Tags: tags,
 		DomainName: doc.DomainName, DomainSlug: doc.DomainSlug, DomainColor: doc.DomainColor,
+		TypeName: doc.TypeName, TypeSlug: doc.TypeSlug,
 		CreatedAt: doc.CreatedAt, UpdatedAt: doc.UpdatedAt,
 	}
 	writeJSON(w, http.StatusOK, resp)

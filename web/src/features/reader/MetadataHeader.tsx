@@ -78,21 +78,21 @@ export default function MetadataHeader({
 
   return (
     <div className="mb-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-3">{title}</h1>
+      <h1 className="text-3xl font-bold text-ink mb-3">{title}</h1>
 
-      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-3">
+      <div className="flex flex-wrap items-center gap-3 text-sm text-ink-70 mb-3">
         <span className="inline-flex items-center gap-1">
           <span>{freshness.icon}</span>
           <span>{freshness.label}</span>
           {lastVerifiedAt && lastVerifiedBy && (
-            <span className="text-gray-400">
+            <span className="text-ink-45">
               {' '}
               - Verifie par {lastVerifiedBy} le {formatDate(lastVerifiedAt)}
             </span>
           )}
         </span>
 
-        <span className="text-gray-300">|</span>
+        <span className="text-ink-45">|</span>
 
         {domainName && (
           <>
@@ -102,7 +102,7 @@ export default function MetadataHeader({
             >
               {domainName}
             </span>
-            <span className="text-gray-300">|</span>
+            <span className="text-ink-45">|</span>
           </>
         )}
 
@@ -111,7 +111,7 @@ export default function MetadataHeader({
           <span>{viewCount} vues</span>
         </span>
 
-        <span className="text-gray-300">|</span>
+        <span className="text-ink-45">|</span>
 
         <span>Derniere modif: {relativeDate(updatedAt)}</span>
       </div>
@@ -121,7 +121,7 @@ export default function MetadataHeader({
           {tags.map((tag) => (
             <span
               key={tag.id}
-              className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
+              className="inline-block px-2 py-0.5 bg-ink-05 text-ink-70 text-xs rounded-full"
             >
               {tag.name}
             </span>
@@ -133,7 +133,7 @@ export default function MetadataHeader({
         {canEdit && (
           <button
             onClick={onEdit}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-blue/10 text-blue rounded-md hover:bg-blue/10 transition-colors"
           >
             Modifier
           </button>
@@ -141,7 +141,7 @@ export default function MetadataHeader({
         {canVerify && (
           <button
             onClick={onVerify}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition-colors"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-[#2D8B4E]/10 text-[#2D8B4E] rounded-md hover:bg-[#2D8B4E]/10 transition-colors"
           >
             Marquer comme verifie
           </button>
@@ -149,7 +149,7 @@ export default function MetadataHeader({
         {canDelete && (
           <button
             onClick={onDelete}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded-md hover:bg-red-100 transition-colors"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-red/10 text-red rounded-md hover:bg-red/10 transition-colors"
           >
             Supprimer
           </button>

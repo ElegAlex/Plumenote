@@ -60,18 +60,18 @@ const LinkList = forwardRef<LinkListRef, LinkListProps>(({ items, command }, ref
 
   if (!items.length) {
     return (
-      <div className="bg-white rounded-lg shadow-lg border p-2 text-sm text-gray-500">
+      <div className="bg-bg rounded-lg shadow-lg border p-2 text-sm text-ink-45">
         Aucun document trouve
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg border overflow-hidden min-w-[240px]">
+    <div className="bg-bg rounded-lg shadow-lg border overflow-hidden min-w-[240px]">
       {items.map((item, i) => (
         <button
           key={item.id}
-          className={`block w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'}`}
+          className={`block w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue/10 text-blue' : 'hover:bg-ink-05'}`}
           onClick={() => select(i)}
         >
           {item.title}

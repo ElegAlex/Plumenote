@@ -23,7 +23,7 @@ export default function CodeBlockView({ node, updateAttributes }: NodeViewProps)
         onChange={(e) => updateAttributes({ language: e.target.value })}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        className={`absolute top-2 right-2 z-10 text-xs bg-gray-800 text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 cursor-pointer transition-opacity focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+        className={`absolute top-2 right-2 z-10 text-xs bg-[#1a1a2e] text-ink-45 border border-ink-45 rounded px-1.5 py-0.5 cursor-pointer transition-opacity focus:outline-none focus:ring-1 focus:ring-blue ${
           focused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}
       >

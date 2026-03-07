@@ -45,42 +45,42 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Mon profil</h1>
+      <h1 className="text-2xl font-bold text-ink mb-6">Mon profil</h1>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+      <div className="bg-bg rounded-lg border border-ink-10 shadow-sm p-6 mb-6">
         <div className="space-y-3">
           <div>
-            <span className="text-sm text-gray-500">Nom d'affichage</span>
-            <p className="text-sm font-medium text-gray-900">{user?.display_name}</p>
+            <span className="text-sm text-ink-45">Nom d'affichage</span>
+            <p className="text-sm font-medium text-ink">{user?.display_name}</p>
           </div>
           <div>
-            <span className="text-sm text-gray-500">Identifiant</span>
-            <p className="text-sm font-medium text-gray-900">{user?.username}</p>
+            <span className="text-sm text-ink-45">Identifiant</span>
+            <p className="text-sm font-medium text-ink">{user?.username}</p>
           </div>
           <div>
-            <span className="text-sm text-gray-500">Role</span>
-            <p className="text-sm font-medium text-gray-900 capitalize">{user?.role}</p>
+            <span className="text-sm text-ink-45">Role</span>
+            <p className="text-sm font-medium text-ink capitalize">{user?.role}</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Changer le mot de passe</h2>
+      <div className="bg-bg rounded-lg border border-ink-10 shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-ink mb-4">Changer le mot de passe</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">
+            <div className="bg-red/10 border border-red/30 text-red text-sm rounded-md px-4 py-3">
               {error}
             </div>
           )}
           {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-md px-4 py-3">
+            <div className="bg-[#2D8B4E]/10 border border-[#2D8B4E]/30 text-[#2D8B4E] text-sm rounded-md px-4 py-3">
               {success}
             </div>
           )}
 
           <div>
-            <label htmlFor="old-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="old-password" className="block text-sm font-medium text-ink-70 mb-1">
               Mot de passe actuel
             </label>
             <input
@@ -90,12 +90,12 @@ export default function ProfilePage() {
               onChange={(e) => setOldPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-ink-10 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
           </div>
 
           <div>
-            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="new-password" className="block text-sm font-medium text-ink-70 mb-1">
               Nouveau mot de passe
             </label>
             <input
@@ -106,13 +106,13 @@ export default function ProfilePage() {
               required
               minLength={8}
               autoComplete="new-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-ink-10 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
-            <p className="text-xs text-gray-400 mt-1">Minimum 8 caracteres</p>
+            <p className="text-xs text-ink-45 mt-1">Minimum 8 caracteres</p>
           </div>
 
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-ink-70 mb-1">
               Confirmer le nouveau mot de passe
             </label>
             <input
@@ -123,14 +123,14 @@ export default function ProfilePage() {
               required
               minLength={8}
               autoComplete="new-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-ink-10 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="py-2 px-4 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? 'Modification...' : 'Modifier le mot de passe'}
           </button>

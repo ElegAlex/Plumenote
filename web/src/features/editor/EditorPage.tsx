@@ -146,14 +146,14 @@ export default function EditorPage() {
     <div className="max-w-4xl mx-auto py-6 px-4" ref={containerRef}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-lg font-semibold text-gray-700">
+        <h1 className="text-lg font-semibold text-ink-70">
           {isEdit ? 'Modifier le document' : 'Nouveau document'}
         </h1>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setPreviewing((p) => !p)}
-            className={`px-4 py-2 border rounded-lg text-sm font-medium ${previewing ? 'bg-gray-200 text-gray-800' : 'hover:bg-gray-50 text-gray-600'}`}
+            className={`px-4 py-2 border rounded-lg text-sm font-medium ${previewing ? 'bg-ink-10 text-ink' : 'hover:bg-ink-05 text-ink-70'}`}
           >
             {previewing ? 'Editer' : 'Previsualiser'}
           </button>
@@ -161,14 +161,14 @@ export default function EditorPage() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+            className="px-4 py-2 bg-blue text-white rounded-lg hover:bg-blue/90 disabled:opacity-50 text-sm font-medium"
           >
             {saving ? 'Sauvegarde...' : 'Publier'}
           </button>
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm text-gray-600"
+            className="px-4 py-2 border rounded-lg hover:bg-ink-05 text-sm text-ink-70"
           >
             Annuler
           </button>
@@ -182,16 +182,16 @@ export default function EditorPage() {
           value={title}
           onChange={(e) => { setTitle(e.target.value); setDirty(true) }}
           placeholder="Titre du document"
-          className="w-full text-2xl font-bold border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 outline-none pb-2 bg-transparent"
+          className="w-full text-2xl font-bold border-0 border-b-2 border-ink-10 focus:border-blue focus:ring-0 outline-none pb-2 bg-transparent"
         />
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Domaine</label>
+            <label className="block text-xs font-medium text-ink-45 mb-1">Domaine</label>
             <select
               value={domainId}
               onChange={(e) => { setDomainId(e.target.value); setDirty(true) }}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-bg"
             >
               <option value="">Choisir...</option>
               {domains.map((d) => (
@@ -201,11 +201,11 @@ export default function EditorPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+            <label className="block text-xs font-medium text-ink-45 mb-1">Type</label>
             <select
               value={typeId}
               onChange={(e) => { setTypeId(e.target.value); setDirty(true) }}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-bg"
             >
               <option value="">Choisir...</option>
               {DOC_TYPES.map((t) => (
@@ -215,12 +215,12 @@ export default function EditorPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Visibilite</label>
+            <label className="block text-xs font-medium text-ink-45 mb-1">Visibilite</label>
             <button
               type="button"
               onClick={() => { setVisibility((v) => v === 'public' ? 'dsi' : 'public'); setDirty(true) }}
               className={`w-full border rounded-lg px-3 py-2 text-sm text-left ${
-                visibility === 'public' ? 'bg-green-50 border-green-300 text-green-700' : 'bg-orange-50 border-orange-300 text-orange-700'
+                visibility === 'public' ? 'bg-[#2D8B4E]/10 border-[#2D8B4E]/30 text-[#2D8B4E]' : 'bg-orange-50 border-orange-300 text-orange-700'
               }`}
             >
               {visibility === 'public' ? 'Public' : 'DSI uniquement'}
@@ -228,7 +228,7 @@ export default function EditorPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Tags</label>
+            <label className="block text-xs font-medium text-ink-45 mb-1">Tags</label>
             <TagInput value={tags} onChange={(t) => { setTags(t); setDirty(true) }} />
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function EditorPage() {
 
       {/* Editor / Preview toggle */}
       {previewing ? (
-        <div className="border rounded-lg bg-white p-6">
+        <div className="border rounded-lg bg-bg p-6">
           <DocumentPreview content={body ? (() => { try { return JSON.parse(body) } catch { return {} } })() : {}} />
         </div>
       ) : (
@@ -261,7 +261,7 @@ export default function EditorPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium z-50">
+        <div className="fixed bottom-6 right-6 bg-[#2D8B4E] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium z-50">
           Sauvegarde OK
         </div>
       )}

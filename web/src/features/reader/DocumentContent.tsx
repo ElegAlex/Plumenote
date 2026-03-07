@@ -139,7 +139,7 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
       const copyBtn = document.createElement('button')
       copyBtn.textContent = 'Copier'
       copyBtn.className =
-        'absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity'
+        'absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded bg-ink-70 text-ink-45 hover:bg-ink-70 opacity-0 group-hover:opacity-100 transition-opacity'
       copyBtn.onclick = async () => {
         await navigator.clipboard.writeText(normalizedCode)
         copyBtn.textContent = 'Copie !'
@@ -160,7 +160,7 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
           const html = await codeToHtml(normalizedCode, { lang: shikiLang, theme: SHIKI_THEME })
           const wrapper = document.createElement('div')
           wrapper.innerHTML = html
-          wrapper.className = 'rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-gray-900 relative group'
+          wrapper.className = 'rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-[#1a1a2e] relative group'
 
           // Re-add copy button to wrapper
           const newCopyBtn = copyBtn.cloneNode(true) as HTMLButtonElement
@@ -174,10 +174,10 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
           pre.replaceWith(wrapper)
         } catch {
           // Keep lowlight fallback
-          pre.classList.add('bg-gray-900', 'text-gray-100', 'rounded-lg', 'p-4', 'overflow-x-auto', 'text-sm')
+          pre.classList.add('bg-[#1a1a2e]', 'text-ink', 'rounded-lg', 'p-4', 'overflow-x-auto', 'text-sm')
         }
       } else {
-        pre.classList.add('bg-gray-900', 'text-gray-100', 'rounded-lg', 'p-4', 'overflow-x-auto', 'text-sm', 'font-mono')
+        pre.classList.add('bg-[#1a1a2e]', 'text-ink', 'rounded-lg', 'p-4', 'overflow-x-auto', 'text-sm', 'font-mono')
       }
     })
   }, [editor])

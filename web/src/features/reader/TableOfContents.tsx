@@ -48,8 +48,8 @@ export default function TableOfContents({ items }: TableOfContentsProps) {
   if (items.length === 0) return null
 
   return (
-    <nav className="sticky top-20 text-sm border-l-2 border-gray-200 pl-4">
-      <h3 className="font-semibold text-gray-900 mb-3">Sommaire</h3>
+    <nav className="sticky top-20 text-sm border-l-2 border-ink-10 pl-4">
+      <h3 className="font-semibold text-ink mb-3">Sommaire</h3>
       <ul className="space-y-2">
         {items.map(({ id, text }) => (
           <li key={id}>
@@ -57,8 +57,8 @@ export default function TableOfContents({ items }: TableOfContentsProps) {
               onClick={() => scrollTo(id)}
               className={`text-left w-full transition-colors ${
                 activeId === id
-                  ? 'text-blue-600 font-medium border-l-2 border-blue-600 -ml-[calc(1rem+2px)] pl-[calc(1rem)]'
-                  : 'text-gray-500 hover:text-gray-900'
+                  ? 'text-blue font-medium border-l-2 border-blue -ml-[calc(1rem+2px)] pl-[calc(1rem)]'
+                  : 'text-ink-45 hover:text-ink'
               }`}
             >
               {text}

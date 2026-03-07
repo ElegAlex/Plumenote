@@ -22,7 +22,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Chargement...</p>
+        <p className="text-ink-45">Chargement...</p>
       </div>
     )
   }
@@ -33,9 +33,9 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Administration</h1>
+      <h1 className="text-2xl font-bold text-ink mb-6">Administration</h1>
 
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-ink-10 mb-6">
         <nav className="flex space-x-6">
           {tabs.map((tab) => (
             <button
@@ -43,8 +43,8 @@ export default function AdminPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-ink-45 hover:text-ink-70 hover:border-ink-10'
               }`}
             >
               {tab.label}
