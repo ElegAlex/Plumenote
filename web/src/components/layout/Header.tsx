@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '@/lib/auth-context'
 
 interface Props {
   activeView: string
@@ -12,6 +14,7 @@ const VIEWS = [
 ]
 
 export default function Header({ activeView, onViewChange }: Props) {
+  const { user, isAuthenticated, logout } = useAuth()
   const [time, setTime] = useState(new Date())
 
   useEffect(() => {
@@ -63,8 +66,28 @@ export default function Header({ activeView, onViewChange }: Props) {
       </nav>
 
       {/* Right */}
-      <div className="ml-auto flex items-center px-6 gap-4 border-l border-ink-05 font-mono text-[11px] text-ink-70 max-md:hidden">
-        <span className="font-semibold text-ink">CPAM 92</span>
+      <div className="ml-auto flex items-center px-6 gap-3 border-l border-ink-05 font-mono text-[11px] text-ink-70 max-md:hidden">
+        {isAuthenticated ? (
+          <>
+            <Link
+              to="/documents/new"
+              className="font-sans text-[11px] font-semibold tracking-wider uppercase px-3 py-1.5 bg-blue text-white no-underline hover:bg-blue/90 transition-colors"
+            >
+              + Nouvelle page
+            </Link>
+            <span className="opacity-40">&middot;</span>
+            <span className="font-semibold text-ink">{user?.display_name || user?.username}</span>
+            <button onClick={logout} className="text-ink-45 hover:text-ink cursor-pointer transition-colors">
+              &times;
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="font-sans text-[11px] font-semibold tracking-wider uppercase text-blue no-underline hover:text-ink transition-colors">
+              Connexion
+            </Link>
+          </>
+        )}
         <span className="opacity-40">&middot;</span>
         <span>{fmt(time)}</span>
       </div>

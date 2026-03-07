@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import Header from '@/components/layout/Header'
 import SearchBar from '@/components/layout/SearchBar'
@@ -7,7 +6,6 @@ import SidebarNew from '@/components/layout/SidebarNew'
 import DocumentsView from './DocumentsView'
 import ApplicationsView from './ApplicationsView'
 import CartographieView from './CartographieView'
-import PublicHomePage from './PublicHomePage'
 
 interface Domain {
   id: string
@@ -33,12 +31,6 @@ interface Doc {
 }
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth()
-  if (!isAuthenticated) return <PublicHomePage />
-  return <AuthenticatedHome />
-}
-
-function AuthenticatedHome() {
   const [activeView, setActiveView] = useState('docs')
   const [activeService, setActiveService] = useState<string | null>(null)
   const [search, setSearch] = useState('')
