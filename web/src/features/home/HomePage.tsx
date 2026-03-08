@@ -400,21 +400,21 @@ export default function HomePage() {
             </div>
           )}
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isAuthenticated ? '1fr 1fr' : '1fr',
-            borderTop: '2px solid rgba(28,28,28,0.1)',
-            background: '#FBFBF9',
-          }}>
-            <div style={{ borderRight: isAuthenticated ? '1px solid rgba(28,28,28,0.07)' : 'none', padding: '20px' }}>
-              <FeedPanel domainId={activeService || undefined} />
-            </div>
-            {isAuthenticated && (
+          {isAuthenticated && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              borderTop: '2px solid rgba(28,28,28,0.1)',
+              background: '#FBFBF9',
+            }}>
+              <div style={{ borderRight: '1px solid rgba(28,28,28,0.07)', padding: '20px' }}>
+                <FeedPanel domainId={activeService || undefined} />
+              </div>
               <div style={{ padding: '20px' }}>
                 <ReviewPanel domainId={activeService || undefined} />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

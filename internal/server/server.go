@@ -118,49 +118,58 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		json.NewEncoder(w).Encode(s)
 	})
 
-	// Public document freshness health (no auth)
-	r.Get("/api/stats/health", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		// Read freshness thresholds from config
-		var val string
-		greenDays := 90
-		yellowDays := 180
-		if err := deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_green'`).Scan(&val); err == nil {
-			if n, _ := strconv.Atoi(val); n > 0 {
-				greenDays = n
+	// Document freshness health — OptionalAuth, DSI/admin only
+	r.Group(func(r chi.Router) {
+		r.Use(auth.OptionalAuth(deps.JWTSecret))
+		r.Get("/api/stats/health", func(w http.ResponseWriter, r *http.Request) {
+			// Only DSI/admin users get health data; anonymous gets empty
+			claims := auth.UserFromContext(r.Context())
+			type healthResp struct {
+				Total  int `json:"total"`
+				Green  int `json:"green"`
+				Yellow int `json:"yellow"`
+				Red    int `json:"red"`
 			}
-		}
-		if err := deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_yellow'`).Scan(&val); err == nil {
-			if n, _ := strconv.Atoi(val); n > 0 {
-				yellowDays = n
+			if claims == nil || (claims.Role != "dsi" && claims.Role != "admin") {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(healthResp{})
+				return
 			}
-		}
 
-		type healthResp struct {
-			Total  int `json:"total"`
-			Green  int `json:"green"`
-			Yellow int `json:"yellow"`
-			Red    int `json:"red"`
-		}
-		var h healthResp
-		err := deps.DB.QueryRow(ctx,
-			`SELECT
-				COUNT(*) AS total,
-				COUNT(*) FILTER (WHERE last_verified_at IS NOT NULL AND last_verified_at > now() - make_interval(days => $1)) AS green,
-				COUNT(*) FILTER (WHERE last_verified_at IS NOT NULL AND last_verified_at <= now() - make_interval(days => $1) AND last_verified_at > now() - make_interval(days => $2)) AS yellow
-			 FROM documents`, greenDays, yellowDays,
-		).Scan(&h.Total, &h.Green, &h.Yellow)
-		if err != nil {
+			ctx := r.Context()
+			var val string
+			greenDays := 90
+			yellowDays := 180
+			if err := deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_green'`).Scan(&val); err == nil {
+				if n, _ := strconv.Atoi(val); n > 0 {
+					greenDays = n
+				}
+			}
+			if err := deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_yellow'`).Scan(&val); err == nil {
+				if n, _ := strconv.Atoi(val); n > 0 {
+					yellowDays = n
+				}
+			}
+
+			var h healthResp
+			err := deps.DB.QueryRow(ctx,
+				`SELECT
+					COUNT(*) AS total,
+					COUNT(*) FILTER (WHERE last_verified_at IS NOT NULL AND last_verified_at > now() - make_interval(days => $1)) AS green,
+					COUNT(*) FILTER (WHERE last_verified_at IS NOT NULL AND last_verified_at <= now() - make_interval(days => $1) AND last_verified_at > now() - make_interval(days => $2)) AS yellow
+				 FROM documents`, greenDays, yellowDays,
+			).Scan(&h.Total, &h.Green, &h.Yellow)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"error": "failed to compute health stats"})
+				return
+			}
+			h.Red = h.Total - h.Green - h.Yellow
+
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "failed to compute health stats"})
-			return
-		}
-		h.Red = h.Total - h.Green - h.Yellow
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(h)
+			json.NewEncoder(w).Encode(h)
+		})
 	})
 
 	// Public document types listing (no auth)

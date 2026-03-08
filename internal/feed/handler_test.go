@@ -17,18 +17,45 @@ func wrapWithRecoverer(h http.Handler) http.Handler {
 	return mux
 }
 
-func TestGetFeedReturns200OrDBError(t *testing.T) {
+func TestGetFeedWithoutAuthReturns401(t *testing.T) {
 	deps := setupDeps(t)
-	router := wrapWithRecoverer(Router(deps))
+	router := Router(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/feed", nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
-	// Without a real DB we expect 500 (DB query panics on nil pool), but the route is wired
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
-		t.Errorf("GET /feed: expected 200 or 500, got %d", w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("GET /feed without auth: expected 401, got %d", w.Code)
+	}
+}
+
+func TestGetFeedWithAuthReturnsNon401(t *testing.T) {
+	deps := setupDeps(t)
+	router := wrapWithRecoverer(Router(deps))
+
+	claims := jwt.MapClaims{
+		"user_id":   "test-user-id",
+		"username":  "testuser",
+		"role":      "dsi",
+		"domain_id": "test-domain-id",
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, err := token.SignedString([]byte("test-secret"))
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/feed", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	// Without DB, we expect 500 (validates route wiring + auth passes)
+	if w.Code == http.StatusUnauthorized {
+		t.Errorf("GET /feed with valid auth: should not be 401, got %d", w.Code)
 	}
 }
 

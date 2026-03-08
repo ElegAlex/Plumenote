@@ -10,9 +10,9 @@ func Router(deps *model.Deps) chi.Router {
 	r := chi.NewRouter()
 	h := &handler{deps: deps}
 
-	// Feed is public (OptionalAuth)
+	// Feed requires auth (personalized by user's domain)
 	r.Group(func(r chi.Router) {
-		r.Use(auth.OptionalAuth(deps.JWTSecret))
+		r.Use(auth.RequireAuth(deps.JWTSecret))
 		r.Get("/feed", h.getFeed)
 	})
 

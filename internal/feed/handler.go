@@ -52,22 +52,20 @@ func (h *handler) getFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	claims := auth.UserFromContext(r.Context())
-	userRole := ""
-	if claims != nil {
-		userRole = claims.Role
+	if claims == nil {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+		return
+	}
+
+	// Default to user's domain if no domain_id query param
+	if domainID == "" && claims.DomainID != "" {
+		domainID = claims.DomainID
 	}
 
 	// Build query
 	var conditions []string
 	args := []any{limit, offset}
 	paramIdx := 3
-
-	// RG-006: anonymous users can only see public documents
-	if userRole != "dsi" && userRole != "admin" {
-		conditions = append(conditions, fmt.Sprintf("AND d.visibility = $%d", paramIdx))
-		args = append(args, "public")
-		paramIdx++
-	}
 
 	if domainID != "" {
 		conditions = append(conditions, fmt.Sprintf("AND d.domain_id = $%d", paramIdx))
