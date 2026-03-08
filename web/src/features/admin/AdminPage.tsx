@@ -5,12 +5,14 @@ import TemplatesAdmin from './TemplatesAdmin'
 import DomainsAdmin from './DomainsAdmin'
 import UsersAdmin from './UsersAdmin'
 import ConfigAdmin from './ConfigAdmin'
+import AnalyticsTab from './AnalyticsTab'
 
 const tabs = [
   { key: 'templates', label: 'Templates' },
   { key: 'domaines', label: 'Domaines' },
   { key: 'utilisateurs', label: 'Utilisateurs' },
   { key: 'configuration', label: 'Configuration' },
+  { key: 'analytique', label: 'Analytique' },
 ] as const
 
 type TabKey = (typeof tabs)[number]['key']
@@ -57,6 +59,7 @@ export default function AdminPage() {
       {activeTab === 'domaines' && <DomainsAdmin />}
       {activeTab === 'utilisateurs' && <UsersAdmin />}
       {activeTab === 'configuration' && <ConfigAdmin />}
+      {activeTab === 'analytique' && <AnalyticsTab />}
     </div>
   )
 }

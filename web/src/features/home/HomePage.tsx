@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import { useStatsHealth } from "@/lib/hooks/useStatsHealth";
+import FeedPanel from "./FeedPanel";
+import ReviewPanel from "./ReviewPanel";
 
 interface Domain { id: string; name: string; slug: string; color: string; doc_count: number }
 interface Stats { documents: number; searches_month: number; contributors: number; updates_month: number }
@@ -10,6 +13,7 @@ interface Doc {
   domain_id: string; domain_name: string; domain_color: string;
   type_name: string; type_slug: string; updated_at: string;
   freshness_badge: string; view_count: number;
+  needs_review?: boolean;
 }
 
 const TYPE_ICONS: Record<string, string> = { PDF: "◼", DOC: "◧", TXT: "▤", XLS: "◨", URL: "◎" };
@@ -35,6 +39,7 @@ export default function HomePage() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const { data: health } = useStatsHealth();
 
   useEffect(() => { setLoaded(true); const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
 
@@ -263,6 +268,27 @@ export default function HomePage() {
               <span className="svc-n">{s.count}</span>
             </div>
           ))}
+          {health && (
+            <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(28,28,28,0.08)' }}>
+              <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase' as const, color: 'rgba(28,28,28,0.6)', marginBottom: 8 }}>
+                Santé documentaire
+              </div>
+              <div style={{ display: 'flex', height: 6, borderRadius: 1, overflow: 'hidden', background: 'rgba(28,28,28,0.06)' }}>
+                {health.total > 0 && (
+                  <>
+                    <div style={{ width: `${(health.green / health.total) * 100}%`, background: '#22C55E' }} />
+                    <div style={{ width: `${(health.yellow / health.total) * 100}%`, background: '#EAB308' }} />
+                    <div style={{ width: `${(health.red / health.total) * 100}%`, background: '#C23B22' }} />
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: 'rgba(28,28,28,0.5)' }}>
+                <span>{health.green} vert{health.green !== 1 ? 's' : ''}</span>
+                <span>{health.yellow} jaune{health.yellow !== 1 ? 's' : ''}</span>
+                <span>{health.red} rouge{health.red !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          )}
           <div className="stats">
             {statsData.map((s, i) => (
               <div key={i} className="st">
@@ -298,7 +324,21 @@ export default function HomePage() {
                   >
                     <div className="di" style={{ color: hoveredDoc === doc.id ? svc?.color : undefined }}>{TYPE_ICONS[fmt2] || "○"}</div>
                     <div className="dm">
-                      <div className="dt">{doc.title}</div>
+                      <div className="dt">
+                        {doc.title}
+                        {doc.needs_review && (
+                          <span style={{
+                            fontFamily: "'IBM Plex Mono', monospace",
+                            fontSize: 8,
+                            letterSpacing: 0.8,
+                            color: '#C23B22',
+                            background: 'rgba(194,59,34,0.08)',
+                            padding: '1px 5px',
+                            textTransform: 'uppercase' as const,
+                            marginLeft: 6,
+                          }}>À réviser</span>
+                        )}
+                      </div>
                       {doc.tags && doc.tags.length > 0 && (
                         <div className="dtags">{doc.tags.map(t => <span key={t} className="dtag">{t}</span>)}</div>
                       )}
@@ -359,6 +399,22 @@ export default function HomePage() {
               })}
             </div>
           )}
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isAuthenticated ? '1fr 1fr' : '1fr',
+            borderTop: '2px solid rgba(28,28,28,0.1)',
+            background: '#FBFBF9',
+          }}>
+            <div style={{ borderRight: isAuthenticated ? '1px solid rgba(28,28,28,0.07)' : 'none', padding: '20px' }}>
+              <FeedPanel domainId={activeService || undefined} />
+            </div>
+            {isAuthenticated && (
+              <div style={{ padding: '20px' }}>
+                <ReviewPanel domainId={activeService || undefined} />
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>
