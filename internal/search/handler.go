@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alexmusic/plumenote/internal/auth"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -57,7 +58,10 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 
 		// Build filters
 		var filters []string
-		role := userRoleFromCtx(r.Context())
+		var role string
+		if c := auth.UserFromContext(r.Context()); c != nil {
+			role = c.Role
+		}
 		if role != "dsi" && role != "admin" {
 			filters = append(filters, "visibility = public")
 		}

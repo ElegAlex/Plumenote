@@ -4,8 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/alexmusic/plumenote/internal/auth"
 	"github.com/alexmusic/plumenote/internal/model"
 )
+
+func userIDFromContext(r *http.Request) *string {
+	if c := auth.UserFromContext(r.Context()); c != nil && c.UserID != "" {
+		return &c.UserID
+	}
+	return nil
+}
 
 type searchLogRequest struct {
 	Query              string  `json:"query"`
@@ -34,7 +42,7 @@ func handleSearchLog(deps *model.Deps) http.HandlerFunc {
 			return
 		}
 
-		userID := userIDFromCtx(r.Context())
+		userID := userIDFromContext(r)
 
 		_, err := deps.DB.Exec(r.Context(),
 			`INSERT INTO search_log (query, result_count, clicked_document_id, user_id) VALUES ($1, $2, $3, $4)`,
@@ -61,7 +69,7 @@ func handleViewLog(deps *model.Deps) http.HandlerFunc {
 			return
 		}
 
-		userID := userIDFromCtx(r.Context())
+		userID := userIDFromContext(r)
 
 		_, err := deps.DB.Exec(r.Context(),
 			`INSERT INTO view_log (document_id, user_id, duration_seconds) VALUES ($1, $2, $3)`,
