@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/alexmusic/plumenote/internal/auth"
+	"github.com/alexmusic/plumenote/internal/httputil"
 	"github.com/alexmusic/plumenote/internal/model"
 )
 
@@ -34,11 +35,11 @@ func handleSearchLog(deps *model.Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req searchLogRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.Query == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "query is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "query is required"})
 			return
 		}
 
@@ -49,11 +50,11 @@ func handleSearchLog(deps *model.Deps) http.HandlerFunc {
 			req.Query, req.ResultCount, req.ClickedDocumentID, userID,
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to log search"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to log search"})
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+		httputil.WriteJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 	}
 }
 
@@ -61,11 +62,11 @@ func handleViewLog(deps *model.Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req viewLogRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.DocumentID == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "document_id is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "document_id is required"})
 			return
 		}
 
@@ -76,11 +77,11 @@ func handleViewLog(deps *model.Deps) http.HandlerFunc {
 			req.DocumentID, userID, req.DurationSeconds,
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to log view"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to log view"})
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+		httputil.WriteJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 	}
 }
 
@@ -88,11 +89,11 @@ func handleViewCount(deps *model.Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req viewCountRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.DocumentID == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "document_id is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "document_id is required"})
 			return
 		}
 
@@ -101,16 +102,11 @@ func handleViewCount(deps *model.Deps) http.HandlerFunc {
 			req.DocumentID,
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to increment view count"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to increment view count"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}

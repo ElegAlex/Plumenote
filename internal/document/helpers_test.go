@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/alexmusic/plumenote/internal/httputil"
 )
 
 func TestComputeFreshness(t *testing.T) {
@@ -89,9 +91,9 @@ func TestGenerateSlug(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := GenerateSlug(tt.title)
+			got := httputil.GenerateSlug(tt.title)
 			if got != tt.want {
-				t.Errorf("GenerateSlug(%q) = %q, want %q", tt.title, got, tt.want)
+				t.Errorf("httputil.GenerateSlug(%q) = %q, want %q", tt.title, got, tt.want)
 			}
 		})
 	}
@@ -103,7 +105,7 @@ func TestGenerateSlug_MaxLength(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		longTitle += "word "
 	}
-	slug := GenerateSlug(longTitle)
+	slug := httputil.GenerateSlug(longTitle)
 	if len(slug) > 100 {
 		t.Errorf("slug length %d exceeds 100", len(slug))
 	}

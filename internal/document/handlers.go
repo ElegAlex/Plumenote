@@ -16,6 +16,7 @@ import (
 	"log"
 
 	"github.com/alexmusic/plumenote/internal/auth"
+	"github.com/alexmusic/plumenote/internal/httputil"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -55,16 +56,6 @@ type SearchDocument struct {
 }
 
 // --- JSON helpers ---
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
 
 func readJSON(r *http.Request, v any) error {
 	defer r.Body.Close()
@@ -112,38 +103,38 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		Visibility string          `json:"visibility"`
 	}
 	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
 		return
 	}
 	if req.Title == "" {
-		writeError(w, http.StatusBadRequest, "title is required")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "title is required"})
 		return
 	}
 	if req.DomainID == "" || req.TypeID == "" {
-		writeError(w, http.StatusBadRequest, "domain_id and type_id are required")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "domain_id and type_id are required"})
 		return
 	}
 	if req.Visibility == "" {
 		req.Visibility = "dsi"
 	}
 	if req.Visibility != "public" && req.Visibility != "dsi" {
-		writeError(w, http.StatusBadRequest, "visibility must be 'public' or 'dsi'")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "visibility must be 'public' or 'dsi'"})
 		return
 	}
 
 	authorID := getUserID(r.Context())
 	if authorID == "" {
-		writeError(w, http.StatusUnauthorized, "authentication required")
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		return
 	}
 
 	bodyText := ExtractBodyText(req.Body)
-	slug := GenerateSlug(req.Title)
+	slug := httputil.GenerateSlug(req.Title)
 
 	// Ensure slug uniqueness
 	slug, err := h.ensureUniqueSlug(r.Context(), slug, "")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to generate slug")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate slug"})
 		return
 	}
 
@@ -171,7 +162,7 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, authorID, req.Visibility,
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID, &doc.AuthorID, &doc.Visibility, &doc.ViewCount, &doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.CreatedAt, &doc.UpdatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create document")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create document"})
 		return
 	}
 
@@ -183,7 +174,7 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 	// Async Meilisearch indexing (RG-001: < 10s)
 	go h.indexDocument(doc.ID)
 
-	writeJSON(w, http.StatusCreated, doc)
+	httputil.WriteJSON(w,http.StatusCreated, doc)
 }
 
 // listDocuments handles GET /api/documents
@@ -199,7 +190,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 				err := h.deps.DB.QueryRow(r.Context(),
 					"SELECT id FROM domains WHERE slug = $1", domainSlug).Scan(&resolvedID)
 				if err != nil {
-					writeJSON(w, http.StatusOK, []struct{}{})
+					httputil.WriteJSON(w,http.StatusOK, []struct{}{})
 					return
 				}
 				domainID = resolvedID
@@ -228,7 +219,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.deps.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list documents")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list documents"})
 		return
 	}
 	defer rows.Close()
@@ -258,7 +249,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d docSummary
 		if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.DomainID, &d.TypeID, &d.AuthorID, &d.Visibility, &d.ViewCount, &d.LastVerifiedAt, &d.CreatedAt, &d.UpdatedAt, &d.AuthorName, &d.TypeName, &d.TypeSlug, &d.DomainName, &d.DomainColor); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to scan document")
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan document"})
 			return
 		}
 		d.FreshnessBadge = ComputeFreshness(d.LastVerifiedAt, greenDays, yellowDays)
@@ -267,7 +258,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 	if docs == nil {
 		docs = []docSummary{}
 	}
-	writeJSON(w, http.StatusOK, docs)
+	httputil.WriteJSON(w,http.StatusOK, docs)
 }
 
 func (h *handler) buildListQuery(domainID, typeID, orderBy string, limit, offset int, userRole string) (string, []any) {
@@ -354,18 +345,18 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		&doc.DomainName, &doc.DomainSlug, &doc.DomainColor,
 		&doc.TypeName, &doc.TypeSlug)
 	if err == pgx.ErrNoRows {
-		writeError(w, http.StatusNotFound, "document not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to get document")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get document"})
 		return
 	}
 
 	// RG-006: anonymous users can only see public documents
 	userRole := getUserRole(r.Context())
 	if userRole != "dsi" && userRole != "admin" && doc.Visibility != "public" {
-		writeError(w, http.StatusNotFound, "document not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
 	}
 
@@ -417,7 +408,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		TypeName: doc.TypeName, TypeSlug: doc.TypeSlug,
 		CreatedAt: doc.CreatedAt, UpdatedAt: doc.UpdatedAt,
 	}
-	writeJSON(w, http.StatusOK, resp)
+	httputil.WriteJSON(w,http.StatusOK, resp)
 }
 
 type tagDTO struct {
@@ -457,7 +448,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 	userDomainID := getUserDomainID(r.Context())
 
 	if userID == "" {
-		writeError(w, http.StatusUnauthorized, "authentication required")
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		return
 	}
 
@@ -467,17 +458,17 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		"SELECT author_id, domain_id FROM documents WHERE id = $1", docID,
 	).Scan(&authorID, &docDomainID)
 	if err == pgx.ErrNoRows {
-		writeError(w, http.StatusNotFound, "document not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to get document")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get document"})
 		return
 	}
 
 	// RG-003: author OR same domain OR admin
 	if userRole != "admin" && authorID != userID && docDomainID != userDomainID {
-		writeError(w, http.StatusForbidden, "you can only edit documents in your domain")
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "you can only edit documents in your domain"})
 		return
 	}
 
@@ -490,19 +481,19 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		Visibility string          `json:"visibility"`
 	}
 	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
 		return
 	}
 	if req.Title == "" {
-		writeError(w, http.StatusBadRequest, "title is required")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "title is required"})
 		return
 	}
 
 	bodyText := ExtractBodyText(req.Body)
-	slug := GenerateSlug(req.Title)
+	slug := httputil.GenerateSlug(req.Title)
 	slug, err = h.ensureUniqueSlug(r.Context(), slug, docID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to generate slug")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate slug"})
 		return
 	}
 
@@ -520,7 +511,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		docID, req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, req.Visibility,
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.UpdatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to update document")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update document"})
 		return
 	}
 
@@ -530,7 +521,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 	// Re-index Meilisearch async
 	go h.indexDocument(docID)
 
-	writeJSON(w, http.StatusOK, doc)
+	httputil.WriteJSON(w,http.StatusOK, doc)
 }
 
 // deleteDocument handles DELETE /api/documents/{id}
@@ -541,7 +532,7 @@ func (h *handler) deleteDocument(w http.ResponseWriter, r *http.Request) {
 	userDomainID := getUserDomainID(r.Context())
 
 	if userID == "" {
-		writeError(w, http.StatusUnauthorized, "authentication required")
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		return
 	}
 
@@ -550,23 +541,23 @@ func (h *handler) deleteDocument(w http.ResponseWriter, r *http.Request) {
 		"SELECT author_id, domain_id FROM documents WHERE id = $1", docID,
 	).Scan(&authorID, &docDomainID)
 	if err == pgx.ErrNoRows {
-		writeError(w, http.StatusNotFound, "document not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to get document")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get document"})
 		return
 	}
 
 	// RG-003: author OR same domain OR admin
 	if userRole != "admin" && authorID != userID && docDomainID != userDomainID {
-		writeError(w, http.StatusForbidden, "you can only delete documents in your domain")
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "you can only delete documents in your domain"})
 		return
 	}
 
 	_, err = h.deps.DB.Exec(r.Context(), "DELETE FROM documents WHERE id = $1", docID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to delete document")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to delete document"})
 		return
 	}
 
@@ -578,7 +569,7 @@ func (h *handler) deleteDocument(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	httputil.WriteJSON(w,http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 // verifyDocument handles POST /api/documents/{id}/verify
@@ -586,7 +577,7 @@ func (h *handler) verifyDocument(w http.ResponseWriter, r *http.Request) {
 	docID := chi.URLParam(r, "id")
 	userID := getUserID(r.Context())
 	if userID == "" {
-		writeError(w, http.StatusUnauthorized, "authentication required")
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		return
 	}
 
@@ -599,7 +590,7 @@ func (h *handler) verifyDocument(w http.ResponseWriter, r *http.Request) {
 	var exists bool
 	err := h.deps.DB.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM documents WHERE id = $1)", docID).Scan(&exists)
 	if err != nil || !exists {
-		writeError(w, http.StatusNotFound, "document not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
 	}
 
@@ -617,7 +608,7 @@ func (h *handler) verifyDocument(w http.ResponseWriter, r *http.Request) {
 		docID, userID, req.Note,
 	).Scan(&logEntry.ID, &logEntry.DocumentID, &logEntry.VerifiedBy, &logEntry.Note, &logEntry.CreatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create verification")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create verification"})
 		return
 	}
 
@@ -626,11 +617,11 @@ func (h *handler) verifyDocument(w http.ResponseWriter, r *http.Request) {
 		"UPDATE documents SET last_verified_at = now(), last_verified_by = $2, updated_at = now() WHERE id = $1",
 		docID, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to update document verification")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update document verification"})
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, logEntry)
+	httputil.WriteJSON(w,http.StatusCreated, logEntry)
 }
 
 // listVerifications handles GET /api/documents/{id}/verifications
@@ -644,7 +635,7 @@ func (h *handler) listVerifications(w http.ResponseWriter, r *http.Request) {
 		 WHERE vl.document_id = $1
 		 ORDER BY vl.created_at DESC`, docID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list verifications")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list verifications"})
 		return
 	}
 	defer rows.Close()
@@ -661,7 +652,7 @@ func (h *handler) listVerifications(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var v verification
 		if err := rows.Scan(&v.ID, &v.DocumentID, &v.VerifiedBy, &v.VerifierName, &v.Note, &v.CreatedAt); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to scan verification")
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan verification"})
 			return
 		}
 		verifications = append(verifications, v)
@@ -669,7 +660,7 @@ func (h *handler) listVerifications(w http.ResponseWriter, r *http.Request) {
 	if verifications == nil {
 		verifications = []verification{}
 	}
-	writeJSON(w, http.StatusOK, verifications)
+	httputil.WriteJSON(w,http.StatusOK, verifications)
 }
 
 // uploadAttachment handles POST /api/documents/{id}/attachments
@@ -677,40 +668,40 @@ func (h *handler) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 	docID := chi.URLParam(r, "id")
 	userID := getUserID(r.Context())
 	if userID == "" {
-		writeError(w, http.StatusUnauthorized, "authentication required")
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		return
 	}
 
 	// Check doc exists
 	var exists bool
 	if err := h.deps.DB.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM documents WHERE id = $1)", docID).Scan(&exists); err != nil || !exists {
-		writeError(w, http.StatusNotFound, "document not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		writeError(w, http.StatusBadRequest, "file too large (max 10MB)")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "file too large (max 10MB)"})
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "missing 'file' field")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing 'file' field"})
 		return
 	}
 	defer file.Close()
 
 	mimeType := header.Header.Get("Content-Type")
 	if !allowedMimeTypes[mimeType] {
-		writeError(w, http.StatusBadRequest, "only PNG, JPG, GIF, WebP images are allowed")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "only PNG, JPG, GIF, WebP images are allowed"})
 		return
 	}
 
 	// Create upload directory
 	uploadDir := filepath.Join(uploadBasePath, docID)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create upload directory")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create upload directory"})
 		return
 	}
 
@@ -720,14 +711,14 @@ func (h *handler) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 
 	dst, err := os.Create(destPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save file")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save file"})
 		return
 	}
 	defer dst.Close()
 
 	written, err := io.Copy(dst, file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to write file")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to write file"})
 		return
 	}
 
@@ -747,11 +738,11 @@ func (h *handler) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		docID, filename, destPath, mimeType, written,
 	).Scan(&att.ID, &att.DocumentID, &att.Filename, &att.Filepath, &att.MimeType, &att.SizeBytes, &att.CreatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save attachment record")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save attachment record"})
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, att)
+	httputil.WriteJSON(w,http.StatusCreated, att)
 }
 
 // listAttachments handles GET /api/documents/{id}/attachments
@@ -761,7 +752,7 @@ func (h *handler) listAttachments(w http.ResponseWriter, r *http.Request) {
 		`SELECT id, document_id, filename, filepath, mime_type, size_bytes, created_at
 		 FROM attachments WHERE document_id = $1 ORDER BY created_at`, docID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list attachments")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list attachments"})
 		return
 	}
 	defer rows.Close()
@@ -779,7 +770,7 @@ func (h *handler) listAttachments(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a attachment
 		if err := rows.Scan(&a.ID, &a.DocumentID, &a.Filename, &a.Filepath, &a.MimeType, &a.SizeBytes, &a.CreatedAt); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to scan attachment")
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan attachment"})
 			return
 		}
 		attachments = append(attachments, a)
@@ -787,7 +778,7 @@ func (h *handler) listAttachments(w http.ResponseWriter, r *http.Request) {
 	if attachments == nil {
 		attachments = []attachment{}
 	}
-	writeJSON(w, http.StatusOK, attachments)
+	httputil.WriteJSON(w,http.StatusOK, attachments)
 }
 
 // deleteAttachment handles DELETE /api/documents/{id}/attachments/{att_id}
@@ -795,7 +786,7 @@ func (h *handler) deleteAttachment(w http.ResponseWriter, r *http.Request) {
 	attID := chi.URLParam(r, "att_id")
 	userID := getUserID(r.Context())
 	if userID == "" {
-		writeError(w, http.StatusUnauthorized, "authentication required")
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		return
 	}
 
@@ -805,24 +796,24 @@ func (h *handler) deleteAttachment(w http.ResponseWriter, r *http.Request) {
 		"SELECT filepath FROM attachments WHERE id = $1", attID,
 	).Scan(&filePath)
 	if err == pgx.ErrNoRows {
-		writeError(w, http.StatusNotFound, "attachment not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "attachment not found"})
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to get attachment")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get attachment"})
 		return
 	}
 
 	_, err = h.deps.DB.Exec(r.Context(), "DELETE FROM attachments WHERE id = $1", attID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to delete attachment")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to delete attachment"})
 		return
 	}
 
 	// Remove file from disk
 	_ = os.Remove(filePath)
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	httputil.WriteJSON(w,http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 // --- Tag handlers ---
@@ -841,7 +832,7 @@ func (h *handler) listTags(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.deps.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list tags")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list tags"})
 		return
 	}
 	defer rows.Close()
@@ -850,7 +841,7 @@ func (h *handler) listTags(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var t tagDTO
 		if err := rows.Scan(&t.ID, &t.Name, &t.Slug); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to scan tag")
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan tag"})
 			return
 		}
 		tags = append(tags, t)
@@ -858,7 +849,7 @@ func (h *handler) listTags(w http.ResponseWriter, r *http.Request) {
 	if tags == nil {
 		tags = []tagDTO{}
 	}
-	writeJSON(w, http.StatusOK, tags)
+	httputil.WriteJSON(w,http.StatusOK, tags)
 }
 
 // createTag handles POST /api/tags
@@ -867,11 +858,11 @@ func (h *handler) createTag(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"name"`
 	}
 	if err := readJSON(r, &req); err != nil || req.Name == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 		return
 	}
 
-	slug := GenerateSlug(req.Name)
+	slug := httputil.GenerateSlug(req.Name)
 	var tag struct {
 		ID        string    `json:"id"`
 		Name      string    `json:"name"`
@@ -884,13 +875,13 @@ func (h *handler) createTag(w http.ResponseWriter, r *http.Request) {
 	).Scan(&tag.ID, &tag.Name, &tag.Slug, &tag.CreatedAt)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-			writeError(w, http.StatusConflict, "tag already exists")
+			httputil.WriteJSON(w, http.StatusConflict, map[string]string{"error": "tag already exists"})
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "failed to create tag")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create tag"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, tag)
+	httputil.WriteJSON(w,http.StatusCreated, tag)
 }
 
 // deleteTag handles DELETE /api/tags/{id}
@@ -898,14 +889,14 @@ func (h *handler) deleteTag(w http.ResponseWriter, r *http.Request) {
 	tagID := chi.URLParam(r, "id")
 	ct, err := h.deps.DB.Exec(r.Context(), "DELETE FROM tags WHERE id = $1", tagID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to delete tag")
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to delete tag"})
 		return
 	}
 	if ct.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "tag not found")
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "tag not found"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	httputil.WriteJSON(w,http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 // freshnessThresholds reads green/yellow day thresholds from the config table.

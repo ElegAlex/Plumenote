@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alexmusic/plumenote/internal/httputil"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
@@ -40,12 +41,12 @@ func handleLogin(pool *pgxpool.Pool, jwtSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req loginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 
 		if req.Username == "" || req.Password == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "username and password are required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "username and password are required"})
 			return
 		}
 
@@ -63,12 +64,12 @@ func handleLogin(pool *pgxpool.Pool, jwtSecret string) http.HandlerFunc {
 			req.Username,
 		).Scan(&id, &username, &displayName, &passwordHash, &role, &domainID)
 		if err != nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 			return
 		}
 
@@ -82,11 +83,11 @@ func handleLogin(pool *pgxpool.Pool, jwtSecret string) http.HandlerFunc {
 
 		token, err := generateToken(id, username, role, domainStr, jwtSecret)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate token"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate token"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, loginResponse{
+		httputil.WriteJSON(w, http.StatusOK, loginResponse{
 			Token: token,
 			User: userInfo{
 				ID:          id,
@@ -104,7 +105,7 @@ func handleMe(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c := UserFromContext(r.Context())
 		if c == nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
 
@@ -115,12 +116,12 @@ func handleMe(pool *pgxpool.Pool) http.HandlerFunc {
 			c.UserID,
 		).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role, &domainID)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
 			return
 		}
 		u.DomainID = domainID
 
-		writeJSON(w, http.StatusOK, u)
+		httputil.WriteJSON(w, http.StatusOK, u)
 	}
 }
 
@@ -129,18 +130,18 @@ func handleChangePassword(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c := UserFromContext(r.Context())
 		if c == nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
 
 		var req changePasswordRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 
 		if len(req.NewPassword) < 8 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "password must be at least 8 characters"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "password must be at least 8 characters"})
 			return
 		}
 
@@ -149,18 +150,18 @@ func handleChangePassword(pool *pgxpool.Pool) http.HandlerFunc {
 			`SELECT password_hash FROM users WHERE id = $1`, c.UserID,
 		).Scan(&currentHash)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(req.OldPassword)); err != nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "current password is incorrect"})
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "current password is incorrect"})
 			return
 		}
 
 		newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcryptCost)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
 			return
 		}
 
@@ -169,18 +170,18 @@ func handleChangePassword(pool *pgxpool.Pool) http.HandlerFunc {
 			c.UserID, string(newHash),
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update password"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update password"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{"message": "password updated"})
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "password updated"})
 	}
 }
 
 // handleLogout handles client-side logout (server returns 200).
 func handleLogout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 	}
 }
 
@@ -199,12 +200,6 @@ func generateToken(userID, username, role, domainID, secret string) (string, err
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
 }
 
 // GenerateToken is exported for use by other packages (e.g., admin user creation).

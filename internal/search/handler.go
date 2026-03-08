@@ -2,7 +2,6 @@ package search
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alexmusic/plumenote/internal/auth"
+	"github.com/alexmusic/plumenote/internal/httputil"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -41,7 +41,7 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("q")
 		if len(q) < 2 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "query must be at least 2 characters"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "query must be at least 2 characters"})
 			return
 		}
 
@@ -83,7 +83,7 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 
 		searchRes, err := deps.Meili.Index("documents").Search(q, searchReq)
 		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "search engine error"})
+			httputil.WriteJSON(w, http.StatusBadGateway, map[string]string{"error": "search engine error"})
 			return
 		}
 
@@ -154,7 +154,7 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 			ProcessingTimeMs: searchRes.ProcessingTimeMs,
 		}
 
-		writeJSON(w, http.StatusOK, resp)
+		httputil.WriteJSON(w, http.StatusOK, resp)
 	}
 }
 
@@ -256,8 +256,3 @@ func getInt(m map[string]interface{}, key string) int {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}

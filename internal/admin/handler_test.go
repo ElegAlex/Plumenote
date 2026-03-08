@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/alexmusic/plumenote/internal/httputil"
 )
 
 func TestGenerateSlug(t *testing.T) {
@@ -20,9 +22,9 @@ func TestGenerateSlug(t *testing.T) {
 		{"already-slug", "already-slug"},
 	}
 	for _, tt := range tests {
-		got := generateSlug(tt.input)
+		got := httputil.GenerateSlug(tt.input)
 		if got != tt.want {
-			t.Errorf("generateSlug(%q) = %q, want %q", tt.input, got, tt.want)
+			t.Errorf("httputil.GenerateSlug(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
 }
@@ -66,7 +68,7 @@ func TestRequireAdmin_NoAuth(t *testing.T) {
 
 func TestWriteJSON(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeJSON(rec, http.StatusCreated, map[string]string{"key": "val"})
+	httputil.WriteJSON(rec, http.StatusCreated, map[string]string{"key": "val"})
 
 	if rec.Code != http.StatusCreated {
 		t.Errorf("expected 201, got %d", rec.Code)

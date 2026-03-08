@@ -5,58 +5,17 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/alexmusic/plumenote/internal/auth"
+	"github.com/alexmusic/plumenote/internal/httputil"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/text/unicode/norm"
 )
 
 // --- Helpers ---
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-var (
-	slugRegexp   = regexp.MustCompile(`[^a-z0-9-]+`)
-	dashCollapse = regexp.MustCompile(`-{2,}`)
-)
-
-func generateSlug(name string) string {
-	s := strings.ToLower(strings.TrimSpace(name))
-	s = removeAccents(s)
-	s = strings.ReplaceAll(s, " ", "-")
-	s = slugRegexp.ReplaceAllString(s, "-")
-	s = dashCollapse.ReplaceAllString(s, "-")
-	s = strings.Trim(s, "-")
-	if len(s) > 100 {
-		s = s[:100]
-		s = strings.TrimRight(s, "-")
-	}
-	if s == "" {
-		s = "untitled"
-	}
-	return s
-}
-
-func removeAccents(s string) string {
-	var b strings.Builder
-	for _, r := range norm.NFD.String(s) {
-		if !unicode.Is(unicode.Mn, r) {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
 
 const alphanumChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -73,11 +32,11 @@ func requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c := auth.UserFromContext(r.Context())
 		if c == nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
 		if c.Role != "admin" {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -124,7 +83,7 @@ func handleListTemplates(pool *pgxpool.Pool) http.HandlerFunc {
 			`SELECT id, name, description, content, type_id::text, is_default, usage_count, created_by::text, created_at, updated_at
 			 FROM templates ORDER BY usage_count DESC, name`)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list templates"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list templates"})
 			return
 		}
 		defer rows.Close()
@@ -135,7 +94,7 @@ func handleListTemplates(pool *pgxpool.Pool) http.HandlerFunc {
 			var createdAt, updatedAt time.Time
 			err := rows.Scan(&t.ID, &t.Name, &t.Description, &t.Content, &t.TypeID, &t.IsDefault, &t.UsageCount, &t.CreatedBy, &createdAt, &updatedAt)
 			if err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan template"})
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan template"})
 				return
 			}
 			t.CreatedAt = timeStr(createdAt)
@@ -143,7 +102,7 @@ func handleListTemplates(pool *pgxpool.Pool) http.HandlerFunc {
 			templates = append(templates, t)
 		}
 
-		writeJSON(w, http.StatusOK, templates)
+		httputil.WriteJSON(w, http.StatusOK, templates)
 	}
 }
 
@@ -153,11 +112,11 @@ func handleCreateTemplate(pool *pgxpool.Pool) http.HandlerFunc {
 
 		var req createTemplateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.Name == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 			return
 		}
 		if req.Content == nil {
@@ -173,13 +132,13 @@ func handleCreateTemplate(pool *pgxpool.Pool) http.HandlerFunc {
 			req.Name, req.Description, req.Content, req.TypeID, c.UserID,
 		).Scan(&t.ID, &t.Name, &t.Description, &t.Content, &t.TypeID, &t.IsDefault, &t.UsageCount, &t.CreatedBy, &createdAt, &updatedAt)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create template"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create template"})
 			return
 		}
 		t.CreatedAt = timeStr(createdAt)
 		t.UpdatedAt = timeStr(updatedAt)
 
-		writeJSON(w, http.StatusCreated, t)
+		httputil.WriteJSON(w, http.StatusCreated, t)
 	}
 }
 
@@ -189,11 +148,11 @@ func handleUpdateTemplate(pool *pgxpool.Pool) http.HandlerFunc {
 
 		var req createTemplateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.Name == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 			return
 		}
 		if req.Content == nil {
@@ -210,13 +169,13 @@ func handleUpdateTemplate(pool *pgxpool.Pool) http.HandlerFunc {
 			id, req.Name, req.Description, req.Content, req.TypeID,
 		).Scan(&t.ID, &t.Name, &t.Description, &t.Content, &t.TypeID, &t.IsDefault, &t.UsageCount, &t.CreatedBy, &createdAt, &updatedAt)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "template not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "template not found"})
 			return
 		}
 		t.CreatedAt = timeStr(createdAt)
 		t.UpdatedAt = timeStr(updatedAt)
 
-		writeJSON(w, http.StatusOK, t)
+		httputil.WriteJSON(w, http.StatusOK, t)
 	}
 }
 
@@ -226,11 +185,11 @@ func handleDeleteTemplate(pool *pgxpool.Pool) http.HandlerFunc {
 
 		tag, err := pool.Exec(r.Context(), `DELETE FROM templates WHERE id = $1`, id)
 		if err != nil || tag.RowsAffected() == 0 {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "template not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "template not found"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{"message": "template deleted"})
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "template deleted"})
 	}
 }
 
@@ -262,7 +221,7 @@ func handleListDomains(pool *pgxpool.Pool) http.HandlerFunc {
 			        d.created_at, d.updated_at
 			 FROM domains d ORDER BY d.sort_order, d.name`)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list domains"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list domains"})
 			return
 		}
 		defer rows.Close()
@@ -273,7 +232,7 @@ func handleListDomains(pool *pgxpool.Pool) http.HandlerFunc {
 			var createdAt, updatedAt time.Time
 			err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &createdAt, &updatedAt)
 			if err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan domain"})
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan domain"})
 				return
 			}
 			d.CreatedAt = timeStr(createdAt)
@@ -281,7 +240,7 @@ func handleListDomains(pool *pgxpool.Pool) http.HandlerFunc {
 			domains = append(domains, d)
 		}
 
-		writeJSON(w, http.StatusOK, domains)
+		httputil.WriteJSON(w, http.StatusOK, domains)
 	}
 }
 
@@ -289,11 +248,11 @@ func handleCreateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req createDomainRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.Name == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 			return
 		}
 		if req.Color == "" {
@@ -303,7 +262,7 @@ func handleCreateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 			req.Icon = "folder"
 		}
 
-		slug := generateSlug(req.Name)
+		slug := httputil.GenerateSlug(req.Name)
 
 		var d domainResponse
 		var createdAt, updatedAt time.Time
@@ -314,14 +273,14 @@ func handleCreateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 			req.Name, slug, req.Color, req.Icon,
 		).Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &createdAt, &updatedAt)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create domain"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create domain"})
 			return
 		}
 		d.DocCount = 0
 		d.CreatedAt = timeStr(createdAt)
 		d.UpdatedAt = timeStr(updatedAt)
 
-		writeJSON(w, http.StatusCreated, d)
+		httputil.WriteJSON(w, http.StatusCreated, d)
 	}
 }
 
@@ -331,15 +290,15 @@ func handleUpdateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 
 		var req createDomainRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.Name == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 			return
 		}
 
-		slug := generateSlug(req.Name)
+		slug := httputil.GenerateSlug(req.Name)
 
 		var d domainResponse
 		var createdAt, updatedAt time.Time
@@ -351,7 +310,7 @@ func handleUpdateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 			id, req.Name, slug, req.Color, req.Icon,
 		).Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &createdAt, &updatedAt)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
 			return
 		}
 		d.CreatedAt = timeStr(createdAt)
@@ -359,7 +318,7 @@ func handleUpdateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 
 		pool.QueryRow(r.Context(), `SELECT count(*) FROM documents WHERE domain_id = $1`, id).Scan(&d.DocCount)
 
-		writeJSON(w, http.StatusOK, d)
+		httputil.WriteJSON(w, http.StatusOK, d)
 	}
 }
 
@@ -370,11 +329,11 @@ func handleDeleteDomain(pool *pgxpool.Pool) http.HandlerFunc {
 		var docCount int
 		err := pool.QueryRow(r.Context(), `SELECT count(*) FROM documents WHERE domain_id = $1`, id).Scan(&docCount)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to check domain usage"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to check domain usage"})
 			return
 		}
 		if docCount > 0 {
-			writeJSON(w, http.StatusConflict, map[string]string{
+			httputil.WriteJSON(w, http.StatusConflict, map[string]string{
 				"error": "cannot delete domain: " + strconv.Itoa(docCount) + " document(s) still exist in this domain",
 			})
 			return
@@ -382,11 +341,11 @@ func handleDeleteDomain(pool *pgxpool.Pool) http.HandlerFunc {
 
 		tag, err := pool.Exec(r.Context(), `DELETE FROM domains WHERE id = $1`, id)
 		if err != nil || tag.RowsAffected() == 0 {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{"message": "domain deleted"})
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "domain deleted"})
 	}
 }
 
@@ -422,7 +381,7 @@ func handleListUsers(pool *pgxpool.Pool) http.HandlerFunc {
 			`SELECT id, username, display_name, role, domain_id::text, last_login_at, created_at
 			 FROM users ORDER BY created_at DESC`)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list users"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list users"})
 			return
 		}
 		defer rows.Close()
@@ -434,7 +393,7 @@ func handleListUsers(pool *pgxpool.Pool) http.HandlerFunc {
 			var createdAt time.Time
 			err := rows.Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role, &u.DomainID, &lastLogin, &createdAt)
 			if err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan user"})
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan user"})
 				return
 			}
 			u.CreatedAt = timeStr(createdAt)
@@ -442,7 +401,7 @@ func handleListUsers(pool *pgxpool.Pool) http.HandlerFunc {
 			users = append(users, u)
 		}
 
-		writeJSON(w, http.StatusOK, users)
+		httputil.WriteJSON(w, http.StatusOK, users)
 	}
 }
 
@@ -450,15 +409,15 @@ func handleCreateUser(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req createUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.Username == "" || req.Password == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "username and password are required"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "username and password are required"})
 			return
 		}
 		if len(req.Password) < 8 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "password must be at least 8 characters"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "password must be at least 8 characters"})
 			return
 		}
 		if req.Role == "" {
@@ -467,7 +426,7 @@ func handleCreateUser(pool *pgxpool.Pool) http.HandlerFunc {
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
 			return
 		}
 
@@ -480,12 +439,12 @@ func handleCreateUser(pool *pgxpool.Pool) http.HandlerFunc {
 			req.Username, req.DisplayName, string(hash), req.Role, req.DomainID,
 		).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role, &u.DomainID, &createdAt)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create user"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create user"})
 			return
 		}
 		u.CreatedAt = timeStr(createdAt)
 
-		writeJSON(w, http.StatusCreated, u)
+		httputil.WriteJSON(w, http.StatusCreated, u)
 	}
 }
 
@@ -495,7 +454,7 @@ func handleUpdateUser(pool *pgxpool.Pool) http.HandlerFunc {
 
 		var req updateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 
@@ -510,13 +469,13 @@ func handleUpdateUser(pool *pgxpool.Pool) http.HandlerFunc {
 			id, req.DisplayName, req.Role, req.DomainID,
 		).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role, &u.DomainID, &lastLogin, &createdAt)
 		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
 			return
 		}
 		u.CreatedAt = timeStr(createdAt)
 		u.LastLoginAt = timePtrStr(lastLogin)
 
-		writeJSON(w, http.StatusOK, u)
+		httputil.WriteJSON(w, http.StatusOK, u)
 	}
 }
 
@@ -528,7 +487,7 @@ func handleResetPassword(pool *pgxpool.Pool) http.HandlerFunc {
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(tempPassword), 12)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
 			return
 		}
 
@@ -537,11 +496,11 @@ func handleResetPassword(pool *pgxpool.Pool) http.HandlerFunc {
 			id, string(hash),
 		)
 		if err != nil || tag.RowsAffected() == 0 {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{"temporary_password": tempPassword})
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"temporary_password": tempPassword})
 	}
 }
 
@@ -577,7 +536,7 @@ func handleGetFreshness(pool *pgxpool.Pool) http.HandlerFunc {
 			yellow = 90
 		}
 
-		writeJSON(w, http.StatusOK, freshnessConfig{GreenDays: green, YellowDays: yellow})
+		httputil.WriteJSON(w, http.StatusOK, freshnessConfig{GreenDays: green, YellowDays: yellow})
 	}
 }
 
@@ -585,15 +544,15 @@ func handlePutFreshness(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req freshnessConfig
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 		if req.GreenDays <= 0 || req.YellowDays <= 0 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "green_days and yellow_days must be greater than 0"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "green_days and yellow_days must be greater than 0"})
 			return
 		}
 		if req.GreenDays >= req.YellowDays {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "green_days must be less than yellow_days"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "green_days must be less than yellow_days"})
 			return
 		}
 
@@ -604,7 +563,7 @@ func handlePutFreshness(pool *pgxpool.Pool) http.HandlerFunc {
 			strconv.Itoa(req.GreenDays),
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save freshness_green"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save freshness_green"})
 			return
 		}
 		_, err = pool.Exec(ctx,
@@ -613,11 +572,11 @@ func handlePutFreshness(pool *pgxpool.Pool) http.HandlerFunc {
 			strconv.Itoa(req.YellowDays),
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save freshness_yellow"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save freshness_yellow"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, req)
+		httputil.WriteJSON(w, http.StatusOK, req)
 	}
 }
 
@@ -628,7 +587,7 @@ func handleGetTicketURL(pool *pgxpool.Pool) http.HandlerFunc {
 		if err != nil {
 			url = ""
 		}
-		writeJSON(w, http.StatusOK, ticketURLConfig{URL: url})
+		httputil.WriteJSON(w, http.StatusOK, ticketURLConfig{URL: url})
 	}
 }
 
@@ -636,7 +595,7 @@ func handlePutTicketURL(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req ticketURLConfig
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 			return
 		}
 
@@ -646,10 +605,10 @@ func handlePutTicketURL(pool *pgxpool.Pool) http.HandlerFunc {
 			req.URL,
 		)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save ticket_url"})
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save ticket_url"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, req)
+		httputil.WriteJSON(w, http.StatusOK, req)
 	}
 }
