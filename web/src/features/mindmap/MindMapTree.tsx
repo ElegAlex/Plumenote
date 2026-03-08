@@ -281,35 +281,43 @@ export default function MindMapTree({ root, onExpand, expanding }: Props) {
                 {/* Domain color bar */}
                 <rect x={0} y={0} width={4} height={NODE_HEIGHT} rx={2} fill={node.domain_color || '#999'} />
 
-                {/* Icon */}
-                <text x={16} y={NODE_HEIGHT / 2 - 6} fontSize={16} dominantBaseline="central">
-                  {node.icon}
-                </text>
-
-                {/* Label */}
-                <text
-                  x={38}
-                  y={NODE_HEIGHT / 2 - 6}
-                  fontSize={12}
-                  fontFamily="IBM Plex Sans, sans-serif"
-                  fontWeight={600}
-                  fill="var(--color-ink, #1c1c1c)"
-                  dominantBaseline="central"
-                >
-                  {node.label.length > 35 ? node.label.slice(0, 35) + '...' : node.label}
-                </text>
-
-                {/* Domain subtitle */}
-                <text
-                  x={38}
-                  y={NODE_HEIGHT / 2 + 12}
-                  fontSize={10}
-                  fontFamily="IBM Plex Mono, monospace"
-                  fill="var(--color-ink-45, #888)"
-                  dominantBaseline="central"
-                >
-                  {node.domain_name}
-                </text>
+                {/* Node content via foreignObject for proper text layout */}
+                <foreignObject x={12} y={6} width={NODE_WIDTH - 52} height={NODE_HEIGHT - 12}>
+                  <div
+                    style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', overflow: 'hidden' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: 1.2 }}>
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>{node.icon}</span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontFamily: 'IBM Plex Sans, sans-serif',
+                          fontWeight: 600,
+                          color: 'var(--color-ink, #1c1c1c)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {node.label.length > 35 ? node.label.slice(0, 35) + '...' : node.label}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontFamily: 'IBM Plex Mono, monospace',
+                        color: 'var(--color-ink-45, #888)',
+                        marginTop: 2,
+                        marginLeft: 28,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {node.domain_name}
+                    </div>
+                  </div>
+                </foreignObject>
 
                 {/* Freshness badge */}
                 {node.freshness_badge && FRESHNESS_COLORS[node.freshness_badge] && (
