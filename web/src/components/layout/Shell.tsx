@@ -124,11 +124,7 @@ export default function Shell() {
           onClick={hideSidebar ? () => navigate('/') : toggleSidebar}
           title={hideSidebar ? 'Accueil' : (sidebarOpen ? 'Masquer la sidebar' : 'Afficher la sidebar')}
         >
-          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-            <rect x="0" y="0" width="14" height="14" fill="#1C1C1C" rx="1" />
-            <circle cx="22.5" cy="7.5" r="7" fill="#D4952A" />
-            <rect x="0" y="16" width="30" height="14" fill="#2B5797" rx="1" />
-          </svg>
+          <img src="/plumenote.png" alt="PlumeNote" width="30" height="30" style={{ objectFit: 'contain' }} />
           <div>
             <div className="shell-logo-title">PLUMENOTE</div>
             <div className="shell-logo-sub">Gestion des connaissances</div>
