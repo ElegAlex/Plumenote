@@ -7,6 +7,7 @@ import MetadataHeader from './MetadataHeader'
 import DocumentContent from './DocumentContent'
 import TableOfContents from './TableOfContents'
 import DeleteModal from './DeleteModal'
+import MindMapView from '@/features/mindmap/MindMapView'
 
 interface Tag {
   id: string
@@ -56,6 +57,7 @@ export default function ReaderPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [showMindMap, setShowMindMap] = useState(false)
 
   const viewStartRef = useRef<number>(Date.now())
 
@@ -172,6 +174,27 @@ export default function ReaderPage() {
     )
   }
 
+  if (showMindMap) {
+    return (
+      <div className="flex flex-col" style={{ height: 'calc(100vh - 58px)' }}>
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-ink-10 bg-bg flex-shrink-0">
+          <button
+            onClick={() => setShowMindMap(false)}
+            className="text-sm text-ink-45 hover:text-ink"
+          >
+            &larr; Retour
+          </button>
+          <h1 className="text-lg font-semibold text-ink truncate">
+            Mind Map — {doc.title}
+          </h1>
+        </div>
+        <div className="flex-1 min-h-0">
+          <MindMapView rootType="document" rootId={doc.id} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <Breadcrumb
@@ -198,6 +221,7 @@ export default function ReaderPage() {
             onEdit={() => navigate(`/documents/${slug}/edit`)}
             onVerify={handleVerify}
             onDelete={() => setShowDeleteModal(true)}
+            onMindMap={user ? () => setShowMindMap(true) : undefined}
             canEdit={canEdit}
             canVerify={canVerify}
             canDelete={canDelete}

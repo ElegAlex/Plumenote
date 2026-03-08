@@ -9,6 +9,6 @@ export { useEntityLabel, useEntityTypes, useEntityType, useEntities, useEntity, 
 export { useLinkDocument, useUnlinkDocument, useLinkBookmark, useUnlinkBookmark } from './useEntityLinks'
 export { useRelationTypes, useCreateRelation, useDeleteRelation } from './useRelations'
 export { useCartography } from './useCartography'
-export { useMindMap } from './useMindMap'
+export { useMindMapTree, useExpandNode } from './useMindMap'
 export { useOrphans } from './useOrphans'
 export { useCreateEntityType, useUpdateEntityType, useDeleteEntityType, useCreateRelationType, useDeleteRelationType, useUpdateEntityLabel } from './useAdminEntities'

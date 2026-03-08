@@ -236,7 +236,7 @@ export default function DomainPage() {
 
       {activeTab === 'mindmap' && hasMindMap && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <MindMapView domainId={domain.id} onNodeClick={(slug) => window.location.assign(`/documents/${slug}`)} />
+          <MindMapView rootType="domain" rootId={domain.id} />
         </div>
       )}
     </div>

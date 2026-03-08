@@ -270,35 +270,31 @@ export interface EntityLabelConfig {
   label: string
 }
 
-// === Mind Map ===
+// === Mind Map (V2 — tree) ===
 
 export interface MindMapNode {
   id: string
-  title: string
-  slug: string
-  domain_id: string
+  type: 'entity' | 'document' | 'bookmark' | 'domain'
+  label: string
+  icon: string
+  meta: string
   domain_name: string
   domain_color: string
-  type_name: string
-  freshness_badge: 'green' | 'yellow' | 'red'
-  view_count: number
-  is_orphan: boolean
-  is_ghost: boolean
-  link_count: number
+  freshness_badge: string | null
+  url: string
+  has_children: boolean
+  children_count: number
+  children: MindMapBranch[] | null
 }
 
-export interface MindMapEdge {
-  source: string
-  target: string
-  type: 'internal_link' | 'shared_entity' | 'shared_tags'
-  label: string
-  weight: number
+export interface MindMapBranch {
+  relation: string
+  relation_group: string
+  items: MindMapNode[]
 }
 
-export interface MindMapData {
-  nodes: MindMapNode[]
-  edges: MindMapEdge[]
-  orphans_count: number
+export interface MindMapTreeResponse {
+  root: MindMapNode
 }
 
 export interface OrphanDocument {

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
 import { useEntity, useDeleteEntity, useEntityLabel } from '@/lib/hooks'
 import DocumentContent from '../reader/DocumentContent'
+import MindMapView from '@/features/mindmap/MindMapView'
 
 export default function EntityPage() {
   const { id } = useParams<{ id: string }>()
@@ -14,6 +15,7 @@ export default function EntityPage() {
   const entityLabel = entityLabelConfig?.label ?? 'Fiche'
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showMindMap, setShowMindMap] = useState(false)
 
   const handleDelete = useCallback(async () => {
     if (!id) return
@@ -37,6 +39,27 @@ export default function EntityPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-red">{entityLabel} introuvable</p>
+      </div>
+    )
+  }
+
+  if (showMindMap) {
+    return (
+      <div className="flex flex-col" style={{ height: 'calc(100vh - 58px)' }}>
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-ink-10 bg-bg flex-shrink-0">
+          <button
+            onClick={() => setShowMindMap(false)}
+            className="text-sm text-ink-45 hover:text-ink"
+          >
+            &larr; Retour
+          </button>
+          <h1 className="text-lg font-semibold text-ink">
+            Mind Map — {entity.entity_type.icon} {entity.name}
+          </h1>
+        </div>
+        <div className="flex-1 min-h-0">
+          <MindMapView rootType="entity" rootId={id!} />
+        </div>
       </div>
     )
   }
@@ -71,6 +94,12 @@ export default function EntityPage() {
 
         {user && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowMindMap(true)}
+              className="px-4 py-2 text-sm font-medium text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05"
+            >
+              Mind Map
+            </button>
             <button
               onClick={() => navigate(`/entities/${id}/edit`)}
               className="px-4 py-2 text-sm font-medium text-blue border border-blue rounded-md hover:bg-blue/5"
