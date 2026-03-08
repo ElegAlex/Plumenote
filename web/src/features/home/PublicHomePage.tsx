@@ -25,9 +25,17 @@ export default function PublicHomePage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold font-display text-ink mb-1">PlumeNote</h1>
-        <p className="text-sm text-ink-45">Pas besoin de compte pour consulter les guides</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold font-display text-ink mb-1">PlumeNote</h1>
+          <p className="text-sm text-ink-45">Pas besoin de compte pour consulter les guides</p>
+        </div>
+        <Link
+          to="/login"
+          className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90 transition-colors"
+        >
+          Se connecter
+        </Link>
       </div>
 
       <div
