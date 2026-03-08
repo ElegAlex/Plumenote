@@ -220,6 +220,7 @@ var validFeatures = map[string]bool{
 	"documents":   true,
 	"entities":    true,
 	"cartography": true,
+	"mindmap":     true,
 }
 
 // filterFeatures keeps only whitelisted values, ensuring "documents" is always present.
@@ -902,6 +903,191 @@ func handleDeleteRelationType(pool *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "relation type deleted"})
+	}
+}
+
+// --- Orphans analytics ---
+
+type orphanDocument struct {
+	ID             string `json:"id"`
+	Title          string `json:"title"`
+	Slug           string `json:"slug"`
+	DomainName     string `json:"domain_name"`
+	FreshnessBadge string `json:"freshness_badge"`
+	CreatedAt      string `json:"created_at"`
+	ViewCount      int    `json:"view_count"`
+}
+
+type orphansResponse struct {
+	Orphans        []orphanDocument `json:"orphans"`
+	TotalDocuments int              `json:"total_documents"`
+	OrphanCount    int              `json:"orphan_count"`
+	OrphanPercent  float64          `json:"orphan_percent"`
+}
+
+func handleOrphans(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// Fetch all document IDs
+		type docInfo struct {
+			ID             string
+			Title          string
+			Slug           string
+			DomainName     string
+			LastVerifiedAt *time.Time
+			CreatedAt      time.Time
+			ViewCount      int
+		}
+		rows, err := pool.Query(ctx,
+			`SELECT d.id, d.title, d.slug, COALESCE(dom.name, '') AS domain_name,
+			        d.last_verified_at, d.created_at, d.view_count
+			 FROM documents d
+			 LEFT JOIN domains dom ON dom.id = d.domain_id`)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to query documents"})
+			return
+		}
+		defer rows.Close()
+
+		allDocs := make(map[string]docInfo)
+		for rows.Next() {
+			var d docInfo
+			if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.DomainName, &d.LastVerifiedAt, &d.CreatedAt, &d.ViewCount); err != nil {
+				continue
+			}
+			allDocs[d.ID] = d
+		}
+
+		if len(allDocs) == 0 {
+			httputil.WriteJSON(w, http.StatusOK, orphansResponse{
+				Orphans: []orphanDocument{}, TotalDocuments: 0, OrphanCount: 0, OrphanPercent: 0,
+			})
+			return
+		}
+
+		connected := make(map[string]bool)
+
+		// 1. Documents with internal links
+		linkRows, err := pool.Query(ctx, `SELECT DISTINCT source_id FROM document_links UNION SELECT DISTINCT target_id FROM document_links`)
+		if err == nil {
+			defer linkRows.Close()
+			for linkRows.Next() {
+				var id string
+				if linkRows.Scan(&id) == nil {
+					connected[id] = true
+				}
+			}
+		}
+
+		// 2. Documents linked via shared entities
+		entityRows, err := pool.Query(ctx,
+			`SELECT DISTINCT ed1.document_id
+			 FROM entity_documents ed1
+			 WHERE EXISTS (
+			   SELECT 1 FROM entity_documents ed2
+			   WHERE ed2.entity_id = ed1.entity_id AND ed2.document_id != ed1.document_id
+			 )`)
+		if err == nil {
+			defer entityRows.Close()
+			for entityRows.Next() {
+				var id string
+				if entityRows.Scan(&id) == nil {
+					connected[id] = true
+				}
+			}
+		}
+
+		// 3. Documents sharing >=2 tags with at least one other doc
+		tagRows, err := pool.Query(ctx,
+			`SELECT DISTINCT dt1.document_id
+			 FROM document_tags dt1
+			 JOIN document_tags dt2 ON dt1.tag_id = dt2.tag_id AND dt1.document_id < dt2.document_id
+			 GROUP BY dt1.document_id, dt2.document_id
+			 HAVING COUNT(*) >= 2`)
+		if err == nil {
+			defer tagRows.Close()
+			for tagRows.Next() {
+				var id string
+				if tagRows.Scan(&id) == nil {
+					connected[id] = true
+				}
+			}
+		}
+		// Also need the "other side" of those tag pairs
+		tagRows2, err := pool.Query(ctx,
+			`SELECT DISTINCT dt2.document_id
+			 FROM document_tags dt1
+			 JOIN document_tags dt2 ON dt1.tag_id = dt2.tag_id AND dt1.document_id < dt2.document_id
+			 GROUP BY dt1.document_id, dt2.document_id
+			 HAVING COUNT(*) >= 2`)
+		if err == nil {
+			defer tagRows2.Close()
+			for tagRows2.Next() {
+				var id string
+				if tagRows2.Scan(&id) == nil {
+					connected[id] = true
+				}
+			}
+		}
+
+		// Freshness thresholds
+		greenDays := 90
+		yellowDays := 180
+		var val string
+		if err := pool.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_green'`).Scan(&val); err == nil {
+			if n, e := strconv.Atoi(val); e == nil && n > 0 {
+				greenDays = n
+			}
+		}
+		if err := pool.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_yellow'`).Scan(&val); err == nil {
+			if n, e := strconv.Atoi(val); e == nil && n > 0 {
+				yellowDays = n
+			}
+		}
+
+		// Build orphan list
+		var orphans []orphanDocument
+		for _, d := range allDocs {
+			if connected[d.ID] {
+				continue
+			}
+			badge := "red"
+			if d.LastVerifiedAt != nil {
+				days := int(time.Since(*d.LastVerifiedAt).Hours() / 24)
+				if days < greenDays {
+					badge = "green"
+				} else if days <= yellowDays {
+					badge = "yellow"
+				}
+			}
+			orphans = append(orphans, orphanDocument{
+				ID:             d.ID,
+				Title:          d.Title,
+				Slug:           d.Slug,
+				DomainName:     d.DomainName,
+				FreshnessBadge: badge,
+				CreatedAt:      d.CreatedAt.Format(time.RFC3339),
+				ViewCount:      d.ViewCount,
+			})
+		}
+		if orphans == nil {
+			orphans = []orphanDocument{}
+		}
+
+		total := len(allDocs)
+		orphanCount := len(orphans)
+		var orphanPercent float64
+		if total > 0 {
+			orphanPercent = float64(orphanCount) / float64(total) * 100
+		}
+
+		httputil.WriteJSON(w, http.StatusOK, orphansResponse{
+			Orphans:        orphans,
+			TotalDocuments: total,
+			OrphanCount:    orphanCount,
+			OrphanPercent:  orphanPercent,
+		})
 	}
 }
 

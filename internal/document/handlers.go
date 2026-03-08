@@ -173,6 +173,9 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		h.syncTags(r.Context(), doc.ID, req.Tags)
 	}
 
+	// Sync internal document links async
+	go h.syncDocumentLinks(context.Background(), doc.ID, req.Body)
+
 	// Async Meilisearch indexing (RG-001: < 10s)
 	go h.indexDocument(doc.ID)
 
@@ -523,6 +526,9 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 
 	// Sync tags
 	h.syncTags(r.Context(), docID, req.Tags)
+
+	// Sync internal document links async
+	go h.syncDocumentLinks(context.Background(), docID, req.Body)
 
 	// Re-index Meilisearch async
 	go h.indexDocument(docID)
@@ -1160,4 +1166,78 @@ func (h *handler) reindexIfNeeded() {
 	}
 
 	log.Printf("reindex complete: %d documents indexed with object_type", indexed)
+}
+
+// syncDocumentLinks extracts internal link slugs from a document body,
+// resolves them to document IDs, and updates the document_links table.
+func (h *handler) syncDocumentLinks(ctx context.Context, docID string, body json.RawMessage) {
+	slugs := extractInternalLinkSlugs(body)
+
+	// Delete old links
+	if _, err := h.deps.DB.Exec(ctx, "DELETE FROM document_links WHERE source_id = $1", docID); err != nil {
+		log.Printf("syncDocumentLinks: failed to delete old links for doc %s: %v", docID, err)
+		return
+	}
+
+	// Resolve slugs to UUIDs and insert new links
+	for _, slug := range slugs {
+		var targetID string
+		err := h.deps.DB.QueryRow(ctx, "SELECT id FROM documents WHERE slug = $1", slug).Scan(&targetID)
+		if err != nil {
+			continue // target document not found, skip
+		}
+		if targetID == docID {
+			continue // skip self-links
+		}
+		if _, err := h.deps.DB.Exec(ctx,
+			"INSERT INTO document_links (source_id, target_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+			docID, targetID); err != nil {
+			log.Printf("syncDocumentLinks: failed to insert link %s -> %s: %v", docID, targetID, err)
+		}
+	}
+}
+
+// backfillDocumentLinks scans all existing documents and populates the
+// document_links table. Runs only once (guarded by config flag).
+func (h *handler) backfillDocumentLinks() {
+	if h.deps.DB == nil {
+		return
+	}
+	ctx := context.Background()
+
+	// Check if already done
+	var val string
+	err := h.deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'document_links_backfilled'`).Scan(&val)
+	if err == nil && val == "1" {
+		return
+	}
+
+	rows, err := h.deps.DB.Query(ctx, `SELECT id, body FROM documents WHERE body IS NOT NULL`)
+	if err != nil {
+		log.Printf("backfillDocumentLinks: failed to query documents: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var id string
+		var body json.RawMessage
+		if err := rows.Scan(&id, &body); err != nil {
+			continue
+		}
+		h.syncDocumentLinks(ctx, id, body)
+		count++
+	}
+
+	// Mark as done
+	_, err = h.deps.DB.Exec(ctx,
+		`INSERT INTO config (key, value) VALUES ('document_links_backfilled', '1')
+		 ON CONFLICT (key) DO UPDATE SET value = '1'`)
+	if err != nil {
+		log.Printf("backfillDocumentLinks: failed to update config: %v", err)
+		return
+	}
+
+	log.Printf("backfillDocumentLinks: processed %d documents", count)
 }

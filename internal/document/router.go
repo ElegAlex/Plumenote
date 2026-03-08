@@ -13,6 +13,9 @@ func Router(deps *model.Deps) chi.Router {
 	// Configure Meilisearch index on startup
 	go h.configureMeiliIndex()
 
+	// Backfill document links on first run
+	go h.backfillDocumentLinks()
+
 	// Public routes: OptionalAuth (anonymous can read public docs)
 	r.Group(func(r chi.Router) {
 		r.Use(auth.OptionalAuth(deps.JWTSecret))

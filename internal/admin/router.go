@@ -35,6 +35,7 @@ func Router(deps *model.Deps) chi.Router {
 
 	// Analytics
 	r.Get("/analytics/search-gaps", handleSearchGaps(pool))
+	r.Get("/analytics/orphans", handleOrphans(pool))
 
 	// Config
 	r.Get("/config/freshness", handleGetFreshness(pool))
