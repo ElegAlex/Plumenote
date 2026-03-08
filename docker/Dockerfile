@@ -18,6 +18,7 @@ RUN CGO_ENABLED=0 go build -o /plumenote ./cmd/plumenote
 # Stage 3: Final image
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache pandoc poppler-utils
 COPY --from=backend /plumenote /usr/local/bin/plumenote
 EXPOSE 8080
 ENTRYPOINT ["plumenote"]
