@@ -19,6 +19,7 @@ const EntityPage = lazy(() => import('@/features/entity/EntityPage'))
 const EntityFormPage = lazy(() => import('@/features/entity/EntityFormPage'))
 const CartographyPage = lazy(() => import('@/features/entity/CartographyPage'))
 const MindMapPage = lazy(() => import('@/features/mindmap/MindMapPage'))
+const NotFoundPage = lazy(() => import('@/features/home/NotFoundPage'))
 
 function Loading() {
   return (
@@ -44,8 +45,8 @@ export default function App() {
           <Route path="/documents/:slug" element={<ReaderPage />} />
           <Route path="/domains/:slug" element={<DomainPage />} />
           <Route path="/entities/:id" element={<EntityPage />} />
-          <Route path="/cartography" element={<CartographyPage />} />
           <Route element={<RouteGuard />}>
+            <Route path="/cartography" element={<CartographyPage />} />
             <Route path="/documents/:slug/edit" element={<EditorPage />} />
             <Route path="/documents/new" element={<EditorPage />} />
             <Route path="/entities/new" element={<EntityFormPage />} />
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="/admin/*" element={<AdminPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </Suspense>
