@@ -4,7 +4,20 @@ import { tree as d3tree, hierarchy, type HierarchyPointNode } from 'd3-hierarchy
 import { select } from 'd3-selection'
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { linkHorizontal } from 'd3-shape'
+import { icons, type LucideIcon } from 'lucide-react'
 import type { MindMapNode } from '@/lib/types'
+
+/** Convert kebab-case icon name ("list-checks") to PascalCase ("ListChecks") */
+function toPascalCase(s: string): string {
+  return s.replace(/(^|-)([a-z])/g, (_, _sep, c) => c.toUpperCase())
+}
+
+/** Resolve a Lucide icon name to a component; returns null if not found */
+function resolveLucideIcon(name: string | undefined): LucideIcon | null {
+  if (!name) return null
+  const key = toPascalCase(name) as keyof typeof icons
+  return icons[key] ?? null
+}
 
 interface TreeDatum {
   id: string
@@ -281,43 +294,32 @@ export default function MindMapTree({ root, onExpand, expanding }: Props) {
                 {/* Domain color bar */}
                 <rect x={0} y={0} width={4} height={NODE_HEIGHT} rx={2} fill={node.domain_color || '#999'} />
 
-                {/* Node content via foreignObject for proper text layout */}
-                <foreignObject x={12} y={6} width={NODE_WIDTH - 52} height={NODE_HEIGHT - 12}>
-                  <div
-                    style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', overflow: 'hidden' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: 1.2 }}>
-                      <span style={{ fontSize: 16, flexShrink: 0 }}>{node.icon}</span>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontFamily: 'IBM Plex Sans, sans-serif',
-                          fontWeight: 600,
-                          color: 'var(--color-ink, #1c1c1c)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {node.label.length > 35 ? node.label.slice(0, 35) + '...' : node.label}
-                      </span>
+                {/* Node content — foreignObject for proper icon/label separation */}
+                <switch>
+                  <foreignObject x={10} y={4} width={NODE_WIDTH - 50} height={NODE_HEIGHT - 8} requiredExtensions="http://www.w3.org/1999/xhtml">
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span style={{ fontSize: 16, marginRight: 8, flexShrink: 0, lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                          {(() => { const I = resolveLucideIcon(node.icon); return I ? <I size={16} /> : (node.icon || '📄') })()}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-ink, #1c1c1c)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {node.label.length > 30 ? node.label.slice(0, 30) + '…' : node.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, fontFamily: 'IBM Plex Mono, monospace', color: 'var(--color-ink-45, #888)', marginTop: 2, paddingLeft: 28 }}>
+                        {node.domain_name}
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontFamily: 'IBM Plex Mono, monospace',
-                        color: 'var(--color-ink-45, #888)',
-                        marginTop: 2,
-                        marginLeft: 28,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {node.domain_name}
-                    </div>
-                  </div>
-                </foreignObject>
+                  </foreignObject>
+                  {/* Fallback for browsers that don't support foreignObject */}
+                  <g>
+                    <text x={14} y={NODE_HEIGHT / 2 - 6} fontSize={16} dominantBaseline="central">{resolveLucideIcon(node.icon) ? '📄' : (node.icon || '📄')}</text>
+                    <text x={36} y={NODE_HEIGHT / 2 - 6} fontSize={12} fontFamily="IBM Plex Sans, sans-serif" fontWeight={600} fill="var(--color-ink, #1c1c1c)" dominantBaseline="central">
+                      {node.label.length > 30 ? node.label.slice(0, 30) + '…' : node.label}
+                    </text>
+                    <text x={36} y={NODE_HEIGHT / 2 + 12} fontSize={10} fontFamily="IBM Plex Mono, monospace" fill="var(--color-ink-45, #888)" dominantBaseline="central">{node.domain_name}</text>
+                  </g>
+                </switch>
 
                 {/* Freshness badge */}
                 {node.freshness_badge && FRESHNESS_COLORS[node.freshness_badge] && (
