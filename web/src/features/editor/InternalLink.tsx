@@ -2,6 +2,7 @@ import { ReactRenderer } from '@tiptap/react'
 import { type SuggestionOptions } from '@tiptap/suggestion'
 import { Extension } from '@tiptap/react'
 import Suggestion from '@tiptap/suggestion'
+import { PluginKey } from '@tiptap/pm/state'
 import {
   forwardRef,
   useEffect,
@@ -154,6 +155,7 @@ export const InternalLinkExtension = Extension.create({
     return [
       Suggestion({
         editor: this.editor,
+        pluginKey: new PluginKey('internalLink'),
         ...this.options.suggestion,
       }),
     ]

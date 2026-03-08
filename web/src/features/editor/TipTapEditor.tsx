@@ -36,6 +36,7 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
       StarterKit.configure({
         codeBlock: false,
         heading: { levels: [1, 2, 3] },
+        link: false,
       }),
       Placeholder.configure({
         placeholder: 'Commencez a ecrire ou tapez / pour les commandes...',
