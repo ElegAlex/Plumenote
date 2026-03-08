@@ -27,7 +27,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 58px)", fontFamily: "'IBM Plex Mono', monospace", color: "#1C1C1C" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 58px)", fontFamily: "'IBM Plex Sans', sans-serif", color: "#1C1C1C" }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -60,11 +60,6 @@ export default function HomePage() {
           font-family: 'IBM Plex Mono', monospace; font-size: 10px;
           color: rgba(28,28,28,0.5); flex-shrink: 0;
         }
-        .hp-doc-row time {
-          font-family: 'IBM Plex Sans', sans-serif; font-size: 10px;
-          color: rgba(28,28,28,0.45); white-space: nowrap;
-        }
-
         @media (max-width: 900px) {
           .hp-panels-grid { grid-template-columns: 1fr !important; }
           .hp-doc-domain-label { display: none; }

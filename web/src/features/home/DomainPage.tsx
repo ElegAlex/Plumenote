@@ -90,7 +90,7 @@ export default function DomainPage() {
       flexDirection: 'column',
       minHeight: isFullHeight ? 'calc(100vh - 58px)' : undefined,
       height: isFullHeight ? 'calc(100vh - 58px)' : undefined,
-      fontFamily: "'IBM Plex Mono', monospace",
+      fontFamily: "'IBM Plex Sans', sans-serif",
       color: '#1C1C1C',
     }}>
       <style>{`
@@ -130,10 +130,6 @@ export default function DomainPage() {
         .dp-doc-views {
           font-family: 'IBM Plex Mono', monospace; font-size: 10px;
           color: rgba(28,28,28,0.4); white-space: nowrap;
-        }
-        .dp-doc-row time {
-          font-family: 'IBM Plex Sans', sans-serif; font-size: 10px;
-          color: rgba(28,28,28,0.45); white-space: nowrap;
         }
         .dp-entity-row {
           display: flex; align-items: center; gap: 12px;
