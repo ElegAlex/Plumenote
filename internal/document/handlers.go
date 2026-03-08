@@ -42,17 +42,18 @@ var allowedMimeTypes = map[string]bool{
 
 // SearchDocument is the Meilisearch document structure.
 type SearchDocument struct {
-	ID         string   `json:"id"`
-	Title      string   `json:"title"`
-	BodyText   string   `json:"body_text"`
-	DomainID   string   `json:"domain_id"`
-	TypeID     string   `json:"type_id"`
-	Visibility string   `json:"visibility"`
-	Tags       []string `json:"tags"`
-	AuthorName string   `json:"author_name"`
-	ViewCount  int      `json:"view_count"`
-	CreatedAt  int64    `json:"created_at"`
-	UpdatedAt  int64    `json:"updated_at"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	BodyText    string   `json:"body_text"`
+	DomainID    string   `json:"domain_id"`
+	TypeID      string   `json:"type_id"`
+	Visibility  string   `json:"visibility"`
+	Tags        []string `json:"tags"`
+	AuthorName  string   `json:"author_name"`
+	ViewCount   int      `json:"view_count"`
+	NeedsReview bool     `json:"needs_review"`
+	CreatedAt   int64    `json:"created_at"`
+	UpdatedAt   int64    `json:"updated_at"`
 }
 
 // --- JSON helpers ---
@@ -236,6 +237,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 		ViewCount      int        `json:"view_count"`
 		LastVerifiedAt *time.Time `json:"last_verified_at"`
 		FreshnessBadge string     `json:"freshness_badge"`
+		NeedsReview    bool       `json:"needs_review"`
 		TypeName       *string    `json:"type_name"`
 		TypeSlug       *string    `json:"type_slug"`
 		DomainName     *string    `json:"domain_name"`
@@ -248,7 +250,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 	var docs []docSummary
 	for rows.Next() {
 		var d docSummary
-		if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.DomainID, &d.TypeID, &d.AuthorID, &d.Visibility, &d.ViewCount, &d.LastVerifiedAt, &d.CreatedAt, &d.UpdatedAt, &d.AuthorName, &d.TypeName, &d.TypeSlug, &d.DomainName, &d.DomainColor); err != nil {
+		if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.DomainID, &d.TypeID, &d.AuthorID, &d.Visibility, &d.ViewCount, &d.LastVerifiedAt, &d.CreatedAt, &d.UpdatedAt, &d.NeedsReview, &d.AuthorName, &d.TypeName, &d.TypeSlug, &d.DomainName, &d.DomainColor); err != nil {
 			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan document"})
 			return
 		}
@@ -287,7 +289,7 @@ func (h *handler) buildListQuery(domainID, typeID, orderBy string, limit, offset
 	where := strings.Join(conditions, " ")
 	query := fmt.Sprintf(`
 		SELECT d.id, d.title, d.slug, d.domain_id, d.type_id, d.author_id, d.visibility,
-		       d.view_count, d.last_verified_at, d.created_at, d.updated_at,
+		       d.view_count, d.last_verified_at, d.created_at, d.updated_at, d.needs_review,
 		       u.display_name AS author_name,
 		       dt.name AS type_name, dt.slug AS type_slug,
 		       dom.name AS domain_name, dom.color AS domain_color
@@ -319,6 +321,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		ViewCount      int             `json:"view_count"`
 		LastVerifiedAt *time.Time      `json:"last_verified_at"`
 		LastVerifiedBy *string         `json:"last_verified_by"`
+		NeedsReview    bool            `json:"needs_review"`
 		Freshness      string          `json:"freshness"`
 		CreatedAt      time.Time       `json:"created_at"`
 		UpdatedAt      time.Time       `json:"updated_at"`
@@ -331,7 +334,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 	err := h.deps.DB.QueryRow(r.Context(),
 		`SELECT d.id, d.title, d.slug, d.body, d.body_text, d.domain_id, d.type_id,
 		        d.author_id, u.display_name, d.visibility, d.view_count,
-		        d.last_verified_at, d.last_verified_by, d.created_at, d.updated_at,
+		        d.last_verified_at, d.last_verified_by, d.needs_review, d.created_at, d.updated_at,
 		        dom.name, dom.slug, dom.color,
 		        dt.name, dt.slug
 		 FROM documents d
@@ -341,7 +344,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		 WHERE d.slug = $1`, slug,
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID,
 		&doc.AuthorID, &doc.AuthorName, &doc.Visibility, &doc.ViewCount,
-		&doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.CreatedAt, &doc.UpdatedAt,
+		&doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.NeedsReview, &doc.CreatedAt, &doc.UpdatedAt,
 		&doc.DomainName, &doc.DomainSlug, &doc.DomainColor,
 		&doc.TypeName, &doc.TypeSlug)
 	if err == pgx.ErrNoRows {
@@ -384,6 +387,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		ViewCount      int        `json:"view_count"`
 		LastVerifiedAt *time.Time `json:"last_verified_at"`
 		LastVerifiedBy *string    `json:"last_verified_by"`
+		NeedsReview    bool       `json:"needs_review"`
 		FreshnessBadge string     `json:"freshness_badge"`
 		Tags           []tagDTO   `json:"tags"`
 		DomainName     *string    `json:"domain_name"`
@@ -403,6 +407,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		}{ID: doc.AuthorID, DisplayName: doc.AuthorName},
 		Visibility: doc.Visibility, ViewCount: doc.ViewCount,
 		LastVerifiedAt: doc.LastVerifiedAt, LastVerifiedBy: doc.LastVerifiedBy,
+		NeedsReview: doc.NeedsReview,
 		FreshnessBadge: doc.Freshness, Tags: tags,
 		DomainName: doc.DomainName, DomainSlug: doc.DomainSlug, DomainColor: doc.DomainColor,
 		TypeName: doc.TypeName, TypeSlug: doc.TypeSlug,
@@ -917,6 +922,51 @@ func (h *handler) freshnessThresholds(ctx context.Context) (int, int) {
 	return greenDays, yellowDays
 }
 
+// flagReview handles POST /api/documents/{id}/flag-review
+func (h *handler) flagReview(w http.ResponseWriter, r *http.Request) {
+	docID := chi.URLParam(r, "id")
+	userID := getUserID(r.Context())
+	userRole := getUserRole(r.Context())
+	userDomainID := getUserDomainID(r.Context())
+
+	if userID == "" {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+		return
+	}
+
+	// Permission check: author, same domain, or admin (RG-003)
+	var authorID, docDomainID string
+	err := h.deps.DB.QueryRow(r.Context(),
+		"SELECT author_id, domain_id FROM documents WHERE id = $1", docID,
+	).Scan(&authorID, &docDomainID)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
+		return
+	}
+	if userRole != "admin" && authorID != userID && docDomainID != userDomainID {
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+
+	var req struct {
+		NeedsReview bool `json:"needs_review"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		return
+	}
+
+	_, err = h.deps.DB.Exec(r.Context(),
+		"UPDATE documents SET needs_review = $2, updated_at = now() WHERE id = $1",
+		docID, req.NeedsReview)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update document"})
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"status": "updated", "needs_review": req.NeedsReview})
+}
+
 // --- Internal helpers ---
 
 func (h *handler) ensureUniqueSlug(ctx context.Context, slug, excludeID string) (string, error) {
@@ -968,12 +1018,12 @@ func (h *handler) indexDocument(docID string) {
 	var createdAt, updatedAt time.Time
 	err := h.deps.DB.QueryRow(ctx,
 		`SELECT d.id, d.title, d.body_text, d.domain_id, d.type_id, d.visibility,
-		        d.view_count, d.created_at, d.updated_at, u.display_name
+		        d.view_count, d.needs_review, d.created_at, d.updated_at, u.display_name
 		 FROM documents d
 		 JOIN users u ON u.id = d.author_id
 		 WHERE d.id = $1`, docID,
 	).Scan(&sd.ID, &sd.Title, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
-		&sd.ViewCount, &createdAt, &updatedAt, &sd.AuthorName)
+		&sd.ViewCount, &sd.NeedsReview, &createdAt, &updatedAt, &sd.AuthorName)
 	if err != nil {
 		log.Printf("indexDocument: failed to fetch doc %s: %v", docID, err)
 		return
@@ -1009,7 +1059,7 @@ func (h *handler) configureMeiliIndex() {
 		return
 	}
 	idx := h.deps.Meili.Index(meiliIndex)
-	_, _ = idx.UpdateFilterableAttributes(&[]interface{}{"domain_id", "type_id", "visibility"})
+	_, _ = idx.UpdateFilterableAttributes(&[]interface{}{"domain_id", "type_id", "visibility", "needs_review"})
 	_, _ = idx.UpdateSearchableAttributes(&[]string{"title", "body_text", "tags"})
 	_, _ = idx.UpdateSortableAttributes(&[]string{"created_at", "updated_at", "view_count"})
 }

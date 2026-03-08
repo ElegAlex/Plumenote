@@ -33,6 +33,9 @@ func Router(deps *model.Deps) chi.Router {
 	r.Put("/users/{id}", handleUpdateUser(pool))
 	r.Post("/users/{id}/reset-password", handleResetPassword(pool))
 
+	// Analytics
+	r.Get("/analytics/search-gaps", handleSearchGaps(pool))
+
 	// Config
 	r.Get("/config/freshness", handleGetFreshness(pool))
 	r.Put("/config/freshness", handlePutFreshness(pool))

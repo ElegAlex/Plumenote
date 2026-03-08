@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/alexmusic/plumenote/internal/analytics"
 	"github.com/alexmusic/plumenote/internal/auth"
 	"github.com/alexmusic/plumenote/internal/document"
+	"github.com/alexmusic/plumenote/internal/feed"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/alexmusic/plumenote/internal/search"
 	"github.com/go-chi/chi/v5"
@@ -116,6 +118,51 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		json.NewEncoder(w).Encode(s)
 	})
 
+	// Public document freshness health (no auth)
+	r.Get("/api/stats/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// Read freshness thresholds from config
+		var val string
+		greenDays := 90
+		yellowDays := 180
+		if err := deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_green'`).Scan(&val); err == nil {
+			if n, _ := strconv.Atoi(val); n > 0 {
+				greenDays = n
+			}
+		}
+		if err := deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'freshness_yellow'`).Scan(&val); err == nil {
+			if n, _ := strconv.Atoi(val); n > 0 {
+				yellowDays = n
+			}
+		}
+
+		type healthResp struct {
+			Total  int `json:"total"`
+			Green  int `json:"green"`
+			Yellow int `json:"yellow"`
+			Red    int `json:"red"`
+		}
+		var h healthResp
+		err := deps.DB.QueryRow(ctx,
+			`SELECT
+				COUNT(*) AS total,
+				COUNT(*) FILTER (WHERE last_verified_at IS NOT NULL AND last_verified_at > now() - make_interval(days => $1)) AS green,
+				COUNT(*) FILTER (WHERE last_verified_at IS NOT NULL AND last_verified_at <= now() - make_interval(days => $1) AND last_verified_at > now() - make_interval(days => $2)) AS yellow
+			 FROM documents`, greenDays, yellowDays,
+		).Scan(&h.Total, &h.Green, &h.Yellow)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "failed to compute health stats"})
+			return
+		}
+		h.Red = h.Total - h.Green - h.Yellow
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(h)
+	})
+
 	// Public document types listing (no auth)
 	r.Get("/api/document-types", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := deps.DB.Query(r.Context(),
@@ -154,6 +201,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 	r.Mount("/api/search", search.Router(deps))
 	r.Mount("/api/admin", admin.Router(deps))
 	r.Mount("/api/analytics", analytics.Router(deps))
+	r.Mount("/api", feed.Router(deps))
 
 	// Alias: /api/tags -> /api/documents/tags (frontend expects /api/tags)
 	docRouter := document.Router(deps)

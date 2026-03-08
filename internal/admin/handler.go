@@ -504,6 +504,52 @@ func handleResetPassword(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
+// --- Analytics ---
+
+type searchGapResponse struct {
+	Query        string `json:"query"`
+	Count        int    `json:"count"`
+	LastSearched string `json:"last_searched"`
+}
+
+func handleSearchGaps(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit := 20
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				limit = n
+			}
+		}
+
+		rows, err := pool.Query(r.Context(),
+			`SELECT query, COUNT(*) AS count, MAX(created_at) AS last_searched
+			 FROM search_log
+			 WHERE result_count = 0
+			 GROUP BY query
+			 ORDER BY count DESC
+			 LIMIT $1`, limit)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to query search gaps"})
+			return
+		}
+		defer rows.Close()
+
+		gaps := []searchGapResponse{}
+		for rows.Next() {
+			var g searchGapResponse
+			var lastSearched time.Time
+			if err := rows.Scan(&g.Query, &g.Count, &lastSearched); err != nil {
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan search gap"})
+				return
+			}
+			g.LastSearched = timeStr(lastSearched)
+			gaps = append(gaps, g)
+		}
+
+		httputil.WriteJSON(w, http.StatusOK, gaps)
+	}
+}
+
 // --- Config ---
 
 type freshnessConfig struct {

@@ -30,6 +30,7 @@ func Router(deps *model.Deps) chi.Router {
 		r.Put("/{id}", h.updateDocument)
 		r.Delete("/{id}", h.deleteDocument)
 		r.Post("/{id}/verify", h.verifyDocument)
+		r.Post("/{id}/flag-review", h.flagReview)
 		r.Post("/{id}/attachments", h.uploadAttachment)
 		r.Delete("/{id}/attachments/{att_id}", h.deleteAttachment)
 		r.Post("/tags", h.createTag)

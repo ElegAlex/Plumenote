@@ -135,6 +135,36 @@ func TestTimePtrStr(t *testing.T) {
 	}
 }
 
+func TestSearchGapResponse(t *testing.T) {
+	rec := httptest.NewRecorder()
+	gaps := []searchGapResponse{
+		{Query: "vpn config", Count: 42, LastSearched: "2025-06-01T10:00:00Z"},
+		{Query: "onboarding", Count: 15, LastSearched: "2025-06-02T14:30:00Z"},
+	}
+	httputil.WriteJSON(rec, http.StatusOK, gaps)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	var body []searchGapResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(body) != 2 {
+		t.Fatalf("expected 2 gaps, got %d", len(body))
+	}
+	if body[0].Query != "vpn config" {
+		t.Errorf("expected query 'vpn config', got %q", body[0].Query)
+	}
+	if body[0].Count != 42 {
+		t.Errorf("expected count 42, got %d", body[0].Count)
+	}
+	if body[1].LastSearched != "2025-06-02T14:30:00Z" {
+		t.Errorf("expected last_searched '2025-06-02T14:30:00Z', got %q", body[1].LastSearched)
+	}
+}
+
 func TestRequestParsing(t *testing.T) {
 	t.Run("createDomain_emptyName", func(t *testing.T) {
 		body, _ := json.Marshal(createDomainRequest{Name: "", Color: "#fff", Icon: "x"})
