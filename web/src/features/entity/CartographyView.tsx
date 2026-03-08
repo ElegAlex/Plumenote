@@ -245,133 +245,133 @@ export default function CartographyView({ domainId, onNodeClick }: CartographyVi
     ctx.restore()
   }, [hoveredEdges])
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-ink-45">Chargement de la cartographie...</p>
-      </div>
-    )
-  }
-
-  if (!data || data.nodes.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-ink-45">Aucune entite a afficher.</p>
-      </div>
-    )
-  }
+  const ready = !isLoading && data && data.nodes.length > 0
 
   return (
-    <div style={{ display: 'flex', flex: 1, height: '100%', minHeight: 0, overflow: 'hidden' }}>
-      {/* Main graph area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Filters */}
-        <div className="flex items-center gap-3 px-4 py-2 border-b border-ink-10 bg-bg text-sm flex-wrap">
-          <span className="text-xs font-medium text-ink-45 uppercase tracking-wide">Filtres :</span>
-          {uniqueTypes.map((t) => (
-            <label key={t.slug} className="flex items-center gap-1 text-xs text-ink-70 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={typeFilters.size === 0 || typeFilters.has(t.slug)}
-                onChange={() => toggleTypeFilter(t.slug)}
-                className="accent-blue"
+    <div ref={containerRef} style={{ display: 'flex', flex: 1, height: '100%', minHeight: 0, overflow: 'hidden' }}>
+      {isLoading && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+          <p className="text-ink-45">Chargement de la cartographie...</p>
+        </div>
+      )}
+
+      {!isLoading && (!data || data.nodes.length === 0) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+          <p className="text-ink-45">Aucune entite a afficher.</p>
+        </div>
+      )}
+
+      {ready && (
+        <>
+          {/* Main graph area */}
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+            {/* Filters */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-ink-10 bg-bg text-sm flex-wrap">
+              <span className="text-xs font-medium text-ink-45 uppercase tracking-wide">Filtres :</span>
+              {uniqueTypes.map((t) => (
+                <label key={t.slug} className="flex items-center gap-1 text-xs text-ink-70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={typeFilters.size === 0 || typeFilters.has(t.slug)}
+                    onChange={() => toggleTypeFilter(t.slug)}
+                    className="accent-blue"
+                  />
+                  {t.icon} {t.name}
+                </label>
+              ))}
+              <span className="text-ink-10">|</span>
+              <label className="flex items-center gap-1 text-xs text-ink-70 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showGhosts}
+                  onChange={() => setShowGhosts(!showGhosts)}
+                  className="accent-blue"
+                />
+                Fantomes
+              </label>
+              <span className="text-xs text-ink-45 ml-auto">{graphData.nodes.length} noeuds · {graphData.links.length} liens</span>
+            </div>
+
+            {/* Graph */}
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <ForceGraph2D
+                width={dimensions.width}
+                height={dimensions.height}
+                graphData={graphData as any}
+                nodeCanvasObject={nodeCanvasObject as any}
+                linkCanvasObject={linkCanvasObject as any}
+                onNodeClick={handleNodeClick as any}
+                onNodeHover={(node: any) => setHoveredNode(node?.id || null)}
+                nodeLabel={() => ''}
+                cooldownTicks={100}
+                enableZoomInteraction={true}
+                enablePanInteraction={true}
               />
-              {t.icon} {t.name}
-            </label>
-          ))}
-          <span className="text-ink-10">|</span>
-          <label className="flex items-center gap-1 text-xs text-ink-70 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showGhosts}
-              onChange={() => setShowGhosts(!showGhosts)}
-              className="accent-blue"
-            />
-            Fantomes
-          </label>
-          <span className="text-xs text-ink-45 ml-auto">{graphData.nodes.length} noeuds · {graphData.links.length} liens</span>
-        </div>
-
-        {/* Graph */}
-        <div style={{ position: 'relative', flex: 1, minHeight: 400 }}>
-          <div ref={containerRef} style={{ position: 'absolute', inset: 0 }}>
-            <ForceGraph2D
-              width={dimensions.width}
-              height={dimensions.height}
-              graphData={graphData as any}
-              nodeCanvasObject={nodeCanvasObject as any}
-              linkCanvasObject={linkCanvasObject as any}
-              onNodeClick={handleNodeClick as any}
-              onNodeHover={(node: any) => setHoveredNode(node?.id || null)}
-              nodeLabel={() => ''}
-              cooldownTicks={100}
-              enableZoomInteraction={true}
-              enablePanInteraction={true}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Side panel */}
-      {selectedNode && (
-        <div className="w-72 border-l border-ink-10 bg-bg p-4 overflow-y-auto flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-ink truncate flex-1">
-              {selectedNode.type_icon} {selectedNode.name}
-            </h3>
-            <button onClick={() => setSelectedNode(null)} className="text-ink-45 hover:text-ink text-sm ml-2">&times;</button>
+            </div>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ink-05 rounded text-ink-70">
-                {selectedNode.type_icon} {selectedNode.type_name}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedNode.domain_color }} />
-              <span className="text-ink-70">Domaine</span>
-            </div>
-
-            {selectedNode.is_ghost && (
-              <span className="text-ink-45 italic">Entite fantome</span>
-            )}
-
-            <a
-              href={`/entities/${selectedNode.id}`}
-              className="inline-block text-blue hover:text-blue/80 text-xs font-medium"
-              onClick={(e) => {
-                e.preventDefault()
-                onNodeClick?.(selectedNode.id)
-              }}
-            >
-              Voir la fiche &rarr;
-            </a>
-
-            {selectedNodeConnections.length > 0 && (
-              <div className="pt-2 border-t border-ink-10">
-                <h4 className="text-xs font-medium text-ink-45 mb-2 uppercase tracking-wide">Connexions ({selectedNodeConnections.length})</h4>
-                <div className="space-y-1">
-                  {selectedNodeConnections.map((conn, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-1.5 p-1.5 rounded hover:bg-ink-05 cursor-pointer"
-                      onClick={() => {
-                        const node = graphData.nodes.find((n) => n.id === conn.id)
-                        if (node) setSelectedNode(node)
-                      }}
-                    >
-                      <span>{conn.type_icon}</span>
-                      <span className="text-ink truncate">{conn.name}</span>
-                      <span className="text-ink-25 ml-auto text-[10px] flex-shrink-0">{conn.relation}</span>
-                    </div>
-                  ))}
-                </div>
+          {/* Side panel */}
+          {selectedNode && (
+            <div className="w-72 border-l border-ink-10 bg-bg p-4 overflow-y-auto flex-shrink-0">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-ink truncate flex-1">
+                  {selectedNode.type_icon} {selectedNode.name}
+                </h3>
+                <button onClick={() => setSelectedNode(null)} className="text-ink-45 hover:text-ink text-sm ml-2">&times;</button>
               </div>
-            )}
-          </div>
-        </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ink-05 rounded text-ink-70">
+                    {selectedNode.type_icon} {selectedNode.type_name}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedNode.domain_color }} />
+                  <span className="text-ink-70">Domaine</span>
+                </div>
+
+                {selectedNode.is_ghost && (
+                  <span className="text-ink-45 italic">Entite fantome</span>
+                )}
+
+                <a
+                  href={`/entities/${selectedNode.id}`}
+                  className="inline-block text-blue hover:text-blue/80 text-xs font-medium"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onNodeClick?.(selectedNode.id)
+                  }}
+                >
+                  Voir la fiche &rarr;
+                </a>
+
+                {selectedNodeConnections.length > 0 && (
+                  <div className="pt-2 border-t border-ink-10">
+                    <h4 className="text-xs font-medium text-ink-45 mb-2 uppercase tracking-wide">Connexions ({selectedNodeConnections.length})</h4>
+                    <div className="space-y-1">
+                      {selectedNodeConnections.map((conn, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-1.5 p-1.5 rounded hover:bg-ink-05 cursor-pointer"
+                          onClick={() => {
+                            const node = graphData.nodes.find((n) => n.id === conn.id)
+                            if (node) setSelectedNode(node)
+                          }}
+                        >
+                          <span>{conn.type_icon}</span>
+                          <span className="text-ink truncate">{conn.name}</span>
+                          <span className="text-ink-25 ml-auto text-[10px] flex-shrink-0">{conn.relation}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
