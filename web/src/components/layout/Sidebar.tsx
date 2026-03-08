@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 import { useStatsHealth } from '@/lib/hooks/useStatsHealth'
 import { useSidebar } from '@/lib/sidebar-context'
 
@@ -22,6 +23,7 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
   const { isOpen } = useSidebar()
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, isAuthenticated } = useAuth()
   const [domains, setDomains] = useState<Domain[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const { data: health } = useStatsHealth()
@@ -185,8 +187,80 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
         </div>
       )}
 
+      {/* Vues globales — visible DSI/admin authentifiés */}
+      {isAuthenticated && user && (user.role === 'admin' || user.role === 'dsi') && (
+        <div style={{ borderTop: '1px solid rgba(28,28,28,0.08)', marginTop: 'auto' }}>
+          <div style={{
+            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: 3,
+            textTransform: 'uppercase' as const,
+            color: 'rgba(28,28,28,0.6)',
+            padding: '14px 20px 6px',
+          }}>
+            Vues globales
+          </div>
+          {[
+            { icon: '\uD83D\uDDFA\uFE0F', label: 'Cartographie', path: '/cartography' },
+            { icon: '\uD83E\uDDE0', label: 'Mind Map', path: '/mindmap' },
+          ].map((item) => {
+            const isActive = location.pathname === item.path
+            return (
+              <div
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '9px 20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.1s',
+                  userSelect: 'none' as const,
+                  background: isActive ? '#1C1C1C' : 'transparent',
+                  color: isActive ? '#FAFAF8' : 'rgba(28,28,28,0.7)',
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+              >
+                <span style={{ fontSize: 14 }}>{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            )
+          })}
+          {user.role === 'admin' && (
+            <div
+              onClick={() => navigate('/admin')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '9px 20px',
+                cursor: 'pointer',
+                transition: 'all 0.1s',
+                userSelect: 'none' as const,
+                background: location.pathname.startsWith('/admin') ? '#1C1C1C' : 'transparent',
+                color: location.pathname.startsWith('/admin') ? '#FAFAF8' : 'rgba(28,28,28,0.7)',
+                fontFamily: "'IBM Plex Sans', sans-serif",
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+              onMouseEnter={e => { if (!location.pathname.startsWith('/admin')) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
+              onMouseLeave={e => { if (!location.pathname.startsWith('/admin')) e.currentTarget.style.background = 'transparent' }}
+            >
+              <span style={{ fontSize: 14 }}>{'\u2699\uFE0F'}</span>
+              <span>Admin</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{
-        marginTop: 'auto',
+        marginTop: isAuthenticated && user && (user.role === 'admin' || user.role === 'dsi') ? 0 : 'auto',
         borderTop: '2px solid rgba(28,28,28,0.1)',
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
