@@ -43,11 +43,11 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Seed relation types
 INSERT INTO relation_types (id, name, slug, inverse_name, inverse_slug) VALUES
-('r0000000-0000-0000-0000-000000000001', 'héberge', 'heberge', 'hébergé sur', 'heberge_sur'),
-('r0000000-0000-0000-0000-000000000002', 'administre', 'administre', 'administré par', 'administre_par'),
-('r0000000-0000-0000-0000-000000000003', 'utilise', 'utilise', 'utilisé par', 'utilise_par'),
-('r0000000-0000-0000-0000-000000000004', 'connecté à', 'connecte_a', 'connecté à', 'connecte_a_inv'),
-('r0000000-0000-0000-0000-000000000005', 'dépend de', 'depend_de', 'requis par', 'requis_par')
+('c0000000-0000-0000-0000-000000000001', 'héberge', 'heberge', 'hébergé sur', 'heberge_sur'),
+('c0000000-0000-0000-0000-000000000002', 'administre', 'administre', 'administré par', 'administre_par'),
+('c0000000-0000-0000-0000-000000000003', 'utilise', 'utilise', 'utilisé par', 'utilise_par'),
+('c0000000-0000-0000-0000-000000000004', 'connecté à', 'connecte_a', 'connecté à', 'connecte_a_inv'),
+('c0000000-0000-0000-0000-000000000005', 'dépend de', 'depend_de', 'requis par', 'requis_par')
 ON CONFLICT (id) DO NOTHING;
 
 -- Enable entities feature on all domains
