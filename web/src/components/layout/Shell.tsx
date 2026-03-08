@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
 import { SearchModal, useSearchModal } from '../../features/search'
+import { useEntityLabel } from '@/lib/hooks'
 
 export default function Shell() {
   const search = useSearchModal()
   const location = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
+  const { data: entityLabelConfig } = useEntityLabel()
+  const entityLabel = entityLabelConfig?.label ?? 'Fiche'
   const isHomepage = location.pathname === '/'
   const [time, setTime] = useState(new Date())
 
@@ -95,6 +98,8 @@ export default function Shell() {
               <span style={{ fontWeight: 600, color: "#1C1C1C" }}>{user?.display_name || user?.username}</span>
               <span style={{ opacity: 0.4 }}>·</span>
               <span style={{ cursor: "pointer" }} onClick={() => navigate("/documents/new")}>+ Nouvelle page</span>
+              <span style={{ opacity: 0.4 }}>·</span>
+              <span style={{ cursor: "pointer" }} onClick={() => navigate("/entities/new")}>+ {entityLabel}</span>
               <span style={{ opacity: 0.4 }}>·</span>
               <span style={{ cursor: "pointer" }} onClick={() => navigate("/import")}>Importer</span>
               <span style={{ opacity: 0.4 }}>·</span>

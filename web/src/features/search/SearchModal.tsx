@@ -18,10 +18,12 @@ interface SearchResult {
   created_at: string
   slug?: string
   attachment_count?: number
-  object_type?: 'document' | 'bookmark'
+  object_type?: 'document' | 'bookmark' | 'entity'
   url?: string
   domain_name?: string
   domain_color?: string
+  entity_type_name?: string
+  entity_type_icon?: string
 }
 
 interface SearchResponse {
@@ -194,6 +196,9 @@ export default function SearchModal({
       if (result.object_type === 'bookmark' && result.url) {
         window.open(result.url, '_blank')
         onClose()
+      } else if (result.object_type === 'entity') {
+        navigate(`/entities/${result.id}`)
+        onClose()
       } else {
         const target = result.slug ? `/documents/${result.slug}` : `/documents/${result.id}`
         navigate(target)
@@ -364,6 +369,7 @@ export default function SearchModal({
 
           {results.map((result, i) => {
             const isBookmark = result.object_type === 'bookmark'
+            const isEntity = result.object_type === 'entity'
             const fresh = FRESHNESS[result.freshness_badge] || FRESHNESS.green
             const domainFromApi = result.domain_name
               ? { name: result.domain_name, color: result.domain_color || '#888' }
@@ -393,11 +399,17 @@ export default function SearchModal({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
                     </svg>
                   )}
+                  {isEntity && result.entity_type_icon && (
+                    <span className="text-sm shrink-0">{result.entity_type_icon}</span>
+                  )}
                   <span
                     className="font-semibold text-ink"
                     dangerouslySetInnerHTML={{ __html: sanitizeHighlight(result.title) }}
                   />
-                  {!isBookmark && (
+                  {isEntity && result.entity_type_name && (
+                    <span className="text-xs px-1.5 py-0.5 bg-ink-05 rounded text-ink-45">{result.entity_type_name}</span>
+                  )}
+                  {!isBookmark && !isEntity && (
                     <span className={`text-xs ${fresh.className}`}>{fresh.icon}</span>
                   )}
                 </div>

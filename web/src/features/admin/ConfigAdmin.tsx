@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api, ApiError } from '@/lib/api'
+import { useEntityLabel, useUpdateEntityLabel } from '@/lib/hooks'
 
 interface FreshnessConfig {
   green_days: number
@@ -11,6 +12,31 @@ interface TicketUrlConfig {
 }
 
 export default function ConfigAdmin() {
+  const { data: entityLabelConfig } = useEntityLabel()
+  const updateEntityLabel = useUpdateEntityLabel()
+  const [entityLabelValue, setEntityLabelValue] = useState('')
+  const [entityLabelSuccess, setEntityLabelSuccess] = useState('')
+  const [entityLabelError, setEntityLabelError] = useState('')
+
+  useEffect(() => {
+    if (entityLabelConfig) setEntityLabelValue(entityLabelConfig.label)
+  }, [entityLabelConfig])
+
+  async function saveEntityLabel() {
+    setEntityLabelError('')
+    setEntityLabelSuccess('')
+    if (!entityLabelValue.trim()) {
+      setEntityLabelError('Le label ne peut pas etre vide')
+      return
+    }
+    try {
+      await updateEntityLabel.mutateAsync(entityLabelValue.trim())
+      setEntityLabelSuccess('Label mis a jour')
+    } catch (e) {
+      setEntityLabelError(e instanceof ApiError ? e.message : 'Erreur lors de la sauvegarde')
+    }
+  }
+
   const [freshness, setFreshness] = useState<FreshnessConfig>({ green_days: 30, yellow_days: 180 })
   const [ticketUrl, setTicketUrl] = useState('')
   const [loading, setLoading] = useState(true)
@@ -68,6 +94,30 @@ export default function ConfigAdmin() {
 
   return (
     <div className="space-y-8">
+      {/* Entity Label */}
+      <section>
+        <h2 className="text-lg font-semibold text-ink mb-4">Label des fiches</h2>
+        <div className="bg-bg border border-ink-10 rounded-lg p-6 space-y-4 max-w-lg">
+          <div>
+            <label className="block text-sm font-medium text-ink-70 mb-1">Nom affiche (ex: Fiche, Entite, Composant)</label>
+            <input
+              type="text"
+              value={entityLabelValue}
+              onChange={(e) => setEntityLabelValue(e.target.value)}
+              className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
+              placeholder="Fiche"
+            />
+          </div>
+
+          {entityLabelError && <p className="text-red text-sm">{entityLabelError}</p>}
+          {entityLabelSuccess && <p className="text-[#2D8B4E] text-sm">{entityLabelSuccess}</p>}
+
+          <button onClick={saveEntityLabel} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
+            Sauvegarder
+          </button>
+        </div>
+      </section>
+
       {/* Freshness thresholds */}
       <section>
         <h2 className="text-lg font-semibold text-ink mb-4">Seuils de fraicheur</h2>
