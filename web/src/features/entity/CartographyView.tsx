@@ -262,7 +262,7 @@ export default function CartographyView({ domainId, onNodeClick }: CartographyVi
   }
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div style={{ display: 'flex', flex: 1, height: '100%', minHeight: 0, overflow: 'hidden' }}>
       {/* Main graph area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Filters */}
@@ -293,20 +293,22 @@ export default function CartographyView({ domainId, onNodeClick }: CartographyVi
         </div>
 
         {/* Graph */}
-        <div ref={containerRef} className="flex-1 min-h-[400px]">
-          <ForceGraph2D
-            width={dimensions.width}
-            height={dimensions.height}
-            graphData={graphData as any}
-            nodeCanvasObject={nodeCanvasObject as any}
-            linkCanvasObject={linkCanvasObject as any}
-            onNodeClick={handleNodeClick as any}
-            onNodeHover={(node: any) => setHoveredNode(node?.id || null)}
-            nodeLabel={() => ''}
-            cooldownTicks={100}
-            enableZoomInteraction={true}
-            enablePanInteraction={true}
-          />
+        <div style={{ position: 'relative', flex: 1, minHeight: 400 }}>
+          <div ref={containerRef} style={{ position: 'absolute', inset: 0 }}>
+            <ForceGraph2D
+              width={dimensions.width}
+              height={dimensions.height}
+              graphData={graphData as any}
+              nodeCanvasObject={nodeCanvasObject as any}
+              linkCanvasObject={linkCanvasObject as any}
+              onNodeClick={handleNodeClick as any}
+              onNodeHover={(node: any) => setHoveredNode(node?.id || null)}
+              nodeLabel={() => ''}
+              cooldownTicks={100}
+              enableZoomInteraction={true}
+              enablePanInteraction={true}
+            />
+          </div>
         </div>
       </div>
 
