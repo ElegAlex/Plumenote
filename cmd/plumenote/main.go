@@ -14,6 +14,10 @@ import (
 	"github.com/alexmusic/plumenote/internal/db"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/alexmusic/plumenote/internal/server"
+	"github.com/alexmusic/plumenote/migrations"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/meilisearch/meilisearch-go"
 )
 
@@ -44,6 +48,11 @@ func main() {
 	}
 	defer pool.Close()
 	log.Println("Connected to PostgreSQL")
+
+	// Run database migrations
+	if err := runMigrations(databaseURL); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
 
 	// Connect to Meilisearch
 	meili := meilisearch.New(meiliURL, meilisearch.WithAPIKey(meiliKey))
@@ -100,4 +109,28 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func runMigrations(databaseURL string) error {
+	src, err := iofs.New(migrations.FS, ".")
+	if err != nil {
+		return err
+	}
+
+	// golang-migrate uses pgx5:// scheme for pgx v5 driver
+	pgxURL := "pgx5" + databaseURL[len("postgres"):]
+
+	m, err := migrate.NewWithSourceInstance("iofs", src, pgxURL)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+
+	v, dirty, _ := m.Version()
+	log.Printf("Database migrated to version %d (dirty: %v)", v, dirty)
+	return nil
 }
