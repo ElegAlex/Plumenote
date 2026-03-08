@@ -51,6 +51,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		rows, err := deps.DB.Query(r.Context(),
 			`SELECT d.id, d.name, d.slug, d.color, d.icon, d.sort_order,
 			        COALESCE((SELECT count(*) FROM documents WHERE domain_id = d.id), 0) AS doc_count,
+			        d.features_enabled,
 			        d.created_at, d.updated_at
 			 FROM domains d ORDER BY d.sort_order, d.name`)
 		if err != nil {
@@ -62,21 +63,22 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		defer rows.Close()
 
 		type domainRow struct {
-			ID        string `json:"id"`
-			Name      string `json:"name"`
-			Slug      string `json:"slug"`
-			Color     string `json:"color"`
-			Icon      string `json:"icon"`
-			SortOrder int    `json:"sort_order"`
-			DocCount  int    `json:"doc_count"`
-			CreatedAt string `json:"created_at"`
-			UpdatedAt string `json:"updated_at"`
+			ID              string   `json:"id"`
+			Name            string   `json:"name"`
+			Slug            string   `json:"slug"`
+			Color           string   `json:"color"`
+			Icon            string   `json:"icon"`
+			SortOrder       int      `json:"sort_order"`
+			DocCount        int      `json:"doc_count"`
+			FeaturesEnabled []string `json:"features_enabled"`
+			CreatedAt       string   `json:"created_at"`
+			UpdatedAt       string   `json:"updated_at"`
 		}
 		domains := []domainRow{}
 		for rows.Next() {
 			var d domainRow
 			var createdAt, updatedAt time.Time
-			if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &createdAt, &updatedAt); err != nil {
+			if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &d.FeaturesEnabled, &createdAt, &updatedAt); err != nil {
 				continue
 			}
 			d.CreatedAt = createdAt.Format(time.RFC3339)

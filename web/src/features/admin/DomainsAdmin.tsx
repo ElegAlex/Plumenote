@@ -8,15 +8,17 @@ interface Domain {
   color: string
   icon: string
   doc_count: number
+  features_enabled: string[]
 }
 
 interface DomainForm {
   name: string
   color: string
   icon: string
+  features_enabled: string[]
 }
 
-const emptyForm: DomainForm = { name: '', color: '#3B82F6', icon: '' }
+const emptyForm: DomainForm = { name: '', color: '#3B82F6', icon: '', features_enabled: ['documents'] }
 
 export default function DomainsAdmin() {
   const [domains, setDomains] = useState<Domain[]>([])
@@ -47,7 +49,7 @@ export default function DomainsAdmin() {
 
   function openEdit(d: Domain) {
     setEditing(d.id)
-    setForm({ name: d.name, color: d.color, icon: d.icon })
+    setForm({ name: d.name, color: d.color, icon: d.icon, features_enabled: d.features_enabled || ['documents'] })
     setShowForm(true)
     setError('')
   }
@@ -172,6 +174,29 @@ export default function DomainsAdmin() {
                   className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
                   placeholder="ex: server, shield, code"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink-70 mb-1">Features activees</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-ink-45">
+                    <input type="checkbox" checked disabled className="accent-blue" />
+                    Documents
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-ink">
+                    <input
+                      type="checkbox"
+                      checked={form.features_enabled.includes('cartography')}
+                      onChange={(e) => {
+                        const features = e.target.checked
+                          ? [...form.features_enabled, 'cartography']
+                          : form.features_enabled.filter((f) => f !== 'cartography')
+                        setForm({ ...form, features_enabled: features })
+                      }}
+                      className="accent-blue"
+                    />
+                    Cartographie
+                  </label>
+                </div>
               </div>
             </div>
 

@@ -196,21 +196,45 @@ func handleDeleteTemplate(pool *pgxpool.Pool) http.HandlerFunc {
 // --- Domains ---
 
 type domainResponse struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Slug      string `json:"slug"`
-	Color     string `json:"color"`
-	Icon      string `json:"icon"`
-	SortOrder int    `json:"sort_order"`
-	DocCount  int    `json:"doc_count"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Slug            string   `json:"slug"`
+	Color           string   `json:"color"`
+	Icon            string   `json:"icon"`
+	SortOrder       int      `json:"sort_order"`
+	DocCount        int      `json:"doc_count"`
+	FeaturesEnabled []string `json:"features_enabled"`
+	CreatedAt       string   `json:"created_at"`
+	UpdatedAt       string   `json:"updated_at"`
 }
 
 type createDomainRequest struct {
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	Icon  string `json:"icon"`
+	Name            string   `json:"name"`
+	Color           string   `json:"color"`
+	Icon            string   `json:"icon"`
+	FeaturesEnabled []string `json:"features_enabled"`
+}
+
+// validFeatures is the whitelist of allowed feature values.
+var validFeatures = map[string]bool{
+	"documents":    true,
+	"cartography":  true,
+}
+
+// filterFeatures keeps only whitelisted values, ensuring "documents" is always present.
+func filterFeatures(input []string) []string {
+	seen := map[string]bool{}
+	result := []string{}
+	for _, f := range input {
+		if validFeatures[f] && !seen[f] {
+			seen[f] = true
+			result = append(result, f)
+		}
+	}
+	if !seen["documents"] {
+		result = append([]string{"documents"}, result...)
+	}
+	return result
 }
 
 func handleListDomains(pool *pgxpool.Pool) http.HandlerFunc {
@@ -218,6 +242,7 @@ func handleListDomains(pool *pgxpool.Pool) http.HandlerFunc {
 		rows, err := pool.Query(r.Context(),
 			`SELECT d.id, d.name, d.slug, d.color, d.icon, d.sort_order,
 			        COALESCE((SELECT count(*) FROM documents WHERE domain_id = d.id), 0) AS doc_count,
+			        d.features_enabled,
 			        d.created_at, d.updated_at
 			 FROM domains d ORDER BY d.sort_order, d.name`)
 		if err != nil {
@@ -230,7 +255,7 @@ func handleListDomains(pool *pgxpool.Pool) http.HandlerFunc {
 		for rows.Next() {
 			var d domainResponse
 			var createdAt, updatedAt time.Time
-			err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &createdAt, &updatedAt)
+			err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &d.FeaturesEnabled, &createdAt, &updatedAt)
 			if err != nil {
 				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan domain"})
 				return
@@ -262,16 +287,18 @@ func handleCreateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 			req.Icon = "folder"
 		}
 
+		features := filterFeatures(req.FeaturesEnabled)
+
 		slug := httputil.GenerateSlug(req.Name)
 
 		var d domainResponse
 		var createdAt, updatedAt time.Time
 		err := pool.QueryRow(r.Context(),
-			`INSERT INTO domains (name, slug, color, icon, sort_order)
-			 VALUES ($1, $2, $3, $4, 0)
-			 RETURNING id, name, slug, color, icon, sort_order, created_at, updated_at`,
-			req.Name, slug, req.Color, req.Icon,
-		).Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &createdAt, &updatedAt)
+			`INSERT INTO domains (name, slug, color, icon, sort_order, features_enabled)
+			 VALUES ($1, $2, $3, $4, 0, $5)
+			 RETURNING id, name, slug, color, icon, sort_order, features_enabled, created_at, updated_at`,
+			req.Name, slug, req.Color, req.Icon, features,
+		).Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.FeaturesEnabled, &createdAt, &updatedAt)
 		if err != nil {
 			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create domain"})
 			return
@@ -300,15 +327,28 @@ func handleUpdateDomain(pool *pgxpool.Pool) http.HandlerFunc {
 
 		slug := httputil.GenerateSlug(req.Name)
 
-		var d domainResponse
-		var createdAt, updatedAt time.Time
-		err := pool.QueryRow(r.Context(),
-			`UPDATE domains
+		// If features_enabled is provided, filter it; otherwise preserve existing value
+		var featuresSQL string
+		var args []any
+		if req.FeaturesEnabled != nil {
+			features := filterFeatures(req.FeaturesEnabled)
+			featuresSQL = `UPDATE domains
+			 SET name = $2, slug = $3, color = $4, icon = $5, features_enabled = $6, updated_at = now()
+			 WHERE id = $1
+			 RETURNING id, name, slug, color, icon, sort_order, features_enabled, created_at, updated_at`
+			args = []any{id, req.Name, slug, req.Color, req.Icon, features}
+		} else {
+			featuresSQL = `UPDATE domains
 			 SET name = $2, slug = $3, color = $4, icon = $5, updated_at = now()
 			 WHERE id = $1
-			 RETURNING id, name, slug, color, icon, sort_order, created_at, updated_at`,
-			id, req.Name, slug, req.Color, req.Icon,
-		).Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &createdAt, &updatedAt)
+			 RETURNING id, name, slug, color, icon, sort_order, features_enabled, created_at, updated_at`
+			args = []any{id, req.Name, slug, req.Color, req.Icon}
+		}
+
+		var d domainResponse
+		var createdAt, updatedAt time.Time
+		err := pool.QueryRow(r.Context(), featuresSQL, args...,
+		).Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.FeaturesEnabled, &createdAt, &updatedAt)
 		if err != nil {
 			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
 			return

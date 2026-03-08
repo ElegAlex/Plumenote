@@ -6,7 +6,7 @@ import { useStatsHealth } from "@/lib/hooks/useStatsHealth";
 import FeedPanel from "./FeedPanel";
 import ReviewPanel from "./ReviewPanel";
 
-interface Domain { id: string; name: string; slug: string; color: string; doc_count: number }
+interface Domain { id: string; name: string; slug: string; color: string; doc_count: number; features_enabled: string[] }
 interface Stats { documents: number; searches_month: number; contributors: number; updates_month: number }
 interface Doc {
   id: string; title: string; slug: string; tags?: string[];
@@ -59,7 +59,7 @@ export default function HomePage() {
   }, []);
 
   const services = useMemo(() => domains.map(d => ({
-    code: d.id, label: d.name, color: d.color, count: d.doc_count,
+    code: d.id, label: d.name, color: d.color, count: d.doc_count, features: d.features_enabled || ['documents'],
   })), [domains]);
 
   const filtered = useMemo(() => {
@@ -264,7 +264,13 @@ export default function HomePage() {
           {services.map(s => (
             <div key={s.code} className={`svc ${activeService === s.code ? "on" : ""}`} onClick={() => setActiveService(activeService === s.code ? null : s.code)}>
               <div className="svc-dot" style={{ background: s.color }} />
-              <span className="svc-name">{s.label}</span>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span className="svc-name">{s.label}</span>
+                <span style={{ fontSize: 11, lineHeight: 1, opacity: 0.5 }} title={s.features.join(', ')}>
+                  {s.features.includes('documents') && '\u{1F4C4}'}
+                  {s.features.includes('cartography') && ' \u{1F5FA}\u{FE0F}'}
+                </span>
+              </div>
               <span className="svc-n">{s.count}</span>
             </div>
           ))}
