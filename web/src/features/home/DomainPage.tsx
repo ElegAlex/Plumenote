@@ -67,9 +67,11 @@ export default function DomainPage() {
   const hasEntities = domain.features_enabled?.includes('entities') || domain.features_enabled?.includes('cartography')
   const hasMultipleTabs = hasEntities || hasCartography
 
+  const isCartoActive = activeTab === 'cartography'
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div className={isCartoActive ? "flex flex-col" : "space-y-6"} style={isCartoActive ? { height: 'calc(100vh - 58px)' } : undefined}>
+      <div className={`flex items-center gap-3 ${isCartoActive ? 'px-6 pt-4 pb-2' : ''}`}>
         <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: domain.color }} />
         <h1 className="text-2xl font-bold text-ink">{domain.name}</h1>
         <span className="text-sm text-ink-45">{domain.doc_count} document{domain.doc_count !== 1 ? 's' : ''}</span>
@@ -77,7 +79,7 @@ export default function DomainPage() {
 
       {/* Onglets si plusieurs features */}
       {hasMultipleTabs && (
-        <div className="flex border-b border-ink-10">
+        <div className={`flex border-b border-ink-10 ${isCartoActive ? 'px-6 flex-shrink-0' : ''}`}>
           <button
             onClick={() => setActiveTab('documents')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -211,7 +213,7 @@ export default function DomainPage() {
       )}
 
       {activeTab === 'cartography' && hasCartography && (
-        <div className="border border-ink-10 rounded-lg shadow-sm overflow-hidden" style={{ height: 500 }}>
+        <div className="flex-1 min-h-0 overflow-hidden">
           <CartographyView domainId={domain.id} onNodeClick={(id) => window.location.assign(`/entities/${id}`)} />
         </div>
       )}
