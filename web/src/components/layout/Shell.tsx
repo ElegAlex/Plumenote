@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
+import { ChevronsRight } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { SearchModal, useSearchModal } from '../../features/search'
 import { useEntityLabel } from '@/lib/hooks'
@@ -105,10 +106,6 @@ export default function Shell() {
         .shell-user-avatar:hover { background: rgba(28,28,28,0.14); }
         .shell-body { display: flex; min-height: calc(100vh - 58px); }
         .shell-content { flex: 1; min-width: 0; background: #FBFBF9; }
-        .shell-chevron {
-          font-size: 10px; color: rgba(28,28,28,0.35);
-          transition: transform 0.2s; margin-left: 4px;
-        }
         @media (max-width: 900px) {
           .shell-logo-zone { min-width: auto; padding: 0 14px; }
           .shell-search-text { display: none; }
@@ -118,22 +115,17 @@ export default function Shell() {
       `}</style>
 
       <header className="shell-header">
-        {/* Left — Logo + sidebar toggle */}
+        {/* Left — Logo → homepage */}
         <div
           className="shell-logo-zone"
-          onClick={hideSidebar ? () => navigate('/') : toggleSidebar}
-          title={hideSidebar ? 'Accueil' : (sidebarOpen ? 'Masquer la sidebar' : 'Afficher la sidebar')}
+          onClick={() => navigate('/')}
+          title="Accueil"
         >
           <img src="/plumenote.png" alt="PlumeNote" width="30" height="30" style={{ objectFit: 'contain' }} />
           <div>
             <div className="shell-logo-title">PLUMENOTE</div>
             <div className="shell-logo-sub">Gestion des connaissances</div>
           </div>
-          {!hideSidebar && (
-            <span className="shell-chevron" style={{ transform: sidebarOpen ? 'none' : 'rotate(180deg)' }}>
-              &#9664;
-            </span>
-          )}
         </div>
 
         {/* Center — Search bar */}
@@ -221,6 +213,32 @@ export default function Shell() {
 
       <div className="shell-body">
         {!hideSidebar && <Sidebar />}
+        {!hideSidebar && !sidebarOpen && (
+          <button
+            onClick={toggleSidebar}
+            title="Afficher la sidebar"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 70,
+              background: '#F7F6F3',
+              border: '1px solid rgba(28,28,28,0.1)',
+              borderLeft: 'none',
+              borderRadius: '0 4px 4px 0',
+              cursor: 'pointer',
+              padding: '6px 4px',
+              display: 'flex',
+              alignItems: 'center',
+              color: 'rgba(28,28,28,0.35)',
+              transition: 'color 0.1s',
+              zIndex: 5,
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'rgba(28,28,28,0.7)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(28,28,28,0.35)'}
+          >
+            <ChevronsRight size={16} />
+          </button>
+        )}
         <div className="shell-content">
           <Outlet />
         </div>

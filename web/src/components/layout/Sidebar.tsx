@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Map, Network, Settings } from 'lucide-react'
+import { Map, Network, Settings, ChevronsLeft } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useStatsHealth } from '@/lib/hooks/useStatsHealth'
@@ -21,7 +21,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeService: activeServiceProp, onServiceClick }: SidebarProps) {
-  const { isOpen } = useSidebar()
+  const { isOpen, toggle } = useSidebar()
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isAuthenticated } = useAuth()
@@ -85,15 +85,39 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
       flexShrink: 0,
     }}>
       <div style={{
-        fontFamily: "'IBM Plex Sans', sans-serif",
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: 3,
-        textTransform: 'uppercase' as const,
-        color: 'rgba(28,28,28,0.6)',
-        padding: '20px 20px 10px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 20px 10px',
       }}>
-        Services
+        <span style={{
+          fontFamily: "'IBM Plex Sans', sans-serif",
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: 3,
+          textTransform: 'uppercase' as const,
+          color: 'rgba(28,28,28,0.6)',
+        }}>
+          Services
+        </span>
+        <button
+          onClick={toggle}
+          title="Masquer la sidebar"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 2,
+            display: 'flex',
+            alignItems: 'center',
+            color: 'rgba(28,28,28,0.35)',
+            transition: 'color 0.1s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = 'rgba(28,28,28,0.7)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(28,28,28,0.35)'}
+        >
+          <ChevronsLeft size={16} />
+        </button>
       </div>
 
       {services.map(s => {
