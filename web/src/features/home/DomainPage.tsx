@@ -8,6 +8,7 @@ import TimeAgo from './TimeAgo'
 import BookmarkList from '@/features/bookmark/BookmarkList'
 import BookmarkForm from '@/features/bookmark/BookmarkForm'
 import CartographyView from '@/features/entity/CartographyView'
+import MindMapView from '@/features/mindmap/MindMapView'
 
 interface Domain {
   id: string
@@ -35,7 +36,7 @@ export default function DomainPage() {
   const [domain, setDomain] = useState<Domain | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'documents' | 'entities' | 'cartography'>('documents')
+  const [activeTab, setActiveTab] = useState<'documents' | 'entities' | 'cartography' | 'mindmap'>('documents')
   const [showBookmarkForm, setShowBookmarkForm] = useState(false)
   const { data: entityLabelConfig } = useEntityLabel()
   const entityLabel = entityLabelConfig?.label ?? 'Fiche'
@@ -65,13 +66,16 @@ export default function DomainPage() {
 
   const hasCartography = domain.features_enabled?.includes('cartography')
   const hasEntities = domain.features_enabled?.includes('entities') || domain.features_enabled?.includes('cartography')
-  const hasMultipleTabs = hasEntities || hasCartography
+  const hasMindMap = domain.features_enabled?.includes('mindmap')
+  const hasMultipleTabs = hasEntities || hasCartography || hasMindMap
 
   const isCartoActive = activeTab === 'cartography'
+  const isMindMapActive = activeTab === 'mindmap'
+  const isFullHeight = isCartoActive || isMindMapActive
 
   return (
-    <div className={isCartoActive ? "flex flex-col" : "space-y-6"} style={isCartoActive ? { height: 'calc(100vh - 58px)' } : undefined}>
-      <div className={`flex items-center gap-3 ${isCartoActive ? 'px-6 pt-4 pb-2' : ''}`}>
+    <div className={isFullHeight ? "flex flex-col" : "space-y-6"} style={isFullHeight ? { height: 'calc(100vh - 58px)' } : undefined}>
+      <div className={`flex items-center gap-3 ${isFullHeight ? 'px-6 pt-4 pb-2' : ''}`}>
         <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: domain.color }} />
         <h1 className="text-2xl font-bold text-ink">{domain.name}</h1>
         <span className="text-sm text-ink-45">{domain.doc_count} document{domain.doc_count !== 1 ? 's' : ''}</span>
@@ -79,7 +83,7 @@ export default function DomainPage() {
 
       {/* Onglets si plusieurs features */}
       {hasMultipleTabs && (
-        <div className={`flex border-b border-ink-10 ${isCartoActive ? 'px-6 flex-shrink-0' : ''}`}>
+        <div className={`flex border-b border-ink-10 ${isFullHeight ? 'px-6 flex-shrink-0' : ''}`}>
           <button
             onClick={() => setActiveTab('documents')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -112,6 +116,18 @@ export default function DomainPage() {
               }`}
             >
               Cartographie
+            </button>
+          )}
+          {hasMindMap && (
+            <button
+              onClick={() => setActiveTab('mindmap')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'mindmap'
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-ink-45 hover:text-ink'
+              }`}
+            >
+              Mind Map
             </button>
           )}
         </div>
@@ -215,6 +231,12 @@ export default function DomainPage() {
       {activeTab === 'cartography' && hasCartography && (
         <div className="flex-1 min-h-0 overflow-hidden">
           <CartographyView domainId={domain.id} onNodeClick={(id) => window.location.assign(`/entities/${id}`)} />
+        </div>
+      )}
+
+      {activeTab === 'mindmap' && hasMindMap && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <MindMapView domainId={domain.id} onNodeClick={(slug) => window.location.assign(`/documents/${slug}`)} />
         </div>
       )}
     </div>

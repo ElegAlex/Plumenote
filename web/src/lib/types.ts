@@ -269,3 +269,51 @@ export interface CartographyData {
 export interface EntityLabelConfig {
   label: string
 }
+
+// === Mind Map ===
+
+export interface MindMapNode {
+  id: string
+  title: string
+  slug: string
+  domain_id: string
+  domain_name: string
+  domain_color: string
+  type_name: string
+  freshness_badge: 'green' | 'yellow' | 'red'
+  view_count: number
+  is_orphan: boolean
+  is_ghost: boolean
+  link_count: number
+}
+
+export interface MindMapEdge {
+  source: string
+  target: string
+  type: 'internal_link' | 'shared_entity' | 'shared_tags'
+  label: string
+  weight: number
+}
+
+export interface MindMapData {
+  nodes: MindMapNode[]
+  edges: MindMapEdge[]
+  orphans_count: number
+}
+
+export interface OrphanDocument {
+  id: string
+  title: string
+  slug: string
+  domain_name: string
+  freshness_badge: string
+  created_at: string
+  view_count: number
+}
+
+export interface OrphansResponse {
+  orphans: OrphanDocument[]
+  total_documents: number
+  orphan_count: number
+  orphan_percent: number
+}

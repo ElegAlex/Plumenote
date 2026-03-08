@@ -107,6 +107,9 @@ export default function Shell() {
           <div className="shell-nav-btn" onClick={() => navigate('/')}>Documentation</div>
           <div className="shell-nav-btn" onClick={() => navigate('/')}>Applications</div>
           <div className="shell-nav-btn" onClick={() => navigate('/cartography')}>Cartographie</div>
+          {isAuthenticated && user && (user.role === 'admin' || user.role === 'dsi') && (
+            <div className="shell-nav-btn" onClick={() => navigate('/mindmap')}>Mind Map</div>
+          )}
         </nav>
         <div className="shell-header-right">
           {isAuthenticated ? (

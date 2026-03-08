@@ -18,6 +18,7 @@ const BookmarkNewPage = lazy(() => import('@/features/bookmark'))
 const EntityPage = lazy(() => import('@/features/entity/EntityPage'))
 const EntityFormPage = lazy(() => import('@/features/entity/EntityFormPage'))
 const CartographyPage = lazy(() => import('@/features/entity/CartographyPage'))
+const MindMapPage = lazy(() => import('@/features/mindmap/MindMapPage'))
 
 function Loading() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/entities/:id/edit" element={<EntityFormPage />} />
             <Route path="/import" element={<ImportPage />} />
             <Route path="/bookmarks/new" element={<BookmarkNewPage />} />
+            <Route path="/mindmap" element={<MindMapPage />} />
             <Route path="/admin/*" element={<AdminPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
