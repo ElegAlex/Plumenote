@@ -13,7 +13,8 @@ func Router(deps *model.Deps) chi.Router {
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth.OptionalAuth(deps.JWTSecret))
-		r.Get("/", h.getMindMap)
+		r.Get("/tree", h.getTree)
+		r.Get("/expand", h.getExpand)
 	})
 
 	return r
