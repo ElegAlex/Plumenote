@@ -12,10 +12,17 @@ function toPascalCase(s: string): string {
   return s.replace(/(^|-)([a-z])/g, (_, _sep, c) => c.toUpperCase())
 }
 
+/** Aliases for Lucide icons renamed between versions */
+const ICON_ALIASES: Record<string, string> = {
+  layout: 'LayoutDashboard',
+  'help-circle': 'CircleQuestionMark',
+}
+
 /** Resolve a Lucide icon name to a component; returns null if not found */
 function resolveLucideIcon(name: string | undefined): LucideIcon | null {
   if (!name) return null
-  const key = toPascalCase(name) as keyof typeof icons
+  const alias = ICON_ALIASES[name]
+  const key = (alias ?? toPascalCase(name)) as keyof typeof icons
   return icons[key] ?? null
 }
 
