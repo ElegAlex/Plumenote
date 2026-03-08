@@ -375,11 +375,6 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 	// Fetch tags
 	tags, _ := h.getDocumentTags(r.Context(), doc.ID)
 
-	// Increment view count async
-	go func() {
-		_, _ = h.deps.DB.Exec(context.Background(), "UPDATE documents SET view_count = view_count + 1 WHERE id = $1", doc.ID)
-	}()
-
 	// Return flat response with author object, domain info, and tags embedded
 	resp := struct {
 		ID             string          `json:"id"`
