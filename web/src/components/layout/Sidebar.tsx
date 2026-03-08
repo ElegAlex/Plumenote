@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Map, Network, Settings } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useStatsHealth } from '@/lib/hooks/useStatsHealth'
@@ -202,10 +203,11 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
             Vues globales
           </div>
           {[
-            { icon: '\uD83D\uDDFA\uFE0F', label: 'Cartographie', path: '/cartography' },
-            { icon: '\uD83E\uDDE0', label: 'Mind Map', path: '/mindmap' },
+            { icon: Map, label: 'Cartographie', path: '/cartography' },
+            { icon: Network, label: 'Mind Map', path: '/mindmap' },
           ].map((item) => {
             const isActive = location.pathname === item.path
+            const Icon = item.icon
             return (
               <div
                 key={item.path}
@@ -227,7 +229,7 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
                 onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
               >
-                <span style={{ fontSize: 14 }}>{item.icon}</span>
+                <Icon size={16} color={isActive ? '#FAFAF8' : 'rgba(28,28,28,0.45)'} />
                 <span>{item.label}</span>
               </div>
             )
@@ -252,7 +254,7 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
               onMouseEnter={e => { if (!location.pathname.startsWith('/admin')) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
               onMouseLeave={e => { if (!location.pathname.startsWith('/admin')) e.currentTarget.style.background = 'transparent' }}
             >
-              <span style={{ fontSize: 14 }}>{'\u2699\uFE0F'}</span>
+              <Settings size={16} color={location.pathname.startsWith('/admin') ? '#FAFAF8' : 'rgba(28,28,28,0.45)'} />
               <span>Admin</span>
             </div>
           )}
