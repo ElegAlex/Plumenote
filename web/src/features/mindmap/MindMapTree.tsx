@@ -248,24 +248,63 @@ export default function MindMapTree({ root, onExpand, expanding }: Props) {
             )
           })}
 
-          {/* Relation labels */}
-          {nodes.filter(n => n.data.kind === 'relation').map((n) => {
-            const d = n as HierarchyPointNode<TreeDatum>
-            return (
-              <g key={d.data.id} className="mm-node" transform={`translate(${d.y - 40}, ${d.x})`}>
-                <text
-                  className="select-none"
-                  fill="var(--color-ink-45, #888)"
-                  fontSize={10}
-                  fontFamily="IBM Plex Mono, monospace"
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                >
-                  {d.data.relation}
-                </text>
-              </g>
-            )
-          })}
+          {/* Relation labels — positioned at midpoint of parent→children centroid */}
+          {(() => {
+            const usedPositions: { x: number; y: number }[] = []
+            return nodes.filter(n => n.data.kind === 'relation').map((n) => {
+              const d = n as HierarchyPointNode<TreeDatum>
+              const parent = d.parent as HierarchyPointNode<TreeDatum> | null
+              const children = d.children ?? []
+
+              if (!parent || children.length === 0) return null
+
+              // Source: right edge of parent card
+              const srcX = parent.y + NODE_WIDTH / 2
+              const srcY = parent.x
+
+              // Target: centroid of children
+              const tgtX = children.reduce((s, c) => s + c.y - 10, 0) / children.length
+              const tgtY = children.reduce((s, c) => s + c.x, 0) / children.length
+
+              // Midpoint
+              let mx = (srcX + tgtX) / 2
+              let my = (srcY + tgtY) / 2
+
+              // Nudge to avoid overlap with other labels
+              const OVERLAP_THRESHOLD = 14
+              for (const p of usedPositions) {
+                if (Math.abs(mx - p.x) < 60 && Math.abs(my - p.y) < OVERLAP_THRESHOLD) {
+                  my += OVERLAP_THRESHOLD
+                }
+              }
+              usedPositions.push({ x: mx, y: my })
+
+              const labelWidth = d.data.relation!.length * 6 + 12
+
+              return (
+                <g key={d.data.id} className="mm-node" transform={`translate(${mx}, ${my})`}>
+                  <rect
+                    x={-labelWidth / 2}
+                    y={-9}
+                    width={labelWidth}
+                    height={18}
+                    rx={4}
+                    fill="rgba(255,255,255,0.8)"
+                  />
+                  <text
+                    className="select-none"
+                    fill="var(--color-ink-45, #888)"
+                    fontSize={10}
+                    fontFamily="IBM Plex Mono, monospace"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                  >
+                    {d.data.relation}
+                  </text>
+                </g>
+              )
+            })
+          })()}
 
           {/* Nodes */}
           {nodes.filter(n => n.data.kind === 'node').map((n) => {
