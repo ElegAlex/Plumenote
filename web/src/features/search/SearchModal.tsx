@@ -34,6 +34,11 @@ interface Domain {
   color: string
 }
 
+interface DocType {
+  id: string
+  name: string
+}
+
 // --- Hook ---
 
 export function useSearchModal() {
@@ -94,16 +99,18 @@ export default function SearchModal({
   const [domainFilter, setDomainFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [domains, setDomains] = useState<Domain[]>([])
+  const [docTypes, setDocTypes] = useState<DocType[]>([])
   const resultRefs = useRef<(HTMLDivElement | null)[]>([])
   const queryRef = useRef(query)
   queryRef.current = query
   const totalRef = useRef(total)
   totalRef.current = total
 
-  // Load domains on mount
+  // Load domains and document types on open
   useEffect(() => {
     if (isOpen) {
       api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
+      api.get<DocType[]>('/document-types').then(setDocTypes).catch(() => {})
     }
   }, [isOpen])
 
@@ -301,11 +308,9 @@ export default function SearchModal({
             className="border rounded px-2 py-1 text-sm bg-bg"
           >
             <option value="">Tous les types</option>
-            <option value="procedure">Procedure</option>
-            <option value="guide">Guide</option>
-            <option value="faq">FAQ</option>
-            <option value="architecture">Architecture</option>
-            <option value="runbook">Runbook</option>
+            {docTypes.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
           </select>
           {hasActiveFilter && (
             <button

@@ -31,14 +31,6 @@ interface Document {
   visibility: 'public' | 'dsi'
 }
 
-const DOC_TYPES: DocType[] = [
-  { id: 'procedure', name: 'Procedure' },
-  { id: 'guide', name: 'Guide' },
-  { id: 'faq', name: 'FAQ' },
-  { id: 'architecture', name: 'Architecture' },
-  { id: 'runbook', name: 'Runbook' },
-]
-
 export default function EditorPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
@@ -52,6 +44,7 @@ export default function EditorPage() {
   const [tags, setTags] = useState<string[]>([])
   const [body, setBody] = useState('')
   const [domains, setDomains] = useState<Domain[]>([])
+  const [docTypes, setDocTypes] = useState<DocType[]>([])
   const [documentId, setDocumentId] = useState<string | null>(null)
   const [showTemplates, setShowTemplates] = useState(!isEdit)
   const [saving, setSaving] = useState(false)
@@ -62,9 +55,10 @@ export default function EditorPage() {
   const [editorReady, setEditorReady] = useState(false)
   const [previewing, setPreviewing] = useState(false)
 
-  // Load domains
+  // Load domains and document types
   useEffect(() => {
     api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
+    api.get<DocType[]>('/document-types').then(setDocTypes).catch(() => {})
   }, [])
 
   // Load existing document for edit mode
@@ -208,7 +202,7 @@ export default function EditorPage() {
               className="w-full border rounded-lg px-3 py-2 text-sm bg-bg"
             >
               <option value="">Choisir...</option>
-              {DOC_TYPES.map((t) => (
+              {docTypes.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
