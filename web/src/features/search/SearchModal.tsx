@@ -18,6 +18,10 @@ interface SearchResult {
   created_at: string
   slug?: string
   attachment_count?: number
+  object_type?: 'document' | 'bookmark'
+  url?: string
+  domain_name?: string
+  domain_color?: string
 }
 
 interface SearchResponse {
@@ -186,9 +190,15 @@ export default function SearchModal({
           clicked_document_id: result.id,
         })
         .catch(() => {})
-      const target = result.slug ? `/documents/${result.slug}` : `/documents/${result.id}`
-      navigate(target)
-      onClose()
+
+      if (result.object_type === 'bookmark' && result.url) {
+        window.open(result.url, '_blank')
+        onClose()
+      } else {
+        const target = result.slug ? `/documents/${result.slug}` : `/documents/${result.id}`
+        navigate(target)
+        onClose()
+      }
     },
     [navigate, onClose],
   )
@@ -353,8 +363,13 @@ export default function SearchModal({
           )}
 
           {results.map((result, i) => {
+            const isBookmark = result.object_type === 'bookmark'
             const fresh = FRESHNESS[result.freshness_badge] || FRESHNESS.green
-            const domain = domains.find((d) => d.id === result.domain_id)
+            const domainFromApi = result.domain_name
+              ? { name: result.domain_name, color: result.domain_color || '#888' }
+              : null
+            const domainFromList = domains.find((d) => d.id === result.domain_id)
+            const domain = domainFromApi || domainFromList
             const isSelected = i === selectedIndex
 
             return (
@@ -370,14 +385,27 @@ export default function SearchModal({
                 role="option"
                 aria-selected={isSelected}
               >
-                {/* Title + freshness */}
+                {/* Title + freshness / link icon */}
                 <div className="flex items-center gap-2">
+                  {isBookmark && (
+                    <svg className="w-4 h-4 text-ink-45 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
+                    </svg>
+                  )}
                   <span
                     className="font-semibold text-ink"
                     dangerouslySetInnerHTML={{ __html: sanitizeHighlight(result.title) }}
                   />
-                  <span className={`text-xs ${fresh.className}`}>{fresh.icon}</span>
+                  {!isBookmark && (
+                    <span className={`text-xs ${fresh.className}`}>{fresh.icon}</span>
+                  )}
                 </div>
+
+                {/* Bookmark URL */}
+                {isBookmark && result.url && (
+                  <p className="text-xs text-ink-45 mt-0.5 truncate max-w-md">{result.url}</p>
+                )}
 
                 {/* Meta line */}
                 <div className="flex items-center gap-3 mt-1 text-xs text-ink-45">
@@ -391,8 +419,8 @@ export default function SearchModal({
                     </span>
                   )}
                   {result.author_name && <span>par {result.author_name}</span>}
-                  {result.view_count > 0 && <span>* {result.view_count} vues</span>}
-                  {result.attachment_count && result.attachment_count > 0 && (
+                  {!isBookmark && result.view_count > 0 && <span>* {result.view_count} vues</span>}
+                  {!isBookmark && result.attachment_count && result.attachment_count > 0 && (
                     <span>
                       {'\u{1F4CE}'} {result.attachment_count} fichier
                       {result.attachment_count > 1 ? 's' : ''}

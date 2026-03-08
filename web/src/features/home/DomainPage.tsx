@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 import FreshnessBadge from './FreshnessBadge'
 import TimeAgo from './TimeAgo'
+import BookmarkList from '@/features/bookmark/BookmarkList'
+import BookmarkForm from '@/features/bookmark/BookmarkForm'
 
 interface Domain {
   id: string
@@ -25,9 +28,11 @@ interface Doc {
 
 export default function DomainPage() {
   const { slug } = useParams<{ slug: string }>()
+  const { isAuthenticated } = useAuth()
   const [domain, setDomain] = useState<Domain | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
+  const [showBookmarkForm, setShowBookmarkForm] = useState(false)
 
   useEffect(() => {
     if (!slug) return
@@ -89,6 +94,30 @@ export default function DomainPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {/* Liens externes */}
+      {domain && (
+        <div className="space-y-3 mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-ink">Liens externes</h2>
+            {isAuthenticated && (
+              <button
+                onClick={() => setShowBookmarkForm(true)}
+                className="inline-flex items-center px-3 py-1.5 bg-blue text-white text-xs font-medium rounded-md hover:bg-blue/90 transition-colors"
+              >
+                + Ajouter un lien
+              </button>
+            )}
+          </div>
+          <BookmarkList domainId={domain.id} />
+        </div>
+      )}
+
+      {showBookmarkForm && (
+        <BookmarkForm
+          onClose={() => setShowBookmarkForm(false)}
+        />
       )}
     </div>
   )

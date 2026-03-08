@@ -45,6 +45,7 @@ type SearchDocument struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
 	BodyText    string   `json:"body_text"`
+	ObjectType  string   `json:"object_type"`
 	DomainID    string   `json:"domain_id"`
 	TypeID      string   `json:"type_id"`
 	Visibility  string   `json:"visibility"`
@@ -1028,6 +1029,7 @@ func (h *handler) indexDocument(docID string) {
 		log.Printf("indexDocument: failed to fetch doc %s: %v", docID, err)
 		return
 	}
+	sd.ObjectType = "document"
 	sd.CreatedAt = createdAt.Unix()
 	sd.UpdatedAt = updatedAt.Unix()
 
@@ -1059,7 +1061,103 @@ func (h *handler) configureMeiliIndex() {
 		return
 	}
 	idx := h.deps.Meili.Index(meiliIndex)
-	_, _ = idx.UpdateFilterableAttributes(&[]interface{}{"domain_id", "type_id", "visibility", "needs_review"})
-	_, _ = idx.UpdateSearchableAttributes(&[]string{"title", "body_text", "tags"})
+	_, _ = idx.UpdateFilterableAttributes(&[]interface{}{"domain_id", "type_id", "visibility", "needs_review", "object_type"})
+	_, _ = idx.UpdateSearchableAttributes(&[]string{"title", "body_text", "tags", "url"})
 	_, _ = idx.UpdateSortableAttributes(&[]string{"created_at", "updated_at", "view_count"})
+
+	// Re-index existing documents with object_type if needed
+	h.reindexIfNeeded()
+}
+
+func (h *handler) reindexIfNeeded() {
+	if h.deps.DB == nil {
+		return
+	}
+	ctx := context.Background()
+
+	// Check reindex version
+	var version string
+	err := h.deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'meili_reindex_version'`).Scan(&version)
+	if err == nil && version >= "2" {
+		return // Already re-indexed
+	}
+
+	// Count documents
+	var count int
+	if err := h.deps.DB.QueryRow(ctx, "SELECT COUNT(*) FROM documents").Scan(&count); err != nil || count == 0 {
+		return
+	}
+	log.Printf("reindexing %d documents with object_type...", count)
+
+	// Fetch all documents
+	rows, err := h.deps.DB.Query(ctx,
+		`SELECT d.id, d.title, d.body_text, d.domain_id, d.type_id, d.visibility,
+		        d.view_count, d.needs_review, d.created_at, d.updated_at, u.display_name
+		 FROM documents d
+		 JOIN users u ON u.id = d.author_id`)
+	if err != nil {
+		log.Printf("reindex: failed to query documents: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var batch []SearchDocument
+	indexed := 0
+	for rows.Next() {
+		var sd SearchDocument
+		var createdAt, updatedAt time.Time
+		if err := rows.Scan(&sd.ID, &sd.Title, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
+			&sd.ViewCount, &sd.NeedsReview, &createdAt, &updatedAt, &sd.AuthorName); err != nil {
+			continue
+		}
+		sd.ObjectType = "document"
+		sd.CreatedAt = createdAt.Unix()
+		sd.UpdatedAt = updatedAt.Unix()
+
+		// Fetch tags for this doc
+		tagRows, err := h.deps.DB.Query(ctx,
+			`SELECT t.name FROM tags t JOIN document_tags dt ON dt.tag_id = t.id WHERE dt.document_id = $1`, sd.ID)
+		if err == nil {
+			for tagRows.Next() {
+				var name string
+				if tagRows.Scan(&name) == nil {
+					sd.Tags = append(sd.Tags, name)
+				}
+			}
+			tagRows.Close()
+		}
+		if sd.Tags == nil {
+			sd.Tags = []string{}
+		}
+
+		batch = append(batch, sd)
+		if len(batch) >= 100 {
+			pk := "id"
+			if _, err := h.deps.Meili.Index(meiliIndex).AddDocuments(batch, &meilisearch.DocumentOptions{PrimaryKey: &pk}); err != nil {
+				log.Printf("reindex: failed to index batch: %v", err)
+			}
+			indexed += len(batch)
+			batch = batch[:0]
+		}
+	}
+
+	// Final batch
+	if len(batch) > 0 {
+		pk := "id"
+		if _, err := h.deps.Meili.Index(meiliIndex).AddDocuments(batch, &meilisearch.DocumentOptions{PrimaryKey: &pk}); err != nil {
+			log.Printf("reindex: failed to index final batch: %v", err)
+		}
+		indexed += len(batch)
+	}
+
+	// Update config
+	_, err = h.deps.DB.Exec(ctx,
+		`INSERT INTO config (key, value) VALUES ('meili_reindex_version', '2')
+		 ON CONFLICT (key) DO UPDATE SET value = '2'`)
+	if err != nil {
+		log.Printf("reindex: failed to update config: %v", err)
+		return
+	}
+
+	log.Printf("reindex complete: %d documents indexed with object_type", indexed)
 }

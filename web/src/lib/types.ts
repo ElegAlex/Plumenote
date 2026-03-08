@@ -71,3 +71,48 @@ export interface FlagReviewResponse {
   status: string
   needs_review: boolean
 }
+
+// === Import ===
+export interface ImportResult {
+  success: boolean
+  document?: { id: string; title: string; slug: string }
+  error?: string
+}
+
+export interface BatchImportResult {
+  filename: string
+  status: 'ok' | 'error'
+  document?: { id: string; title: string; slug: string }
+  error?: string
+}
+
+export interface BatchImportResponse {
+  total: number
+  success: number
+  failed: number
+  results: BatchImportResult[]
+}
+
+// === Bookmark ===
+export interface Bookmark {
+  id: string
+  title: string
+  url: string
+  description: string
+  domain_id: string
+  domain_name: string
+  domain_color: string
+  author_id: string
+  author_name: string
+  tags: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface BookmarkCreatePayload {
+  title: string
+  url: string
+  description?: string
+  domain_id: string
+  tags?: string[]
+}

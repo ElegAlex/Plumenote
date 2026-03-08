@@ -96,6 +96,10 @@ export default function Shell() {
               <span style={{ opacity: 0.4 }}>·</span>
               <span style={{ cursor: "pointer" }} onClick={() => navigate("/documents/new")}>+ Nouvelle page</span>
               <span style={{ opacity: 0.4 }}>·</span>
+              <span style={{ cursor: "pointer" }} onClick={() => navigate("/import")}>Importer</span>
+              <span style={{ opacity: 0.4 }}>·</span>
+              <span style={{ cursor: "pointer" }} onClick={() => navigate("/bookmarks/new")}>Ajouter un lien</span>
+              <span style={{ opacity: 0.4 }}>·</span>
               <span style={{ cursor: "pointer" }} onClick={logout}>Déconnexion</span>
             </>
           ) : (

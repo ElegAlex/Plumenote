@@ -11,8 +11,10 @@ import (
 	"github.com/alexmusic/plumenote/internal/admin"
 	"github.com/alexmusic/plumenote/internal/analytics"
 	"github.com/alexmusic/plumenote/internal/auth"
+	"github.com/alexmusic/plumenote/internal/bookmark"
 	"github.com/alexmusic/plumenote/internal/document"
 	"github.com/alexmusic/plumenote/internal/feed"
+	"github.com/alexmusic/plumenote/internal/importer"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/alexmusic/plumenote/internal/search"
 	"github.com/go-chi/chi/v5"
@@ -207,10 +209,19 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 	// API sub-routers
 	r.Mount("/api/auth", auth.Router(deps))
 	r.Mount("/api/documents", document.Router(deps))
+	r.Mount("/api/bookmarks", bookmark.Router(deps))
 	r.Mount("/api/search", search.Router(deps))
 	r.Mount("/api/admin", admin.Router(deps))
 	r.Mount("/api/analytics", analytics.Router(deps))
 	r.Mount("/api", feed.Router(deps))
+
+	// Import routes (requires auth)
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAuth(deps.JWTSecret))
+		wh := importer.NewWebHandler(deps)
+		r.Post("/api/import", wh.HandleImport)
+		r.Post("/api/import/batch", wh.HandleImportBatch)
+	})
 
 	// Alias: /api/tags -> /api/documents/tags (frontend expects /api/tags)
 	docRouter := document.Router(deps)

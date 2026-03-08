@@ -13,6 +13,8 @@ const EditorPage = lazy(() => import('@/features/editor'))
 const AdminPage = lazy(() => import('@/features/admin'))
 const ProfilePage = lazy(() => import('@/features/profile'))
 const DomainPage = lazy(() => import('@/features/home/DomainPage'))
+const ImportPage = lazy(() => import('@/features/import'))
+const BookmarkNewPage = lazy(() => import('@/features/bookmark'))
 
 function Loading() {
   return (
@@ -40,6 +42,8 @@ export default function App() {
           <Route element={<RouteGuard />}>
             <Route path="/documents/:slug/edit" element={<EditorPage />} />
             <Route path="/documents/new" element={<EditorPage />} />
+            <Route path="/import" element={<ImportPage />} />
+            <Route path="/bookmarks/new" element={<BookmarkNewPage />} />
             <Route path="/admin/*" element={<AdminPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

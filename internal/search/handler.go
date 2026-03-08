@@ -20,7 +20,11 @@ type searchResult struct {
 	ID                string   `json:"id"`
 	Title             string   `json:"title"`
 	BodyTextHighlight string   `json:"body_text_highlight"`
+	ObjectType        string   `json:"object_type"`
+	URL               string   `json:"url,omitempty"`
 	DomainID          string   `json:"domain_id"`
+	DomainName        string   `json:"domain_name,omitempty"`
+	DomainColor       string   `json:"domain_color,omitempty"`
 	TypeID            string   `json:"type_id"`
 	Visibility        string   `json:"visibility"`
 	Tags              []string `json:"tags"`
@@ -98,11 +102,14 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 			decodedHits = append(decodedHits, m)
 		}
 
-		// Collect document IDs for batch freshness lookup
+		// Collect document IDs for batch freshness lookup (skip bookmarks)
 		docIDs := make([]string, 0, len(decodedHits))
 		for _, m := range decodedHits {
 			if id, ok := m["id"].(string); ok {
-				docIDs = append(docIDs, id)
+				objType := getString(m, "object_type")
+				if objType != "bookmark" {
+					docIDs = append(docIDs, id)
+				}
 			}
 		}
 
@@ -117,6 +124,8 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 			sr := searchResult{
 				ID:         getString(m, "id"),
 				Title:      getString(formatted, "title"),
+				ObjectType: getString(m, "object_type"),
+				URL:        getString(m, "url"),
 				DomainID:   getString(m, "domain_id"),
 				TypeID:     getString(m, "type_id"),
 				Visibility: getString(m, "visibility"),
@@ -143,7 +152,9 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 				sr.Tags = []string{}
 			}
 
-			sr.FreshnessBadge = freshnessMap[sr.ID]
+			if sr.ObjectType != "bookmark" {
+				sr.FreshnessBadge = freshnessMap[sr.ID]
+			}
 			results = append(results, sr)
 		}
 
