@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
@@ -19,7 +19,6 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
   const [recentDocs, setRecentDocs] = useState<Doc[]>([]);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLoaded(true); }, []);
 
@@ -27,34 +26,11 @@ export default function HomePage() {
     api.get<Doc[]>("/documents?limit=20&sort=recent").then(setRecentDocs).catch(() => {});
   }, []);
 
-  // Focus search with "/" shortcut
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement !== searchRef.current && !["INPUT", "TEXTAREA"].includes((document.activeElement as HTMLElement)?.tagName)) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 58px)", fontFamily: "'IBM Plex Mono', monospace", color: "#1C1C1C" }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .hp-search-bar {
-          display: flex; align-items: stretch;
-          border-bottom: 1px solid rgba(28,28,28,0.1);
-          background: #F7F6F3; height: 50px;
-        }
-        .hp-search-icon { width: 50px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(28,28,28,0.06); color: rgba(28,28,28,0.45); font-size: 15px; }
-        .hp-search-input { flex: 1; border: none; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; color: #1C1C1C; padding: 0 20px; outline: none; }
-        .hp-search-input::placeholder { color: rgba(28,28,28,0.45); }
-        .hp-search-meta { display: flex; align-items: center; padding: 0 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(28,28,28,0.5); border-left: 1px solid rgba(28,28,28,0.05); }
-        .hp-search-meta kbd { border: 1.5px solid rgba(28,28,28,0.12); padding: 1px 6px; font-size: 10px; margin-left: 4px; border-radius: 2px; }
 
         .hp-section-title {
           font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; font-weight: 700;
@@ -90,22 +66,6 @@ export default function HomePage() {
           .hp-doc-domain-label { display: none; }
         }
       `}</style>
-
-      {/* Search bar */}
-      <div className="hp-search-bar" style={{ animation: loaded ? "fadeIn 0.35s ease-out 0.04s both" : "none" }}>
-        <div className="hp-search-icon">{"\u2315"}</div>
-        <input
-          ref={searchRef}
-          className="hp-search-input"
-          readOnly
-          onClick={() => {
-            // Trigger Ctrl+K search modal via keyboard event
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
-          }}
-          placeholder="Rechercher dans la documentation DSI..."
-        />
-        <div className="hp-search-meta">Raccourci <kbd>/</kbd></div>
-      </div>
 
       {/* Feed + Review panels */}
       {isAuthenticated && (
