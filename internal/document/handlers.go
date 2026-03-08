@@ -1062,7 +1062,7 @@ func (h *handler) configureMeiliIndex() {
 	}
 	idx := h.deps.Meili.Index(meiliIndex)
 	_, _ = idx.UpdateFilterableAttributes(&[]interface{}{"domain_id", "type_id", "visibility", "needs_review", "object_type"})
-	_, _ = idx.UpdateSearchableAttributes(&[]string{"title", "body_text", "tags", "url"})
+	_, _ = idx.UpdateSearchableAttributes(&[]string{"title", "body_text", "tags", "url", "entity_type_name"})
 	_, _ = idx.UpdateSortableAttributes(&[]string{"created_at", "updated_at", "view_count"})
 
 	// Re-index existing documents with object_type if needed

@@ -217,8 +217,9 @@ type createDomainRequest struct {
 
 // validFeatures is the whitelist of allowed feature values.
 var validFeatures = map[string]bool{
-	"documents":    true,
-	"cartography":  true,
+	"documents":   true,
+	"entities":    true,
+	"cartography": true,
 }
 
 // filterFeatures keeps only whitelisted values, ensuring "documents" is always present.
@@ -375,6 +376,15 @@ func handleDeleteDomain(pool *pgxpool.Pool) http.HandlerFunc {
 		if docCount > 0 {
 			httputil.WriteJSON(w, http.StatusConflict, map[string]string{
 				"error": "cannot delete domain: " + strconv.Itoa(docCount) + " document(s) still exist in this domain",
+			})
+			return
+		}
+
+		var entityCount int
+		_ = pool.QueryRow(r.Context(), `SELECT count(*) FROM entities WHERE domain_id = $1`, id).Scan(&entityCount)
+		if entityCount > 0 {
+			httputil.WriteJSON(w, http.StatusConflict, map[string]string{
+				"error": "cannot delete domain: " + strconv.Itoa(entityCount) + " entity(ies) still exist in this domain",
 			})
 			return
 		}
@@ -696,5 +706,231 @@ func handlePutTicketURL(pool *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		httputil.WriteJSON(w, http.StatusOK, req)
+	}
+}
+
+// --- Entity Types (admin CRUD) ---
+
+func handleCreateEntityType(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name   string          `json:"name"`
+			Icon   string          `json:"icon"`
+			Schema json.RawMessage `json:"schema"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if req.Name == "" {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+		if req.Icon == "" {
+			req.Icon = "📋"
+		}
+		if req.Schema == nil {
+			req.Schema = json.RawMessage(`[]`)
+		}
+
+		slug := httputil.GenerateSlug(req.Name)
+
+		var et struct {
+			ID        string          `json:"id"`
+			Name      string          `json:"name"`
+			Slug      string          `json:"slug"`
+			Icon      string          `json:"icon"`
+			Schema    json.RawMessage `json:"schema"`
+			CreatedAt string          `json:"created_at"`
+		}
+		var createdAt time.Time
+		err := pool.QueryRow(r.Context(),
+			`INSERT INTO entity_types (name, slug, icon, schema)
+			 VALUES ($1, $2, $3, $4)
+			 RETURNING id, name, slug, icon, schema, created_at`,
+			req.Name, slug, req.Icon, req.Schema,
+		).Scan(&et.ID, &et.Name, &et.Slug, &et.Icon, &et.Schema, &createdAt)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create entity type"})
+			return
+		}
+		et.CreatedAt = timeStr(createdAt)
+
+		httputil.WriteJSON(w, http.StatusCreated, et)
+	}
+}
+
+func handleUpdateEntityType(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+
+		var req struct {
+			Name   string          `json:"name"`
+			Icon   string          `json:"icon"`
+			Schema json.RawMessage `json:"schema"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if req.Name == "" {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+
+		slug := httputil.GenerateSlug(req.Name)
+
+		var et struct {
+			ID        string          `json:"id"`
+			Name      string          `json:"name"`
+			Slug      string          `json:"slug"`
+			Icon      string          `json:"icon"`
+			Schema    json.RawMessage `json:"schema"`
+			CreatedAt string          `json:"created_at"`
+		}
+		var createdAt time.Time
+		err := pool.QueryRow(r.Context(),
+			`UPDATE entity_types SET name = $2, slug = $3, icon = $4, schema = $5
+			 WHERE id = $1
+			 RETURNING id, name, slug, icon, schema, created_at`,
+			id, req.Name, slug, req.Icon, req.Schema,
+		).Scan(&et.ID, &et.Name, &et.Slug, &et.Icon, &et.Schema, &createdAt)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "entity type not found"})
+			return
+		}
+		et.CreatedAt = timeStr(createdAt)
+
+		httputil.WriteJSON(w, http.StatusOK, et)
+	}
+}
+
+func handleDeleteEntityType(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+
+		var count int
+		err := pool.QueryRow(r.Context(),
+			"SELECT count(*) FROM entities WHERE entity_type_id = $1", id).Scan(&count)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to check entity type usage"})
+			return
+		}
+		if count > 0 {
+			httputil.WriteJSON(w, http.StatusConflict, map[string]string{
+				"error": "cannot delete entity type: " + strconv.Itoa(count) + " entity(ies) still use this type",
+			})
+			return
+		}
+
+		tag, err := pool.Exec(r.Context(), "DELETE FROM entity_types WHERE id = $1", id)
+		if err != nil || tag.RowsAffected() == 0 {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "entity type not found"})
+			return
+		}
+
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "entity type deleted"})
+	}
+}
+
+// --- Relation Types (admin CRUD) ---
+
+func handleCreateRelationType(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name        string `json:"name"`
+			Slug        string `json:"slug"`
+			InverseName string `json:"inverse_name"`
+			InverseSlug string `json:"inverse_slug"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if req.Name == "" || req.Slug == "" || req.InverseName == "" || req.InverseSlug == "" {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "name, slug, inverse_name and inverse_slug are required"})
+			return
+		}
+
+		var rt struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Slug        string `json:"slug"`
+			InverseName string `json:"inverse_name"`
+			InverseSlug string `json:"inverse_slug"`
+			CreatedAt   string `json:"created_at"`
+		}
+		var createdAt time.Time
+		err := pool.QueryRow(r.Context(),
+			`INSERT INTO relation_types (name, slug, inverse_name, inverse_slug)
+			 VALUES ($1, $2, $3, $4)
+			 RETURNING id, name, slug, inverse_name, inverse_slug, created_at`,
+			req.Name, req.Slug, req.InverseName, req.InverseSlug,
+		).Scan(&rt.ID, &rt.Name, &rt.Slug, &rt.InverseName, &rt.InverseSlug, &createdAt)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusConflict, map[string]string{"error": "slug already exists"})
+			return
+		}
+		rt.CreatedAt = timeStr(createdAt)
+
+		httputil.WriteJSON(w, http.StatusCreated, rt)
+	}
+}
+
+func handleDeleteRelationType(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+
+		var count int
+		err := pool.QueryRow(r.Context(),
+			"SELECT count(*) FROM entity_relations WHERE relation_type_id = $1", id).Scan(&count)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to check relation type usage"})
+			return
+		}
+		if count > 0 {
+			httputil.WriteJSON(w, http.StatusConflict, map[string]string{
+				"error": "cannot delete relation type: " + strconv.Itoa(count) + " relation(s) still use this type",
+			})
+			return
+		}
+
+		tag, err := pool.Exec(r.Context(), "DELETE FROM relation_types WHERE id = $1", id)
+		if err != nil || tag.RowsAffected() == 0 {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "relation type not found"})
+			return
+		}
+
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "relation type deleted"})
+	}
+}
+
+// --- Config: entity label ---
+
+func handlePutEntityLabel(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Label string `json:"label"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if req.Label == "" {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "label is required"})
+			return
+		}
+
+		_, err := pool.Exec(r.Context(),
+			`INSERT INTO config (key, value, updated_at) VALUES ('entity_label', $1, now())
+			 ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+			req.Label,
+		)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save entity_label"})
+			return
+		}
+
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{"label": req.Label})
 	}
 }

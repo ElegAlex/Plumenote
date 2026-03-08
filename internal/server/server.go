@@ -12,10 +12,13 @@ import (
 	"github.com/alexmusic/plumenote/internal/analytics"
 	"github.com/alexmusic/plumenote/internal/auth"
 	"github.com/alexmusic/plumenote/internal/bookmark"
+	"github.com/alexmusic/plumenote/internal/cartography"
 	"github.com/alexmusic/plumenote/internal/document"
+	"github.com/alexmusic/plumenote/internal/entity"
 	"github.com/alexmusic/plumenote/internal/feed"
 	"github.com/alexmusic/plumenote/internal/importer"
 	"github.com/alexmusic/plumenote/internal/model"
+	"github.com/alexmusic/plumenote/internal/relation"
 	"github.com/alexmusic/plumenote/internal/search"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -51,6 +54,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		rows, err := deps.DB.Query(r.Context(),
 			`SELECT d.id, d.name, d.slug, d.color, d.icon, d.sort_order,
 			        COALESCE((SELECT count(*) FROM documents WHERE domain_id = d.id), 0) AS doc_count,
+			        COALESCE((SELECT count(*) FROM entities WHERE domain_id = d.id), 0) AS entity_count,
 			        d.features_enabled,
 			        d.created_at, d.updated_at
 			 FROM domains d ORDER BY d.sort_order, d.name`)
@@ -70,6 +74,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 			Icon            string   `json:"icon"`
 			SortOrder       int      `json:"sort_order"`
 			DocCount        int      `json:"doc_count"`
+			EntityCount     int      `json:"entity_count"`
 			FeaturesEnabled []string `json:"features_enabled"`
 			CreatedAt       string   `json:"created_at"`
 			UpdatedAt       string   `json:"updated_at"`
@@ -78,7 +83,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		for rows.Next() {
 			var d domainRow
 			var createdAt, updatedAt time.Time
-			if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &d.FeaturesEnabled, &createdAt, &updatedAt); err != nil {
+			if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Color, &d.Icon, &d.SortOrder, &d.DocCount, &d.EntityCount, &d.FeaturesEnabled, &createdAt, &updatedAt); err != nil {
 				continue
 			}
 			d.CreatedAt = createdAt.Format(time.RFC3339)
@@ -104,6 +109,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {
 		type statsResp struct {
 			Documents     int `json:"documents"`
+			Entities      int `json:"entities"`
 			SearchesMonth int `json:"searches_month"`
 			Contributors  int `json:"contributors"`
 			UpdatesMonth  int `json:"updates_month"`
@@ -111,6 +117,8 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		var s statsResp
 		_ = deps.DB.QueryRow(r.Context(),
 			"SELECT COUNT(*) FROM documents").Scan(&s.Documents)
+		_ = deps.DB.QueryRow(r.Context(),
+			"SELECT COUNT(*) FROM entities").Scan(&s.Entities)
 		_ = deps.DB.QueryRow(r.Context(),
 			"SELECT COUNT(*) FROM search_log WHERE created_at >= date_trunc('month', CURRENT_DATE)").Scan(&s.SearchesMonth)
 		_ = deps.DB.QueryRow(r.Context(),
@@ -216,6 +224,19 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 	r.Mount("/api/admin", admin.Router(deps))
 	r.Mount("/api/analytics", analytics.Router(deps))
 	r.Mount("/api", feed.Router(deps))
+	r.Mount("/api/entities", entity.Router(deps))
+	r.Mount("/api/entity-relations", relation.Router(deps))
+	r.Mount("/api/cartography", cartography.Router(deps))
+
+	// Aliases: /api/entity-types and /api/relation-types
+	r.Group(func(r chi.Router) {
+		r.Use(auth.OptionalAuth(deps.JWTSecret))
+		eh := entity.NewHandler(deps)
+		r.Get("/api/entity-types", eh.ListEntityTypes)
+		r.Get("/api/entity-types/{id}", eh.GetEntityType)
+		rh := relation.NewHandler(deps)
+		r.Get("/api/relation-types", rh.ListRelationTypes)
+	})
 
 	// Import routes (requires auth)
 	r.Group(func(r chi.Router) {

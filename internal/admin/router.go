@@ -41,6 +41,16 @@ func Router(deps *model.Deps) chi.Router {
 	r.Put("/config/freshness", handlePutFreshness(pool))
 	r.Get("/config/ticket-url", handleGetTicketURL(pool))
 	r.Put("/config/ticket-url", handlePutTicketURL(pool))
+	r.Put("/config/entity-label", handlePutEntityLabel(pool))
+
+	// Entity Types (admin CRUD)
+	r.Post("/entity-types", handleCreateEntityType(pool))
+	r.Put("/entity-types/{id}", handleUpdateEntityType(pool))
+	r.Delete("/entity-types/{id}", handleDeleteEntityType(pool))
+
+	// Relation Types (admin CRUD)
+	r.Post("/relation-types", handleCreateRelationType(pool))
+	r.Delete("/relation-types/{id}", handleDeleteRelationType(pool))
 
 	return r
 }

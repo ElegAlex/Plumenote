@@ -31,6 +31,8 @@ type searchResult struct {
 	AuthorName        string   `json:"author_name"`
 	ViewCount         int      `json:"view_count"`
 	FreshnessBadge    string   `json:"freshness_badge"`
+	EntityTypeName    string   `json:"entity_type_name,omitempty"`
+	EntityTypeIcon    string   `json:"entity_type_icon,omitempty"`
 	CreatedAt         string   `json:"created_at"`
 }
 
@@ -107,7 +109,7 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 		for _, m := range decodedHits {
 			if id, ok := m["id"].(string); ok {
 				objType := getString(m, "object_type")
-				if objType != "bookmark" {
+				if objType != "bookmark" && objType != "entity" {
 					docIDs = append(docIDs, id)
 				}
 			}
@@ -152,7 +154,12 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 				sr.Tags = []string{}
 			}
 
-			if sr.ObjectType != "bookmark" {
+			if sr.ObjectType == "entity" {
+				sr.EntityTypeName = getString(m, "entity_type_name")
+				sr.EntityTypeIcon = getString(m, "entity_type_icon")
+			}
+
+			if sr.ObjectType != "bookmark" && sr.ObjectType != "entity" {
 				sr.FreshnessBadge = freshnessMap[sr.ID]
 			}
 			results = append(results, sr)
