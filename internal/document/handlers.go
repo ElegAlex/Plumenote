@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,8 @@ const (
 	maxUploadSize      = 10 << 20 // 10 MB
 	meiliIndex         = "documents"
 )
+
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 var allowedMimeTypes = map[string]bool{
 	"image/png":  true,
@@ -187,6 +190,22 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	domainID := q.Get("domain_id")
+	if domainID == "" {
+		if domainSlug := q.Get("domain"); domainSlug != "" {
+			if uuidRegex.MatchString(domainSlug) {
+				domainID = domainSlug
+			} else {
+				var resolvedID string
+				err := h.deps.DB.QueryRow(r.Context(),
+					"SELECT id FROM domains WHERE slug = $1", domainSlug).Scan(&resolvedID)
+				if err != nil {
+					writeJSON(w, http.StatusOK, []struct{}{})
+					return
+				}
+				domainID = resolvedID
+			}
+		}
+	}
 	typeID := q.Get("type_id")
 	sort := q.Get("sort")
 	limit, _ := strconv.Atoi(q.Get("limit"))
