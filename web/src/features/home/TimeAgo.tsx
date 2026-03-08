@@ -18,7 +18,7 @@ export default function TimeAgo({ date }: Props) {
   else text = new Date(date).toLocaleDateString('fr-FR')
 
   return (
-    <time dateTime={date} title={new Date(date).toLocaleString('fr-FR')} className="text-sm text-ink-45">
+    <time dateTime={date} title={new Date(date).toLocaleString('fr-FR')} className="text-ink-45" style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 10 }}>
       {text}
     </time>
   )
