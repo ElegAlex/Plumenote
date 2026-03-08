@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { useEntities, useEntityLabel } from '@/lib/hooks'
 import FreshnessBadge from './FreshnessBadge'
 import TimeAgo from './TimeAgo'
 import BookmarkList from '@/features/bookmark/BookmarkList'
 import BookmarkForm from '@/features/bookmark/BookmarkForm'
+import CartographyView from '@/features/entity/CartographyView'
 
 interface Domain {
   id: string
@@ -33,8 +35,11 @@ export default function DomainPage() {
   const [domain, setDomain] = useState<Domain | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'documents' | 'cartography'>('documents')
+  const [activeTab, setActiveTab] = useState<'documents' | 'entities' | 'cartography'>('documents')
   const [showBookmarkForm, setShowBookmarkForm] = useState(false)
+  const { data: entityLabelConfig } = useEntityLabel()
+  const entityLabel = entityLabelConfig?.label ?? 'Fiche'
+  const { data: entities } = useEntities({ domainId: domain?.id })
 
   useEffect(() => {
     if (!slug) return
@@ -59,6 +64,8 @@ export default function DomainPage() {
   }
 
   const hasCartography = domain.features_enabled?.includes('cartography')
+  const hasEntities = domain.features_enabled?.includes('entities') || domain.features_enabled?.includes('cartography')
+  const hasMultipleTabs = hasEntities || hasCartography
 
   return (
     <div className="space-y-6">
@@ -69,7 +76,7 @@ export default function DomainPage() {
       </div>
 
       {/* Onglets si plusieurs features */}
-      {hasCartography && (
+      {hasMultipleTabs && (
         <div className="flex border-b border-ink-10">
           <button
             onClick={() => setActiveTab('documents')}
@@ -81,16 +88,30 @@ export default function DomainPage() {
           >
             Documents
           </button>
-          <button
-            onClick={() => setActiveTab('cartography')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'cartography'
-                ? 'border-blue text-blue'
-                : 'border-transparent text-ink-45 hover:text-ink'
-            }`}
-          >
-            Cartographie
-          </button>
+          {hasEntities && (
+            <button
+              onClick={() => setActiveTab('entities')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'entities'
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-ink-45 hover:text-ink'
+              }`}
+            >
+              {entityLabel}s
+            </button>
+          )}
+          {hasCartography && (
+            <button
+              onClick={() => setActiveTab('cartography')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'cartography'
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-ink-45 hover:text-ink'
+              }`}
+            >
+              Cartographie
+            </button>
+          )}
         </div>
       )}
 
@@ -154,14 +175,44 @@ export default function DomainPage() {
         </>
       )}
 
+      {activeTab === 'entities' && hasEntities && (
+        <>
+          {(!entities || entities.length === 0) ? (
+            <div className="bg-bg border border-ink-10 rounded-lg shadow-sm p-8 text-center">
+              <p className="text-ink-45 mb-4">Aucune {entityLabel.toLowerCase()} dans ce domaine.</p>
+              {isAuthenticated && (
+                <Link
+                  to="/entities/new"
+                  className="inline-flex items-center px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90 transition-colors"
+                >
+                  + {entityLabel}
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {entities.map((entity) => (
+                <Link
+                  key={entity.id}
+                  to={`/entities/${entity.id}`}
+                  className="flex items-center justify-between bg-bg border border-ink-10 rounded-lg shadow-sm hover:shadow-md transition-shadow px-4 py-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-lg">{entity.entity_type_icon}</span>
+                    <span className="text-sm font-medium text-ink truncate">{entity.name}</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-ink-05 rounded text-ink-45">{entity.entity_type_name}</span>
+                  </div>
+                  <span className="text-xs text-ink-45 flex-shrink-0">{entity.author_name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {activeTab === 'cartography' && hasCartography && (
-        <div className="bg-bg border border-ink-10 rounded-lg shadow-sm p-12 text-center">
-          <div className="text-4xl mb-4 opacity-30">&#x1f5fa;&#xfe0f;</div>
-          <h3 className="text-lg font-semibold text-ink mb-2">Cartographie</h3>
-          <p className="text-sm text-ink-45 max-w-md mx-auto">
-            La cartographie de ce domaine est en cours de conception.
-            Cette feature permettra de visualiser les relations entre les entites de {domain.name}.
-          </p>
+        <div className="border border-ink-10 rounded-lg shadow-sm overflow-hidden" style={{ height: 500 }}>
+          <CartographyView domainId={domain.id} onNodeClick={(id) => window.location.assign(`/entities/${id}`)} />
         </div>
       )}
     </div>

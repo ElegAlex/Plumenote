@@ -6,8 +6,8 @@ import { useStatsHealth } from "@/lib/hooks/useStatsHealth";
 import FeedPanel from "./FeedPanel";
 import ReviewPanel from "./ReviewPanel";
 
-interface Domain { id: string; name: string; slug: string; color: string; doc_count: number; features_enabled: string[] }
-interface Stats { documents: number; searches_month: number; contributors: number; updates_month: number }
+interface Domain { id: string; name: string; slug: string; color: string; doc_count: number; entity_count: number; features_enabled: string[] }
+interface Stats { documents: number; entities: number; searches_month: number; contributors: number; updates_month: number }
 interface Doc {
   id: string; title: string; slug: string; tags?: string[];
   domain_id: string; domain_name: string; domain_color: string;
@@ -59,7 +59,7 @@ export default function HomePage() {
   }, []);
 
   const services = useMemo(() => domains.map(d => ({
-    code: d.id, label: d.name, color: d.color, count: d.doc_count, features: d.features_enabled || ['documents'],
+    code: d.id, label: d.name, color: d.color, count: d.doc_count, entityCount: d.entity_count || 0, features: d.features_enabled || ['documents'],
   })), [domains]);
 
   const filtered = useMemo(() => {
@@ -75,9 +75,9 @@ export default function HomePage() {
 
   const statsData = [
     { label: "Documents", value: stats?.documents ?? 0, trend: stats ? `+${stats.updates_month}` : undefined },
+    { label: "Fiches", value: stats?.entities ?? 0 },
     { label: "Recherches / mois", value: stats?.searches_month ?? 0 },
     { label: "Contributeurs", value: stats?.contributors ?? 0 },
-    { label: "Mises à jour", value: stats?.updates_month ?? 0, trend: "mars" },
   ];
 
   const fmt = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -271,7 +271,7 @@ export default function HomePage() {
                   {s.features.includes('cartography') && ' \u{1F5FA}\u{FE0F}'}
                 </span>
               </div>
-              <span className="svc-n">{s.count}</span>
+              <span className="svc-n">{s.count}{s.entityCount ? ` + ${s.entityCount}` : ''}</span>
             </div>
           ))}
           {health && (
