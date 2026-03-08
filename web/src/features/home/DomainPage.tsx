@@ -131,6 +131,10 @@ export default function DomainPage() {
           font-family: 'IBM Plex Mono', monospace; font-size: 10px;
           color: rgba(28,28,28,0.4); white-space: nowrap;
         }
+        .dp-doc-row time {
+          font-family: 'IBM Plex Sans', sans-serif; font-size: 10px;
+          color: rgba(28,28,28,0.45); white-space: nowrap;
+        }
         .dp-entity-row {
           display: flex; align-items: center; gap: 12px;
           padding: 12px 24px;

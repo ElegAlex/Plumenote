@@ -60,6 +60,10 @@ export default function HomePage() {
           font-family: 'IBM Plex Mono', monospace; font-size: 10px;
           color: rgba(28,28,28,0.5); flex-shrink: 0;
         }
+        .hp-doc-row time {
+          font-family: 'IBM Plex Sans', sans-serif; font-size: 10px;
+          color: rgba(28,28,28,0.45); white-space: nowrap;
+        }
 
         @media (max-width: 900px) {
           .hp-panels-grid { grid-template-columns: 1fr !important; }
