@@ -258,8 +258,14 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		r.Post("/api/import/batch", wh.HandleImportBatch)
 		r.Post("/api/import/analyze-zip", wh.HandleAnalyzeZip)
 		r.Post("/api/import/folder", wh.HandleFolderImport)
-		r.Get("/api/import/folder/progress/{jobId}", wh.HandleImportProgress)
 	})
+
+	// SSE progress — outside RequireAuth because EventSource cannot send headers.
+	// Auth is handled inside the handler via query param token.
+	{
+		wh := importer.NewWebHandler(deps)
+		r.Get("/api/import/folder/progress/{jobId}", wh.HandleImportProgress)
+	}
 
 	// Alias: /api/tags -> /api/documents/tags (frontend expects /api/tags)
 	docRouter := document.Router(deps)
