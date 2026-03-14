@@ -14,10 +14,11 @@ import (
 	"github.com/alexmusic/plumenote/internal/bookmark"
 	"github.com/alexmusic/plumenote/internal/cartography"
 	"github.com/alexmusic/plumenote/internal/document"
-	"github.com/alexmusic/plumenote/internal/mindmap"
 	"github.com/alexmusic/plumenote/internal/entity"
 	"github.com/alexmusic/plumenote/internal/feed"
+	"github.com/alexmusic/plumenote/internal/folder"
 	"github.com/alexmusic/plumenote/internal/importer"
+	"github.com/alexmusic/plumenote/internal/mindmap"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/alexmusic/plumenote/internal/relation"
 	"github.com/alexmusic/plumenote/internal/search"
@@ -229,6 +230,8 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 	r.Mount("/api/entity-relations", relation.Router(deps))
 	r.Mount("/api/cartography", cartography.Router(deps))
 	r.Mount("/api/mindmap", mindmap.Router(deps))
+	r.Mount("/api/folders", folder.Router(deps))
+	r.Mount("/api/domains/{domainId}/folders", folder.DomainFoldersRouter(deps))
 
 	// Aliases: /api/entity-types and /api/relation-types
 	r.Group(func(r chi.Router) {
