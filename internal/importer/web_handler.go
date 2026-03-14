@@ -72,10 +72,6 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 	}
 	typeID := r.FormValue("type_id")
 	folderID := r.FormValue("folder_id")
-	if folderID == "" {
-		// Find or create default "General" folder for this domain
-		folderID = wh.getDefaultFolderID(r.Context(), domainID, authorID)
-	}
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !isSupportedExtension(ext) {
@@ -125,13 +121,17 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insert document
+	// Insert document (folder_id may be NULL when folderID is empty)
+	var folderIDParam any
+	if folderID != "" {
+		folderIDParam = folderID
+	}
 	var docID string
 	err = wh.deps.DB.QueryRow(r.Context(),
 		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility, folder_id)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi', $8)
 		 RETURNING id`,
-		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderID,
+		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderIDParam,
 	).Scan(&docID)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "error": "failed to insert document"})
@@ -173,9 +173,6 @@ func (wh *WebHandler) HandleImportBatch(w http.ResponseWriter, r *http.Request) 
 	}
 	typeID := r.FormValue("type_id")
 	folderID := r.FormValue("folder_id")
-	if folderID == "" {
-		folderID = wh.getDefaultFolderID(r.Context(), domainID, authorID)
-	}
 
 	files := r.MultipartForm.File["files[]"]
 	if len(files) == 0 {
@@ -262,12 +259,17 @@ func (wh *WebHandler) processOneFile(ctx context.Context, fh *multipart.FileHead
 		return importResult{Filename: filename, Status: "error", Error: "failed to generate unique slug"}
 	}
 
+	// folder_id may be NULL when folderID is empty
+	var folderIDParam any
+	if folderID != "" {
+		folderIDParam = folderID
+	}
 	var docID string
 	err = wh.deps.DB.QueryRow(ctx,
 		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility, folder_id)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi', $8)
 		 RETURNING id`,
-		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderID,
+		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderIDParam,
 	).Scan(&docID)
 	if err != nil {
 		return importResult{Filename: filename, Status: "error", Error: "failed to insert document"}

@@ -130,7 +130,7 @@ func filterNodes(nodes []*folderNode, visible map[string]bool) []*folderNode {
 // filterPublicFolders returns folder IDs that contain at least one public document.
 func filterPublicFolders(ctx context.Context, h *handler, domainID string) (map[string]bool, error) {
 	rows, err := h.deps.DB.Query(ctx,
-		`SELECT DISTINCT folder_id::text FROM documents WHERE domain_id = $1 AND visibility = 'public'`,
+		`SELECT DISTINCT folder_id::text FROM documents WHERE domain_id = $1 AND visibility = 'public' AND folder_id IS NOT NULL`,
 		domainID)
 	if err != nil {
 		return nil, err
