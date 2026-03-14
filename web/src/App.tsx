@@ -9,6 +9,7 @@ const HomePage = lazy(() => import('@/features/home'))
 const PublicHomePage = lazy(() => import('@/features/home/PublicHomePage'))
 const SearchPage = lazy(() => import('@/features/search'))
 const ReaderPage = lazy(() => import('@/features/reader'))
+const DiffPage = lazy(() => import('@/features/reader/DiffPage'))
 const EditorPage = lazy(() => import('@/features/editor'))
 const AdminPage = lazy(() => import('@/features/admin'))
 const ProfilePage = lazy(() => import('@/features/profile'))
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/" element={<HomeRoute />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/documents/:slug" element={<ReaderPage />} />
+          <Route path="/documents/:slug/diff/:v1/:v2" element={<DiffPage />} />
           <Route path="/domains/:slug" element={<DomainPage />} />
           <Route path="/entities/:id" element={<EntityPage />} />
           <Route element={<RouteGuard />}>

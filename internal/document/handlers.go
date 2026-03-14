@@ -44,6 +44,7 @@ var allowedMimeTypes = map[string]bool{
 type SearchDocument struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Slug        string   `json:"slug"`
 	BodyText    string   `json:"body_text"`
 	ObjectType  string   `json:"object_type"`
 	DomainID    string   `json:"domain_id"`
@@ -461,26 +462,6 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch existing doc for permission check
-	var authorID, docDomainID string
-	err := h.deps.DB.QueryRow(r.Context(),
-		"SELECT author_id, domain_id FROM documents WHERE id = $1", docID,
-	).Scan(&authorID, &docDomainID)
-	if err == pgx.ErrNoRows {
-		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
-		return
-	}
-	if err != nil {
-		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get document"})
-		return
-	}
-
-	// RG-003: author OR same domain OR admin
-	if userRole != "admin" && authorID != userID && docDomainID != userDomainID {
-		httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "you can only edit documents in your domain"})
-		return
-	}
-
 	var req struct {
 		Title      string          `json:"title"`
 		Body       json.RawMessage `json:"body"`
@@ -500,11 +481,44 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 
 	bodyText := ExtractBodyText(req.Body)
 	slug := httputil.GenerateSlug(req.Title)
-	slug, err = h.ensureUniqueSlug(r.Context(), slug, docID)
+	slug, err := h.ensureUniqueSlug(r.Context(), slug, docID)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate slug"})
 		return
 	}
+
+	// Begin transaction for atomic snapshot + update
+	tx, err := h.deps.DB.Begin(r.Context())
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to begin transaction"})
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// Lock document row + read current state for permission check AND snapshot
+	var authorID, docDomainID, currentTitle, currentBodyText string
+	var currentBody json.RawMessage
+	err = tx.QueryRow(r.Context(),
+		`SELECT author_id, domain_id, title, body, body_text
+		 FROM documents WHERE id = $1 FOR UPDATE`, docID,
+	).Scan(&authorID, &docDomainID, &currentTitle, &currentBody, &currentBodyText)
+	if err == pgx.ErrNoRows {
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
+		return
+	}
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get document"})
+		return
+	}
+
+	// RG-003: author OR same domain OR admin
+	if userRole != "admin" && authorID != userID && docDomainID != userDomainID {
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "you can only edit documents in your domain"})
+		return
+	}
+
+	// Snapshot current state before update
+	h.snapshotVersion(r.Context(), tx, docID, currentTitle, currentBody, currentBodyText, userID)
 
 	var doc struct {
 		ID        string    `json:"id"`
@@ -512,7 +526,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		Slug      string    `json:"slug"`
 		UpdatedAt time.Time `json:"updated_at"`
 	}
-	err = h.deps.DB.QueryRow(r.Context(),
+	err = tx.QueryRow(r.Context(),
 		`UPDATE documents
 		 SET title = $2, slug = $3, body = $4, body_text = $5, domain_id = $6, type_id = $7, visibility = $8, updated_at = now()
 		 WHERE id = $1
@@ -521,6 +535,11 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.UpdatedAt)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update document"})
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to commit"})
 		return
 	}
 
@@ -533,7 +552,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 	// Re-index Meilisearch async
 	go h.indexDocument(docID)
 
-	httputil.WriteJSON(w,http.StatusOK, doc)
+	httputil.WriteJSON(w, http.StatusOK, doc)
 }
 
 // deleteDocument handles DELETE /api/documents/{id}
@@ -1024,12 +1043,12 @@ func (h *handler) indexDocument(docID string) {
 	var sd SearchDocument
 	var createdAt, updatedAt time.Time
 	err := h.deps.DB.QueryRow(ctx,
-		`SELECT d.id, d.title, d.body_text, d.domain_id, d.type_id, d.visibility,
+		`SELECT d.id, d.title, d.slug, d.body_text, d.domain_id, d.type_id, d.visibility,
 		        d.view_count, d.needs_review, d.created_at, d.updated_at, u.display_name
 		 FROM documents d
 		 JOIN users u ON u.id = d.author_id
 		 WHERE d.id = $1`, docID,
-	).Scan(&sd.ID, &sd.Title, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
+	).Scan(&sd.ID, &sd.Title, &sd.Slug, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
 		&sd.ViewCount, &sd.NeedsReview, &createdAt, &updatedAt, &sd.AuthorName)
 	if err != nil {
 		log.Printf("indexDocument: failed to fetch doc %s: %v", docID, err)
@@ -1084,7 +1103,7 @@ func (h *handler) reindexIfNeeded() {
 	// Check reindex version
 	var version string
 	err := h.deps.DB.QueryRow(ctx, `SELECT value FROM config WHERE key = 'meili_reindex_version'`).Scan(&version)
-	if err == nil && version >= "2" {
+	if err == nil && version >= "3" {
 		return // Already re-indexed
 	}
 
@@ -1097,7 +1116,7 @@ func (h *handler) reindexIfNeeded() {
 
 	// Fetch all documents
 	rows, err := h.deps.DB.Query(ctx,
-		`SELECT d.id, d.title, d.body_text, d.domain_id, d.type_id, d.visibility,
+		`SELECT d.id, d.title, d.slug, d.body_text, d.domain_id, d.type_id, d.visibility,
 		        d.view_count, d.needs_review, d.created_at, d.updated_at, u.display_name
 		 FROM documents d
 		 JOIN users u ON u.id = d.author_id`)
@@ -1112,7 +1131,7 @@ func (h *handler) reindexIfNeeded() {
 	for rows.Next() {
 		var sd SearchDocument
 		var createdAt, updatedAt time.Time
-		if err := rows.Scan(&sd.ID, &sd.Title, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
+		if err := rows.Scan(&sd.ID, &sd.Title, &sd.Slug, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
 			&sd.ViewCount, &sd.NeedsReview, &createdAt, &updatedAt, &sd.AuthorName); err != nil {
 			continue
 		}
@@ -1158,8 +1177,8 @@ func (h *handler) reindexIfNeeded() {
 
 	// Update config
 	_, err = h.deps.DB.Exec(ctx,
-		`INSERT INTO config (key, value) VALUES ('meili_reindex_version', '2')
-		 ON CONFLICT (key) DO UPDATE SET value = '2'`)
+		`INSERT INTO config (key, value) VALUES ('meili_reindex_version', '3')
+		 ON CONFLICT (key) DO UPDATE SET value = '3'`)
 	if err != nil {
 		log.Printf("reindex: failed to update config: %v", err)
 		return

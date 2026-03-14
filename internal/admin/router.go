@@ -43,6 +43,8 @@ func Router(deps *model.Deps) chi.Router {
 	r.Get("/config/ticket-url", handleGetTicketURL(pool))
 	r.Put("/config/ticket-url", handlePutTicketURL(pool))
 	r.Put("/config/entity-label", handlePutEntityLabel(pool))
+	r.Get("/config/max-versions", handleGetMaxVersions(pool))
+	r.Put("/config/max-versions", handlePutMaxVersions(pool))
 
 	// Entity Types (admin CRUD)
 	r.Post("/entity-types", handleCreateEntityType(pool))

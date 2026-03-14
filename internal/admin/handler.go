@@ -1120,3 +1120,50 @@ func handlePutEntityLabel(pool *pgxpool.Pool) http.HandlerFunc {
 		httputil.WriteJSON(w, http.StatusOK, map[string]string{"label": req.Label})
 	}
 }
+
+// --- Max versions config ---
+
+type maxVersionsConfig struct {
+	MaxVersions int `json:"max_versions"`
+}
+
+func handleGetMaxVersions(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var val string
+		err := pool.QueryRow(r.Context(),
+			`SELECT value FROM config WHERE key = 'max_versions_per_document'`).Scan(&val)
+		if err != nil {
+			val = "50"
+		}
+		n, _ := strconv.Atoi(val)
+		if n <= 0 {
+			n = 50
+		}
+		httputil.WriteJSON(w, http.StatusOK, maxVersionsConfig{MaxVersions: n})
+	}
+}
+
+func handlePutMaxVersions(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req maxVersionsConfig
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if req.MaxVersions <= 0 {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "max_versions must be greater than 0"})
+			return
+		}
+
+		_, err := pool.Exec(r.Context(),
+			`INSERT INTO config (key, value, updated_at) VALUES ('max_versions_per_document', $1, now())
+			 ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+			strconv.Itoa(req.MaxVersions))
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save config"})
+			return
+		}
+
+		httputil.WriteJSON(w, http.StatusOK, req)
+	}
+}

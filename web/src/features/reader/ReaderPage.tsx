@@ -8,6 +8,8 @@ import DocumentContent from './DocumentContent'
 import TableOfContents from './TableOfContents'
 import DeleteModal from './DeleteModal'
 import MindMapView from '@/features/mindmap/MindMapView'
+import VersionHistory from './VersionHistory'
+import VersionPreview from './VersionPreview'
 
 interface Tag {
   id: string
@@ -58,6 +60,8 @@ export default function ReaderPage() {
   const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [showMindMap, setShowMindMap] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [previewVersion, setPreviewVersion] = useState<number | null>(null)
 
   const viewStartRef = useRef<number>(Date.now())
 
@@ -222,12 +226,22 @@ export default function ReaderPage() {
             onVerify={handleVerify}
             onDelete={() => setShowDeleteModal(true)}
             onMindMap={user ? () => setShowMindMap(true) : undefined}
+            onHistory={() => setHistoryOpen(true)}
             canEdit={canEdit}
             canVerify={canVerify}
             canDelete={canDelete}
           />
 
-          <DocumentContent content={doc.body} onTocExtracted={handleTocExtracted} />
+          {previewVersion !== null ? (
+            <VersionPreview
+              documentId={doc.id}
+              versionNumber={previewVersion}
+              onClose={() => setPreviewVersion(null)}
+              onRestore={() => { setPreviewVersion(null); window.location.reload() }}
+            />
+          ) : (
+            <DocumentContent content={doc.body} onTocExtracted={handleTocExtracted} />
+          )}
         </div>
 
         {/* Sidebar TOC — 25% */}
@@ -247,6 +261,15 @@ export default function ReaderPage() {
           loading={deleting}
         />
       )}
+
+      {/* Version history side panel */}
+      <VersionHistory
+        documentId={doc.id}
+        documentSlug={slug!}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onSelectVersion={(vn) => { setPreviewVersion(vn); setHistoryOpen(false) }}
+      />
 
       {/* Toast */}
       {toast && (

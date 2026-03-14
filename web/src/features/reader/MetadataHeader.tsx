@@ -24,6 +24,7 @@ interface MetadataHeaderProps {
   onVerify: () => void
   onDelete: () => void
   onMindMap?: () => void
+  onHistory?: () => void
   canEdit: boolean
   canVerify: boolean
   canDelete: boolean
@@ -72,6 +73,7 @@ export default function MetadataHeader({
   onVerify,
   onDelete,
   onMindMap,
+  onHistory,
   canEdit,
   canVerify,
   canDelete,
@@ -132,6 +134,14 @@ export default function MetadataHeader({
       )}
 
       <div className="flex flex-wrap gap-2">
+        {onHistory && (
+          <button
+            onClick={onHistory}
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-ink-05 text-ink-70 rounded-md hover:bg-ink-10 transition-colors"
+          >
+            Historique
+          </button>
+        )}
         {onMindMap && (
           <button
             onClick={onMindMap}

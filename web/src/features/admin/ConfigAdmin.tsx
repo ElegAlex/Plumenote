@@ -44,15 +44,20 @@ export default function ConfigAdmin() {
   const [freshnessSuccess, setFreshnessSuccess] = useState('')
   const [ticketError, setTicketError] = useState('')
   const [ticketSuccess, setTicketSuccess] = useState('')
+  const [maxVersions, setMaxVersions] = useState(50)
+  const [maxVersionsSaving, setMaxVersionsSaving] = useState(false)
+  const [maxVersionsSuccess, setMaxVersionsSuccess] = useState('')
 
   useEffect(() => {
     Promise.all([
       api.get<FreshnessConfig>('/admin/config/freshness'),
       api.get<TicketUrlConfig>('/admin/config/ticket-url'),
+      api.get<{ max_versions: number }>('/admin/config/max-versions'),
     ])
-      .then(([f, t]) => {
+      .then(([f, t, mv]) => {
         setFreshness(f)
         setTicketUrl(t.url)
+        setMaxVersions(mv.max_versions)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -88,6 +93,16 @@ export default function ConfigAdmin() {
     } catch (e) {
       setTicketError(e instanceof ApiError ? e.message : 'Erreur lors de la sauvegarde')
     }
+  }
+
+  async function saveMaxVersions() {
+    setMaxVersionsSaving(true)
+    setMaxVersionsSuccess('')
+    try {
+      await api.put('/admin/config/max-versions', { max_versions: maxVersions })
+      setMaxVersionsSuccess('Retention mise a jour')
+    } catch { /* ignore */ }
+    setMaxVersionsSaving(false)
   }
 
   if (loading) return <p className="text-ink-45">Chargement...</p>
@@ -183,6 +198,33 @@ export default function ConfigAdmin() {
 
           <button onClick={saveTicketUrl} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
             Sauvegarder
+          </button>
+        </div>
+      </section>
+
+      {/* Version retention */}
+      <section>
+        <h2 className="text-lg font-semibold text-ink mb-4">Retention des versions</h2>
+        <div className="bg-bg border border-ink-10 rounded-lg p-6 space-y-4 max-w-lg">
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={1}
+              value={maxVersions}
+              onChange={(e) => setMaxVersions(Number(e.target.value))}
+              className="w-20 border border-ink-10 rounded-md px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
+            />
+            <span className="text-sm text-ink-45">versions max par document</span>
+          </div>
+
+          {maxVersionsSuccess && <p className="text-[#2D8B4E] text-sm">{maxVersionsSuccess}</p>}
+
+          <button
+            onClick={saveMaxVersions}
+            disabled={maxVersionsSaving}
+            className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90 disabled:opacity-50"
+          >
+            {maxVersionsSaving ? '...' : 'Sauvegarder'}
           </button>
         </div>
       </section>

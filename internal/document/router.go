@@ -23,6 +23,9 @@ func Router(deps *model.Deps) chi.Router {
 		r.Get("/{slug}", h.getDocument)
 		r.Get("/{id}/verifications", h.listVerifications)
 		r.Get("/{id}/attachments", h.listAttachments)
+		r.Get("/{id}/versions", h.listVersions)
+		r.Get("/{id}/versions/{versionNumber}", h.getVersion)
+		r.Get("/{id}/versions/{v1}/diff/{v2}", h.diffVersions)
 		r.Get("/tags", h.listTags)
 	})
 
@@ -34,6 +37,7 @@ func Router(deps *model.Deps) chi.Router {
 		r.Delete("/{id}", h.deleteDocument)
 		r.Post("/{id}/verify", h.verifyDocument)
 		r.Post("/{id}/flag-review", h.flagReview)
+		r.Post("/{id}/versions/{versionNumber}/restore", h.restoreVersion)
 		r.Post("/{id}/attachments", h.uploadAttachment)
 		r.Delete("/{id}/attachments/{att_id}", h.deleteAttachment)
 		r.Post("/tags", h.createTag)
