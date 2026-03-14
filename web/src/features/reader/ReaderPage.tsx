@@ -28,6 +28,7 @@ interface Document {
   body: Record<string, unknown>
   domain_id: string
   type_id: string
+  folder_id?: string
   author: Author
   visibility: string
   view_count: number
@@ -62,6 +63,7 @@ export default function ReaderPage() {
   const [showMindMap, setShowMindMap] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [previewVersion, setPreviewVersion] = useState<number | null>(null)
+  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([])
 
   const viewStartRef = useRef<number>(Date.now())
 
@@ -114,6 +116,14 @@ export default function ReaderPage() {
       window.removeEventListener('beforeunload', sendDuration)
     }
   }, [doc])
+
+  // Fetch folder path for breadcrumb
+  useEffect(() => {
+    if (!doc?.folder_id) { setFolderPath([]); return }
+    api.get<{ path: { id: string; name: string }[] }>(`/folders/${doc.folder_id}`)
+      .then((f) => setFolderPath(f.path))
+      .catch(() => {})
+  }, [doc?.folder_id])
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
@@ -205,6 +215,7 @@ export default function ReaderPage() {
         domainName={doc.domain_name}
         domainSlug={doc.domain_slug}
         title={doc.title}
+        folderPath={folderPath}
       />
 
       <div className="flex gap-8">
