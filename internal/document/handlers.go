@@ -16,6 +16,7 @@ import (
 	"log"
 
 	"github.com/alexmusic/plumenote/internal/auth"
+	"github.com/alexmusic/plumenote/internal/folder"
 	"github.com/alexmusic/plumenote/internal/httputil"
 	"github.com/alexmusic/plumenote/internal/model"
 	"github.com/go-chi/chi/v5"
@@ -102,6 +103,7 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		Body       json.RawMessage `json:"body"`
 		DomainID   string          `json:"domain_id"`
 		TypeID     string          `json:"type_id"`
+		FolderID   string          `json:"folder_id"`
 		Tags       []string        `json:"tags"`
 		Visibility string          `json:"visibility"`
 	}
@@ -115,6 +117,10 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.DomainID == "" || req.TypeID == "" {
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "domain_id and type_id are required"})
+		return
+	}
+	if req.FolderID == "" {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "folder_id is required"})
 		return
 	}
 	if req.Visibility == "" {
@@ -131,39 +137,53 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check that the caller has editor+ role on the target folder.
+	authorRole := getUserRole(r.Context())
+	folderRole, err := folder.ResolveUserRole(r.Context(), h.deps.DB, req.FolderID, authorID, authorRole)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to check folder permission"})
+		return
+	}
+	if !folder.RoleAtLeast(folderRole, folder.RoleEditor) {
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "editor permission required on target folder"})
+		return
+	}
+
 	bodyText := ExtractBodyText(req.Body)
 	slug := httputil.GenerateSlug(req.Title)
 
 	// Ensure slug uniqueness
-	slug, err := h.ensureUniqueSlug(r.Context(), slug, "")
-	if err != nil {
+	var slugErr error
+	slug, slugErr = h.ensureUniqueSlug(r.Context(), slug, "")
+	if slugErr != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate slug"})
 		return
 	}
 
 	var doc struct {
-		ID             string     `json:"id"`
-		Title          string     `json:"title"`
-		Slug           string     `json:"slug"`
+		ID             string          `json:"id"`
+		Title          string          `json:"title"`
+		Slug           string          `json:"slug"`
 		Body           json.RawMessage `json:"body"`
-		BodyText       string     `json:"body_text"`
-		DomainID       string     `json:"domain_id"`
-		TypeID         string     `json:"type_id"`
-		AuthorID       string     `json:"author_id"`
-		Visibility     string     `json:"visibility"`
-		ViewCount      int        `json:"view_count"`
-		LastVerifiedAt *time.Time `json:"last_verified_at"`
-		LastVerifiedBy *string    `json:"last_verified_by"`
-		CreatedAt      time.Time  `json:"created_at"`
-		UpdatedAt      time.Time  `json:"updated_at"`
+		BodyText       string          `json:"body_text"`
+		DomainID       string          `json:"domain_id"`
+		TypeID         string          `json:"type_id"`
+		FolderID       string          `json:"folder_id"`
+		AuthorID       string          `json:"author_id"`
+		Visibility     string          `json:"visibility"`
+		ViewCount      int             `json:"view_count"`
+		LastVerifiedAt *time.Time      `json:"last_verified_at"`
+		LastVerifiedBy *string         `json:"last_verified_by"`
+		CreatedAt      time.Time       `json:"created_at"`
+		UpdatedAt      time.Time       `json:"updated_at"`
 	}
 
 	err = h.deps.DB.QueryRow(r.Context(),
-		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		 RETURNING id, title, slug, body, body_text, domain_id, type_id, author_id, visibility, view_count, last_verified_at, last_verified_by, created_at, updated_at`,
-		req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, authorID, req.Visibility,
-	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID, &doc.AuthorID, &doc.Visibility, &doc.ViewCount, &doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.CreatedAt, &doc.UpdatedAt)
+		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, folder_id, author_id, visibility)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		 RETURNING id, title, slug, body, body_text, domain_id, type_id, folder_id, author_id, visibility, view_count, last_verified_at, last_verified_by, created_at, updated_at`,
+		req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, req.FolderID, authorID, req.Visibility,
+	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID, &doc.FolderID, &doc.AuthorID, &doc.Visibility, &doc.ViewCount, &doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.CreatedAt, &doc.UpdatedAt)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create document"})
 		return
@@ -320,6 +340,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		BodyText       string          `json:"body_text"`
 		DomainID       string          `json:"domain_id"`
 		TypeID         string          `json:"type_id"`
+		FolderID       string          `json:"folder_id"`
 		AuthorID       string          `json:"author_id"`
 		AuthorName     string          `json:"author_name"`
 		Visibility     string          `json:"visibility"`
@@ -337,7 +358,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		TypeSlug       *string         `json:"type_slug"`
 	}
 	err := h.deps.DB.QueryRow(r.Context(),
-		`SELECT d.id, d.title, d.slug, d.body, d.body_text, d.domain_id, d.type_id,
+		`SELECT d.id, d.title, d.slug, d.body, d.body_text, d.domain_id, d.type_id, d.folder_id,
 		        d.author_id, u.display_name, d.visibility, d.view_count,
 		        d.last_verified_at, d.last_verified_by, d.needs_review, d.created_at, d.updated_at,
 		        dom.name, dom.slug, dom.color,
@@ -347,7 +368,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		 LEFT JOIN domains dom ON dom.id = d.domain_id
 		 LEFT JOIN document_types dt ON dt.id = d.type_id
 		 WHERE d.slug = $1`, slug,
-	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID,
+	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID, &doc.FolderID,
 		&doc.AuthorID, &doc.AuthorName, &doc.Visibility, &doc.ViewCount,
 		&doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.NeedsReview, &doc.CreatedAt, &doc.UpdatedAt,
 		&doc.DomainName, &doc.DomainSlug, &doc.DomainColor,
@@ -383,6 +404,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		BodyText       string          `json:"body_text"`
 		DomainID       string          `json:"domain_id"`
 		TypeID         string          `json:"type_id"`
+		FolderID       string          `json:"folder_id"`
 		AuthorID       string          `json:"author_id"`
 		Author         struct {
 			ID          string `json:"id"`
@@ -404,7 +426,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt      time.Time  `json:"updated_at"`
 	}{
 		ID: doc.ID, Title: doc.Title, Slug: doc.Slug, Body: doc.Body,
-		BodyText: doc.BodyText, DomainID: doc.DomainID, TypeID: doc.TypeID,
+		BodyText: doc.BodyText, DomainID: doc.DomainID, TypeID: doc.TypeID, FolderID: doc.FolderID,
 		AuthorID: doc.AuthorID,
 		Author: struct {
 			ID          string `json:"id"`
@@ -467,6 +489,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		Body       json.RawMessage `json:"body"`
 		DomainID   string          `json:"domain_id"`
 		TypeID     string          `json:"type_id"`
+		FolderID   string          `json:"folder_id"`
 		Tags       []string        `json:"tags"`
 		Visibility string          `json:"visibility"`
 	}
@@ -496,12 +519,12 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	// Lock document row + read current state for permission check AND snapshot
-	var authorID, docDomainID, currentTitle, currentBodyText string
+	var authorID, docDomainID, currentFolderID, currentTitle, currentBodyText string
 	var currentBody json.RawMessage
 	err = tx.QueryRow(r.Context(),
-		`SELECT author_id, domain_id, title, body, body_text
+		`SELECT author_id, domain_id, folder_id, title, body, body_text
 		 FROM documents WHERE id = $1 FOR UPDATE`, docID,
-	).Scan(&authorID, &docDomainID, &currentTitle, &currentBody, &currentBodyText)
+	).Scan(&authorID, &docDomainID, &currentFolderID, &currentTitle, &currentBody, &currentBodyText)
 	if err == pgx.ErrNoRows {
 		httputil.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "document not found"})
 		return
@@ -517,6 +540,21 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If the caller is moving the document to a different folder, require editor+ on the destination.
+	targetFolderID := currentFolderID
+	if req.FolderID != "" && req.FolderID != currentFolderID {
+		destRole, err := folder.ResolveUserRoleTx(r.Context(), tx, req.FolderID, userID, userRole)
+		if err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to check folder permission"})
+			return
+		}
+		if !folder.RoleAtLeast(destRole, folder.RoleEditor) {
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "editor permission required on destination folder"})
+			return
+		}
+		targetFolderID = req.FolderID
+	}
+
 	// Snapshot current state before update
 	h.snapshotVersion(r.Context(), tx, docID, currentTitle, currentBody, currentBodyText, userID)
 
@@ -528,10 +566,10 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 	}
 	err = tx.QueryRow(r.Context(),
 		`UPDATE documents
-		 SET title = $2, slug = $3, body = $4, body_text = $5, domain_id = $6, type_id = $7, visibility = $8, updated_at = now()
+		 SET title = $2, slug = $3, body = $4, body_text = $5, domain_id = $6, type_id = $7, folder_id = $8, visibility = $9, updated_at = now()
 		 WHERE id = $1
 		 RETURNING id, title, slug, updated_at`,
-		docID, req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, req.Visibility,
+		docID, req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, targetFolderID, req.Visibility,
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.UpdatedAt)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update document"})
