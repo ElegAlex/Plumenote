@@ -62,21 +62,26 @@ WHERE document_id = $1
 
 ### Modified handler: `PUT /documents/:id`
 
-Before the existing UPDATE statement, insert a snapshot of the **current** document state into `document_versions`:
+Before the existing UPDATE statement, insert a snapshot of the **current** document state into `document_versions`. The entire sequence runs inside a single PostgreSQL transaction with `SELECT ... FOR UPDATE` on the document row to prevent concurrent saves from producing duplicate version numbers.
 
 ```go
-// 1. Read current document state
-// 2. Determine next version_number: SELECT COALESCE(MAX(version_number), 0) + 1
-// 3. INSERT INTO document_versions (document_id, version_number, title, body, body_text, author_id)
-// 4. Purge excess versions beyond config limit
-// 5. Proceed with existing UPDATE
+// tx := pool.Begin(ctx)
+// 1. SELECT ... FROM documents WHERE id = $1 FOR UPDATE  (lock row + read current state)
+// 2. SELECT COALESCE(MAX(version_number), 0) + 1 FROM document_versions WHERE document_id = $1
+// 3. Skip snapshot if body hash unchanged (SHA-256 of body JSON)
+// 4. INSERT INTO document_versions (document_id, version_number, title, body, body_text, author_id)
+// 5. Purge excess versions beyond config limit (inside same tx)
+// 6. UPDATE documents SET ... (the actual save)
+// 7. tx.Commit()
 ```
 
-This means version N captures the state **before** the write that produces version N+1. The current live document is always the latest state (not in the versions table).
+This means version N captures the state **before** the write that produces version N+1. The current live document is always the latest state (not in the versions table). The `FOR UPDATE` lock serializes concurrent saves to the same document, preventing version_number race conditions.
 
 ### Text diff (server-side)
 
 Uses `github.com/sergi/go-diff` (Myers algorithm) for line-by-line diff on `body_text`.
+
+The endpoint normalizes order (if v1 > v2, swap them) and returns 400 if v1 == v2.
 
 Response format:
 
@@ -84,6 +89,10 @@ Response format:
 {
   "v1": 5,
   "v2": 8,
+  "v1_created_at": "2026-03-10T14:00:00Z",
+  "v2_created_at": "2026-03-14T09:30:00Z",
+  "v1_author": "Admin",
+  "v2_author": "Admin",
   "lines": [
     {"type": "equal", "text": "Unchanged paragraph"},
     {"type": "delete", "text": "Old text"},
@@ -152,13 +161,17 @@ Compares `body.content[]` arrays from two versions using LCS (Longest Common Sub
 
 **Granularity**: block-level (paragraph, heading, code block). A modified paragraph appears as delete + insert. Fine-grained character diff is covered by the text diff mode.
 
+**Alignment**: when one side has extra deleted/inserted nodes between two equal nodes, spacer `<div>` elements with matching height are inserted in the opposite column to keep equal nodes visually aligned.
+
 ### Admin panel
 
 Add a field in the existing admin page: "Nombre max de versions par document" — numeric input calling `PUT /api/admin/config/max_versions_per_document`.
 
 ## Migration
 
-New migration file `003_document_versions.sql`:
+New migration files `000012_document_versions.up.sql` / `000012_document_versions.down.sql`:
+
+**Up:**
 
 ```sql
 CREATE TABLE document_versions (
@@ -178,6 +191,13 @@ INSERT INTO config (key, value) VALUES ('max_versions_per_document', '50')
 ON CONFLICT (key) DO NOTHING;
 ```
 
+**Down:**
+
+```sql
+DELETE FROM config WHERE key = 'max_versions_per_document';
+DROP TABLE IF EXISTS document_versions;
+```
+
 ## Dependencies
 
 - `github.com/sergi/go-diff` — Myers diff algorithm for Go (text diff endpoint).
@@ -185,17 +205,33 @@ ON CONFLICT (key) DO NOTHING;
 
 ## Access Control
 
-Version history is visible to all users who can view the document (follows existing `visibility` field: public or DSI). Restore requires edit permission (document author or admin).
+- **Read endpoints** (list, detail, diff): registered in the `OptionalAuth` route group, same as `GET /{slug}`. Visible to all users who can view the document (follows existing `visibility` field).
+- **Restore endpoint**: registered in the `RequireAuth` group with same permission check as `updateDocument` (document author or admin).
+
+## Handler Pattern
+
+Version handlers are methods on the existing `handler` struct in `internal/document/`, consistent with the rest of that package (e.g. `func (h *handler) listVersions(...)`). Raw pgx queries (not sqlc), matching the de facto pattern in the existing handlers.
+
+## Testing
+
+New file `internal/document/version_handlers_test.go` covering:
+- Version creation on save (snapshot before UPDATE)
+- Skip snapshot when body unchanged (hash check)
+- Version list ordering (newest first)
+- Restore flow (creates new version)
+- Purge (only N versions kept)
+- Diff endpoint (validates v1 < v2, returns correct diff)
 
 ## Files to create/modify
 
 ### New files
 
-- `migrations/000003_document_versions.up.sql`
-- `migrations/000003_document_versions.down.sql`
+- `migrations/000012_document_versions.up.sql`
+- `migrations/000012_document_versions.down.sql`
 - `internal/document/version_handlers.go` — version list, detail, diff, restore handlers
 - `internal/document/version_queries.go` — SQL queries for versions
 - `internal/document/diff.go` — text diff logic using go-diff
+- `internal/document/version_handlers_test.go` — tests for version endpoints
 - `web/src/features/reader/VersionHistory.tsx`
 - `web/src/features/reader/VersionPreview.tsx`
 - `web/src/features/reader/DiffTextView.tsx`
