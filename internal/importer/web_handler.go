@@ -71,6 +71,11 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	typeID := r.FormValue("type_id")
+	folderID := r.FormValue("folder_id")
+	if folderID == "" {
+		// Find or create default "General" folder for this domain
+		folderID = wh.getDefaultFolderID(r.Context(), domainID, authorID)
+	}
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !isSupportedExtension(ext) {
@@ -123,10 +128,10 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 	// Insert document
 	var docID string
 	err = wh.deps.DB.QueryRow(r.Context(),
-		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi')
+		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility, folder_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi', $8)
 		 RETURNING id`,
-		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID,
+		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderID,
 	).Scan(&docID)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "error": "failed to insert document"})
@@ -167,6 +172,10 @@ func (wh *WebHandler) HandleImportBatch(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	typeID := r.FormValue("type_id")
+	folderID := r.FormValue("folder_id")
+	if folderID == "" {
+		folderID = wh.getDefaultFolderID(r.Context(), domainID, authorID)
+	}
 
 	files := r.MultipartForm.File["files[]"]
 	if len(files) == 0 {
@@ -193,7 +202,7 @@ func (wh *WebHandler) HandleImportBatch(w http.ResponseWriter, r *http.Request) 
 	failedCount := 0
 
 	for _, fh := range files {
-		res := wh.processOneFile(r.Context(), fh, domainID, typeID, authorID)
+		res := wh.processOneFile(r.Context(), fh, domainID, typeID, authorID, folderID)
 		if res.Status == "ok" {
 			successCount++
 		} else {
@@ -211,7 +220,7 @@ func (wh *WebHandler) HandleImportBatch(w http.ResponseWriter, r *http.Request) 
 }
 
 // processOneFile handles a single file in a batch import.
-func (wh *WebHandler) processOneFile(ctx context.Context, fh *multipart.FileHeader, domainID, typeID, authorID string) importResult {
+func (wh *WebHandler) processOneFile(ctx context.Context, fh *multipart.FileHeader, domainID, typeID, authorID, folderID string) importResult {
 	filename := fh.Filename
 	ext := strings.ToLower(filepath.Ext(filename))
 
@@ -255,10 +264,10 @@ func (wh *WebHandler) processOneFile(ctx context.Context, fh *multipart.FileHead
 
 	var docID string
 	err = wh.deps.DB.QueryRow(ctx,
-		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi')
+		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility, folder_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi', $8)
 		 RETURNING id`,
-		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID,
+		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderID,
 	).Scan(&docID)
 	if err != nil {
 		return importResult{Filename: filename, Status: "error", Error: "failed to insert document"}
@@ -303,6 +312,7 @@ func (wh *WebHandler) ensureUniqueSlug(ctx context.Context, slug, excludeID stri
 type searchDocument struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Slug        string   `json:"slug"`
 	BodyText    string   `json:"body_text"`
 	ObjectType  string   `json:"object_type"`
 	DomainID    string   `json:"domain_id"`
@@ -316,6 +326,34 @@ type searchDocument struct {
 	UpdatedAt   int64    `json:"updated_at"`
 }
 
+// getDefaultFolderID finds or creates a "General" root folder for the domain.
+func (wh *WebHandler) getDefaultFolderID(ctx context.Context, domainID, authorID string) string {
+	var folderID string
+	err := wh.deps.DB.QueryRow(ctx,
+		`SELECT id FROM folders WHERE domain_id = $1 AND parent_id IS NULL ORDER BY position LIMIT 1`,
+		domainID,
+	).Scan(&folderID)
+	if err == nil {
+		return folderID
+	}
+	// Create a "General" root folder
+	err = wh.deps.DB.QueryRow(ctx,
+		`INSERT INTO folders (name, slug, domain_id, position, created_by)
+		 VALUES ('General', 'general', $1, 0, $2)
+		 RETURNING id`,
+		domainID, authorID,
+	).Scan(&folderID)
+	if err != nil {
+		log.Printf("WARNING: failed to create default folder for domain %s: %v", domainID, err)
+		return ""
+	}
+	wh.deps.DB.Exec(ctx,
+		`INSERT INTO folder_permissions (folder_id, user_id, role) VALUES ($1, $2, 'manager'::folder_role) ON CONFLICT DO NOTHING`,
+		folderID, authorID,
+	)
+	return folderID
+}
+
 // indexDocumentAsync indexes a document in Meilisearch asynchronously.
 func (wh *WebHandler) indexDocumentAsync(docID string) {
 	if wh.deps.Meili == nil {
@@ -326,12 +364,12 @@ func (wh *WebHandler) indexDocumentAsync(docID string) {
 	var sd searchDocument
 	var createdAt, updatedAt time.Time
 	err := wh.deps.DB.QueryRow(ctx,
-		`SELECT d.id, d.title, d.body_text, d.domain_id, d.type_id, d.visibility,
+		`SELECT d.id, d.title, d.slug, d.body_text, d.domain_id, d.type_id, d.visibility,
 		        d.view_count, d.needs_review, d.created_at, d.updated_at, u.display_name
 		 FROM documents d
 		 JOIN users u ON u.id = d.author_id
 		 WHERE d.id = $1`, docID,
-	).Scan(&sd.ID, &sd.Title, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
+	).Scan(&sd.ID, &sd.Title, &sd.Slug, &sd.BodyText, &sd.DomainID, &sd.TypeID, &sd.Visibility,
 		&sd.ViewCount, &sd.NeedsReview, &createdAt, &updatedAt, &sd.AuthorName)
 	if err != nil {
 		log.Printf("indexDocumentAsync: failed to fetch doc %s: %v", docID, err)
