@@ -329,6 +329,15 @@ func (wh *WebHandler) HandleFolderImport(w http.ResponseWriter, r *http.Request)
 	}
 	authorID := claims.UserID
 
+	// Parse multipart FIRST with max size, then read form values.
+	// FormValue() on an unparsed multipart triggers ParseMultipartForm(32MB)
+	// which would consume the body before we can set proper limits.
+	r.Body = http.MaxBytesReader(w, r.Body, maxDirUploadSize)
+	if err := r.ParseMultipartForm(maxDirUploadSize); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "request too large"})
+		return
+	}
+
 	mode := r.FormValue("mode")
 	if mode == "" {
 		mode = "domain"
@@ -343,19 +352,6 @@ func (wh *WebHandler) HandleFolderImport(w http.ResponseWriter, r *http.Request)
 	source := r.FormValue("source")
 	if source == "" {
 		source = "directory"
-	}
-
-	// Set size limit based on source
-	var maxSize int64
-	if source == "zip" {
-		maxSize = maxZipSize
-	} else {
-		maxSize = maxDirUploadSize
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
-	if err := r.ParseMultipartForm(maxSize); err != nil {
-		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "request too large"})
-		return
 	}
 
 	domainID := r.FormValue("domain_id")
