@@ -63,7 +63,7 @@ export default function ReaderPage() {
   const [showMindMap, setShowMindMap] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [previewVersion, setPreviewVersion] = useState<number | null>(null)
-  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([])
+  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[] | undefined>(undefined)
 
   const viewStartRef = useRef<number>(Date.now())
 
@@ -119,10 +119,10 @@ export default function ReaderPage() {
 
   // Fetch folder path for breadcrumb
   useEffect(() => {
-    if (!doc?.folder_id) { setFolderPath([]); return }
+    if (!doc?.folder_id) { setFolderPath(undefined); return }
     api.get<{ path: { id: string; name: string }[] }>(`/folders/${doc.folder_id}`)
       .then((f) => setFolderPath(f.path))
-      .catch(() => {})
+      .catch(() => setFolderPath(undefined))
   }, [doc?.folder_id])
 
   const showToast = useCallback((msg: string) => {

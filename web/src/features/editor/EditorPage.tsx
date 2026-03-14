@@ -121,7 +121,7 @@ export default function EditorPage() {
         body,
         domain_id: domainId,
         type_id: typeId,
-        folder_id: folderId,
+        folder_id: folderId || null,
         tags,
         visibility,
       }
@@ -261,14 +261,13 @@ export default function EditorPage() {
         {/* Folder picker */}
         {domainId && (
           <div>
-            <label className="block text-sm font-medium text-ink-70 mb-1">Dossier *</label>
+            <label className="block text-sm font-medium text-ink-70 mb-1">Dossier</label>
             <select
               value={folderId}
               onChange={(e) => { setFolderId(e.target.value); setDirty(true) }}
               className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm bg-bg"
-              required
             >
-              <option value="">Choisir un dossier...</option>
+              <option value="">Aucun dossier (racine du domaine)</option>
               {folders.map((f) => (
                 <option key={f.id} value={f.id}>{f.path}</option>
               ))}
