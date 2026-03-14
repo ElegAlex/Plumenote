@@ -12,7 +12,7 @@ interface PreviewTreeProps {
 export default function PreviewTree({ tree, mode, selected, onSelectionChange }: PreviewTreeProps) {
   // Stats computation
   const stats = useMemo(() => {
-    let domains = 0, folders = 0, files = 0
+    let domains = 0, folders = 0, files = 0, totalSize = 0
     function count(nodes: TreeNode[], depth: number) {
       for (const n of nodes) {
         if (n.type === 'dir') {
@@ -21,11 +21,12 @@ export default function PreviewTree({ tree, mode, selected, onSelectionChange }:
           if (n.children) count(n.children, depth + 1)
         } else if (selected.has(n.path)) {
           files++
+          totalSize += n.size || 0
         }
       }
     }
     count(tree, 0)
-    return { domains, folders, files }
+    return { domains, folders, files, totalSize }
   }, [tree, mode, selected])
 
   const toggleNode = useCallback((node: TreeNode) => {
@@ -44,7 +45,7 @@ export default function PreviewTree({ tree, mode, selected, onSelectionChange }:
     <div>
       <p className="text-sm text-ink-45 mb-3">
         {mode === 'root' && <>{stats.domains} domaine{stats.domains > 1 ? 's' : ''} · </>}
-        {stats.folders} dossier{stats.folders > 1 ? 's' : ''} · {stats.files} fichier{stats.files > 1 ? 's' : ''}
+        {stats.folders} dossier{stats.folders > 1 ? 's' : ''} · {stats.files} fichier{stats.files > 1 ? 's' : ''} · {formatSize(stats.totalSize)}
       </p>
       <div className="border border-ink-10 rounded p-2 max-h-96 overflow-y-auto">
         {tree.map(node => (
@@ -100,4 +101,11 @@ function getFilePaths(node: TreeNode): string[] {
   if (node.type === 'file') return [node.path]
   if (!node.children) return []
   return node.children.flatMap(getFilePaths)
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} Go`
 }

@@ -107,7 +107,7 @@ export default function ImportPage() {
         Importer des fichiers
       </h1>
       <p className="text-ink-45 text-sm mb-6">
-        Importez vos documents existants dans PlumeNote. Formats acceptes : .doc, .docx, .pdf, .txt, .md — max 50 Mo.
+        Importez vos documents existants dans PlumeNote. Formats acceptés : .doc, .docx, .pdf, .txt, .md
       </p>
 
       {/* Tab bar */}
