@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	maxDirUploadSize = 500 << 20 // 500 MB
-	maxFolderFiles   = 1000
+	maxDirUploadSize = 2 << 30 // 2 GB
+	maxFolderFiles   = 5000
 )
 
 // createDomainFromName finds or creates a domain by name, returning its ID.
