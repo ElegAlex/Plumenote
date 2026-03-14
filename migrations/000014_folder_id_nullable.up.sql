@@ -1,0 +1,1 @@
+ALTER TABLE documents ALTER COLUMN folder_id DROP NOT NULL;
