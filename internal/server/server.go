@@ -233,6 +233,13 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 	r.Mount("/api/folders", folder.Router(deps))
 	r.Mount("/api/domains/{domainId}/folders", folder.DomainFoldersRouter(deps))
 
+	// Root documents: documents with no folder, per domain (OptionalAuth)
+	r.Group(func(r chi.Router) {
+		r.Use(auth.OptionalAuth(deps.JWTSecret))
+		docH := document.NewHandler(deps)
+		r.Get("/api/domains/{domainId}/root-documents", docH.HandleRootDocuments)
+	})
+
 	// Aliases: /api/entity-types and /api/relation-types
 	r.Group(func(r chi.Router) {
 		r.Use(auth.OptionalAuth(deps.JWTSecret))

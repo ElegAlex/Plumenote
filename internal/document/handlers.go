@@ -1339,3 +1339,68 @@ func (h *handler) backfillDocumentLinks() {
 
 	log.Printf("backfillDocumentLinks: processed %d documents", count)
 }
+
+// rootDocRow is the DTO returned by HandleRootDocuments.
+type rootDocRow struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Slug      string `json:"slug"`
+	TypeName  string `json:"type_name"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// HandleRootDocuments handles GET /api/domains/{domainId}/root-documents.
+// Returns documents with folder_id IS NULL for the given domain.
+// OptionalAuth: authenticated users see all docs; anonymous users see only public ones.
+func (h *handler) HandleRootDocuments(w http.ResponseWriter, r *http.Request) {
+	domainID := chi.URLParam(r, "domainId")
+	if domainID == "" {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "domainId is required"})
+		return
+	}
+
+	claims := auth.UserFromContext(r.Context())
+
+	var (
+		rows pgx.Rows
+		err  error
+	)
+
+	if claims != nil {
+		rows, err = h.deps.DB.Query(r.Context(),
+			`SELECT d.id, d.title, d.slug, COALESCE(dt.name, '') AS type_name, d.updated_at
+			 FROM documents d
+			 LEFT JOIN document_types dt ON dt.id = d.type_id
+			 WHERE d.domain_id = $1 AND d.folder_id IS NULL
+			 ORDER BY d.title`,
+			domainID,
+		)
+	} else {
+		rows, err = h.deps.DB.Query(r.Context(),
+			`SELECT d.id, d.title, d.slug, COALESCE(dt.name, '') AS type_name, d.updated_at
+			 FROM documents d
+			 LEFT JOIN document_types dt ON dt.id = d.type_id
+			 WHERE d.domain_id = $1 AND d.folder_id IS NULL AND d.visibility = 'public'
+			 ORDER BY d.title`,
+			domainID,
+		)
+	}
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list root documents"})
+		return
+	}
+	defer rows.Close()
+
+	docs := []rootDocRow{}
+	for rows.Next() {
+		var d rootDocRow
+		var updatedAt time.Time
+		if err := rows.Scan(&d.ID, &d.Title, &d.Slug, &d.TypeName, &updatedAt); err != nil {
+			continue
+		}
+		d.UpdatedAt = updatedAt.Format(time.RFC3339)
+		docs = append(docs, d)
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"documents": docs})
+}

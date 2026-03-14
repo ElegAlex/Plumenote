@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { FileText } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useEntities, useEntityLabel } from '@/lib/hooks'
@@ -31,6 +32,14 @@ interface Doc {
   view_count: number
 }
 
+interface RootDoc {
+  id: string
+  title: string
+  slug: string
+  type_name: string
+  updated_at: string
+}
+
 type Tab = 'documents' | 'entities' | 'cartography' | 'mindmap'
 
 export default function DomainPage() {
@@ -39,6 +48,7 @@ export default function DomainPage() {
   const { isAuthenticated } = useAuth()
   const [domain, setDomain] = useState<Domain | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
+  const [rootDocs, setRootDocs] = useState<RootDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('documents')
   const [showBookmarkForm, setShowBookmarkForm] = useState(false)
@@ -55,6 +65,11 @@ export default function DomainPage() {
       .then(([d, docList]) => {
         setDomain(d)
         setDocs(docList)
+        if (d) {
+          api.get<{ documents: RootDoc[] }>(`/domains/${d.id}/root-documents`)
+            .then((res) => setRootDocs(res.documents ?? []))
+            .catch(() => {})
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -131,6 +146,15 @@ export default function DomainPage() {
           font-family: 'IBM Plex Mono', monospace; font-size: 10px;
           color: rgba(28,28,28,0.4); white-space: nowrap;
         }
+        .dp-root-doc-row {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 24px;
+          border-bottom: 1px solid rgba(28,28,28,0.04);
+          cursor: pointer; transition: background 0.08s;
+          text-decoration: none; color: inherit;
+        }
+        .dp-root-doc-row:hover { background: rgba(28,28,28,0.02); }
+        .dp-root-doc-row:hover .dp-doc-title { text-decoration: underline; text-underline-offset: 3px; }
         .dp-entity-row {
           display: flex; align-items: center; gap: 12px;
           padding: 12px 24px;
@@ -269,11 +293,53 @@ export default function DomainPage() {
             ))
           )}
 
+          {/* Documents (hors dossier) */}
+          {rootDocs.length > 0 && (
+            <div style={{ borderTop: '2px solid rgba(28,28,28,0.06)', marginTop: docs.length > 0 ? 8 : 0 }}>
+              <div style={{
+                padding: '16px 24px 8px',
+                fontFamily: "'IBM Plex Sans', sans-serif",
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: 2,
+                textTransform: 'uppercase' as const,
+                color: 'rgba(28,28,28,0.6)',
+              }}>
+                Documents (hors dossier)
+              </div>
+              {rootDocs.map((doc) => (
+                <Link
+                  key={doc.id}
+                  to={`/documents/${doc.slug}`}
+                  className="dp-root-doc-row"
+                >
+                  <FileText size={14} color="rgba(28,28,28,0.4)" style={{ flexShrink: 0 }} />
+                  <span className="dp-doc-title" style={{ flex: 1 }}>{doc.title}</span>
+                  {doc.type_name && (
+                    <span style={{
+                      fontFamily: "'IBM Plex Mono', monospace",
+                      fontSize: 9,
+                      letterSpacing: 0.8,
+                      textTransform: 'uppercase' as const,
+                      color: 'rgba(28,28,28,0.5)',
+                      background: 'rgba(28,28,28,0.06)',
+                      padding: '2px 7px',
+                      flexShrink: 0,
+                    }}>
+                      {doc.type_name}
+                    </span>
+                  )}
+                  <TimeAgo date={doc.updated_at} />
+                </Link>
+              ))}
+            </div>
+          )}
+
           {/* Liens externes */}
           <div style={{
             padding: '24px',
             borderTop: '2px solid rgba(28,28,28,0.06)',
-            marginTop: docs.length > 0 ? 8 : 0,
+            marginTop: rootDocs.length > 0 ? 8 : docs.length > 0 ? 8 : 0,
           }}>
             <div style={{
               display: 'flex',

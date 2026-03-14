@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react'
+import { useNavigate, useLocation, NavLink } from 'react-router-dom'
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
 interface FolderNode {
@@ -47,6 +48,14 @@ export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
     })
   }, [])
 
+  const { data: rootDocs } = useQuery({
+    queryKey: ['root-documents', domainId],
+    queryFn: () => api.get<{ documents: { id: string; title: string; slug: string }[] }>(
+      `/domains/${domainId}/root-documents`
+    ),
+    enabled: !!domainId,
+  })
+
   return (
     <div>
       {folders.map((f) => (
@@ -58,6 +67,19 @@ export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
           expanded={expanded}
           onToggle={toggleExpand}
         />
+      ))}
+      {rootDocs?.documents?.map(doc => (
+        <NavLink
+          key={doc.id}
+          to={`/documents/${doc.slug}`}
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-2 py-1 text-sm rounded hover:bg-accent ${isActive ? 'bg-accent font-medium' : ''}`
+          }
+          style={{ paddingLeft: '16px' }}
+        >
+          <FileText className="h-4 w-4 shrink-0" />
+          <span className="truncate">{doc.title}</span>
+        </NavLink>
       ))}
     </div>
   )

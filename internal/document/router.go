@@ -6,6 +6,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// NewHandler creates an exported handler for use in other packages.
+func NewHandler(deps *model.Deps) *handler {
+	return &handler{deps: deps}
+}
+
 func Router(deps *model.Deps) chi.Router {
 	r := chi.NewRouter()
 	h := &handler{deps: deps}
