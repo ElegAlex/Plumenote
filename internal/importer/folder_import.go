@@ -410,19 +410,28 @@ func (wh *WebHandler) HandleFolderImport(w http.ResponseWriter, r *http.Request)
 			selectedSet[p] = true
 		}
 
-		for _, fh := range uploadedFiles {
-			// The Filename for directory uploads includes the webkitRelativePath
-			fname := fh.Filename
-			if !selectedSet[fname] {
+		// file_paths[] contains the full webkitRelativePath for each file,
+		// in the same order as files[]. Browsers strip directory info from
+		// the multipart filename, so we need this separate field to match.
+		filePaths := r.MultipartForm.Value["file_paths[]"]
+
+		for i, fh := range uploadedFiles {
+			var fpath string
+			if i < len(filePaths) {
+				fpath = filePaths[i]
+			} else {
+				fpath = fh.Filename
+			}
+			if !selectedSet[fpath] {
 				continue
 			}
-			ext := filepath.Ext(fname)
+			ext := filepath.Ext(fpath)
 			tmpPath, err := saveTempFile(fh, ext)
 			if err != nil {
-				log.Printf("folder import: failed to save %s: %v", fname, err)
+				log.Printf("folder import: failed to save %s: %v", fpath, err)
 				continue
 			}
-			files[fname] = tmpPath
+			files[fpath] = tmpPath
 		}
 	}
 
