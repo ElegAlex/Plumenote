@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type MutableRefObject } from 'react'
 import type { Editor } from '@tiptap/react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import TipTapEditor from './TipTapEditor'
@@ -27,6 +27,7 @@ interface Document {
   body: string
   domain_id: string
   type_id: string
+  folder_id?: string
   tags: string[]
   visibility: 'public' | 'dsi'
 }
@@ -37,12 +38,17 @@ export default function EditorPage() {
   const { user } = useAuth()
   const isEdit = !!slug
 
+  const [searchParams] = useSearchParams()
+  const initialFolderId = searchParams.get('folder_id') || ''
+  const initialDomainId = searchParams.get('domain_id') || ''
+
   const [title, setTitle] = useState('')
-  const [domainId, setDomainId] = useState(user?.domain_id || '')
+  const [domainId, setDomainId] = useState(initialDomainId || user?.domain_id || '')
   const [typeId, setTypeId] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'dsi'>('dsi')
   const [tags, setTags] = useState<string[]>([])
   const [body, setBody] = useState('')
+  const [loaded, setLoaded] = useState(!isEdit)
   const [domains, setDomains] = useState<Domain[]>([])
   const [docTypes, setDocTypes] = useState<DocType[]>([])
   const [documentId, setDocumentId] = useState<string | null>(null)
@@ -54,12 +60,34 @@ export default function EditorPage() {
   const editorInstanceRef = useRef<Editor | null>(null) as MutableRefObject<Editor | null>
   const [editorReady, setEditorReady] = useState(false)
   const [previewing, setPreviewing] = useState(false)
+  const [folderId, setFolderId] = useState('')
+  const [folders, setFolders] = useState<{ id: string; name: string; path: string }[]>([])
+
+  // Pre-select folder from query param
+  useEffect(() => { if (initialFolderId) setFolderId(initialFolderId) }, [initialFolderId])
 
   // Load domains and document types
   useEffect(() => {
     api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
     api.get<DocType[]>('/document-types').then(setDocTypes).catch(() => {})
   }, [])
+
+  // Fetch and flatten folder tree when domainId changes
+  useEffect(() => {
+    if (!domainId) { setFolders([]); return }
+    api.get<any[]>(`/domains/${domainId}/folders`).then((tree) => {
+      const flat: { id: string; name: string; path: string }[] = []
+      const flatten = (nodes: any[], prefix: string) => {
+        for (const n of nodes) {
+          const path = prefix ? `${prefix} / ${n.name}` : n.name
+          flat.push({ id: n.id, name: n.name, path })
+          if (n.children) flatten(n.children, path)
+        }
+      }
+      flatten(tree, '')
+      setFolders(flat)
+    }).catch(() => {})
+  }, [domainId])
 
   // Load existing document for edit mode
   useEffect(() => {
@@ -72,6 +100,8 @@ export default function EditorPage() {
       setTags(doc.tags || [])
       setBody(doc.body)
       setDocumentId(doc.id)
+      setFolderId(doc.folder_id || '')
+      setLoaded(true)
     }).catch(() => {
       navigate('/')
     })
@@ -91,6 +121,7 @@ export default function EditorPage() {
         body,
         domain_id: domainId,
         type_id: typeId,
+        folder_id: folderId,
         tags,
         visibility,
       }
@@ -111,7 +142,7 @@ export default function EditorPage() {
     } finally {
       setSaving(false)
     }
-  }, [saving, title, body, domainId, typeId, tags, visibility, documentId, navigate])
+  }, [saving, title, body, domainId, typeId, folderId, tags, visibility, documentId, navigate])
 
   // Ctrl+S handler
   useEffect(() => {
@@ -226,6 +257,24 @@ export default function EditorPage() {
             <TagInput value={tags} onChange={(t) => { setTags(t); setDirty(true) }} />
           </div>
         </div>
+
+        {/* Folder picker */}
+        {domainId && (
+          <div>
+            <label className="block text-sm font-medium text-ink-70 mb-1">Dossier *</label>
+            <select
+              value={folderId}
+              onChange={(e) => { setFolderId(e.target.value); setDirty(true) }}
+              className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm bg-bg"
+              required
+            >
+              <option value="">Choisir un dossier...</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.path}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Template picker */}
@@ -243,7 +292,7 @@ export default function EditorPage() {
         <div className="border rounded-lg bg-bg p-6">
           <DocumentPreview content={body ? (() => { try { return JSON.parse(body) } catch { return {} } })() : {}} />
         </div>
-      ) : (
+      ) : loaded ? (
         <TipTapEditor
           content={body}
           documentId={documentId}
@@ -251,7 +300,7 @@ export default function EditorPage() {
           onFirstInput={() => setShowTemplates(false)}
           onEditorReady={(e) => { editorInstanceRef.current = e; setEditorReady(true) }}
         />
-      )}
+      ) : null}
 
       {/* Toast */}
       {toast && (
