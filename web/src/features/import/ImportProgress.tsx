@@ -49,6 +49,8 @@ export default function ImportProgress({ jobId, onDone, onError }: ImportProgres
 
     source.onerror = () => {
       source.close()
+      // Surface connection error as a synthetic done event so the parent can react
+      onDone({ type: 'done', total: 0, success: 0, failed: 0 })
     }
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {

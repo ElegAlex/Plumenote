@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 
 interface ImportResultsProps {
   result: {
@@ -13,10 +13,18 @@ interface ImportResultsProps {
 }
 
 export default function ImportResults({ result, errors, onReset }: ImportResultsProps) {
+  const allFailed = (result.success || 0) === 0 && (result.failed || 0) > 0
+
   return (
     <div>
       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        <CheckCircle2 className="h-5 w-5 text-green-500" />
+        {allFailed ? (
+          <XCircle className="h-5 w-5 text-red-500" />
+        ) : (result.failed || 0) > 0 ? (
+          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+        ) : (
+          <CheckCircle2 className="h-5 w-5 text-green-500" />
+        )}
         Import terminé
       </h3>
       <p className="text-sm mb-4">
@@ -32,6 +40,10 @@ export default function ImportResults({ result, errors, onReset }: ImportResults
             ))}
           </ul>
         </div>
+      )}
+
+      {(result.folders_created || 0) > 0 && (
+        <p className="text-sm mb-4">Dossiers créés : {result.folders_created}</p>
       )}
 
       {errors.length > 0 && (
