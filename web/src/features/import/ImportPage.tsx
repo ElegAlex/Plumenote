@@ -4,6 +4,7 @@ import { useImportFile, useImportBatch } from '@/lib/hooks'
 import { api } from '@/lib/api'
 import type { Domain, BatchImportResult } from '@/lib/types'
 import { useQuery } from '@tanstack/react-query'
+import FolderImportTab from './FolderImportTab'
 
 interface DocumentType {
   id: string
@@ -15,6 +16,7 @@ const ACCEPTED_EXTENSIONS = '.doc,.docx,.pdf,.txt,.md'
 const MAX_SIZE_MB = 50
 
 export default function ImportPage() {
+  const [activeTab, setActiveTab] = useState<'files' | 'folder'>('files')
   const [dragActive, setDragActive] = useState(false)
   const [domainId, setDomainId] = useState('')
   const [typeId, setTypeId] = useState('')
@@ -104,9 +106,37 @@ export default function ImportPage() {
       >
         Importer des fichiers
       </h1>
-      <p className="text-ink-45 text-sm mb-10">
+      <p className="text-ink-45 text-sm mb-6">
         Importez vos documents existants dans PlumeNote. Formats acceptes : .doc, .docx, .pdf, .txt, .md — max 50 Mo.
       </p>
+
+      {/* Tab bar */}
+      <div className="flex border-b border-ink-10 mb-8">
+        <button
+          onClick={() => setActiveTab('files')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === 'files'
+              ? 'border-blue text-blue'
+              : 'border-transparent text-ink-45 hover:text-ink'
+          }`}
+        >
+          Fichiers
+        </button>
+        <button
+          onClick={() => setActiveTab('folder')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === 'folder'
+              ? 'border-blue text-blue'
+              : 'border-transparent text-ink-45 hover:text-ink'
+          }`}
+        >
+          Dossier
+        </button>
+      </div>
+
+      {activeTab === 'folder' && <FolderImportTab />}
+
+      {activeTab === 'files' && (<>
 
       {/* Domain selector */}
       <div className="mb-4">
@@ -323,6 +353,8 @@ export default function ImportPage() {
           </div>
         </div>
       )}
+
+      </>)}
     </div>
   )
 }
