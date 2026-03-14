@@ -9,6 +9,9 @@ import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Highlight from '@tiptap/extension-highlight'
+import Underline from '@tiptap/extension-underline'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import { common, createLowlight } from 'lowlight'
 import { useEffect, useState, useCallback } from 'react'
 
@@ -35,7 +38,7 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
     extensions: [
       StarterKit.configure({
         codeBlock: false,
-        heading: { levels: [1, 2, 3] },
+        heading: { levels: [1, 2, 3, 4] },
         link: false,
       }),
       Placeholder.configure({
@@ -56,6 +59,9 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
         },
       }),
       Highlight,
+      Underline,
+      TaskList,
+      TaskItem.configure({ nested: true }),
       AlertBlock,
       ImageDrop,
       SlashMenuExtension,

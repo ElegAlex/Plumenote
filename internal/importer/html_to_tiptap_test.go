@@ -260,3 +260,200 @@ func TestHTMLToTipTap_NestedMarks(t *testing.T) {
 		t.Fatalf("expected 2 marks, got %d", len(node.Marks))
 	}
 }
+
+func TestHTMLToTipTap_CodeBlockLanguage(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		wantLang string
+		wantText string
+	}{
+		{
+			name:     "python",
+			html:     `<pre><code class="language-python">print("hello")</code></pre>`,
+			wantLang: "python",
+			wantText: `print("hello")`,
+		},
+		{
+			name:     "go",
+			html:     `<pre><code class="language-go">func main() {}</code></pre>`,
+			wantLang: "go",
+			wantText: "func main() {}",
+		},
+		{
+			name:     "javascript with extra class",
+			html:     `<pre><code class="sourceCode language-javascript">console.log(1)</code></pre>`,
+			wantLang: "javascript",
+			wantText: "console.log(1)",
+		},
+		{
+			name:     "no language",
+			html:     `<pre><code>plain code</code></pre>`,
+			wantLang: "",
+			wantText: "plain code",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, err := HTMLToTipTap(tt.html)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var doc TipTapNode
+			json.Unmarshal(raw, &doc)
+			cb := doc.Content[0]
+			if cb.Type != "codeBlock" {
+				t.Fatalf("expected codeBlock, got %s", cb.Type)
+			}
+			if tt.wantLang == "" {
+				if cb.Attrs != nil {
+					if _, ok := cb.Attrs["language"]; ok {
+						t.Fatal("expected no language attr")
+					}
+				}
+			} else {
+				lang, _ := cb.Attrs["language"].(string)
+				if lang != tt.wantLang {
+					t.Fatalf("expected language=%s, got %s", tt.wantLang, lang)
+				}
+			}
+			if len(cb.Content) > 0 && cb.Content[0].Text != tt.wantText {
+				t.Fatalf("expected text %q, got %q", tt.wantText, cb.Content[0].Text)
+			}
+		})
+	}
+}
+
+func TestHTMLToTipTap_TaskList(t *testing.T) {
+	input := `<ul>
+<li><input type="checkbox" checked> Done task</li>
+<li><input type="checkbox"> Pending task</li>
+</ul>`
+
+	raw, err := HTMLToTipTap(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var doc TipTapNode
+	json.Unmarshal(raw, &doc)
+
+	taskList := doc.Content[0]
+	if taskList.Type != "taskList" {
+		t.Fatalf("expected taskList, got %s", taskList.Type)
+	}
+	if len(taskList.Content) != 2 {
+		t.Fatalf("expected 2 task items, got %d", len(taskList.Content))
+	}
+
+	// First item: checked
+	item1 := taskList.Content[0]
+	if item1.Type != "taskItem" {
+		t.Fatalf("expected taskItem, got %s", item1.Type)
+	}
+	checked1, _ := item1.Attrs["checked"].(bool)
+	if !checked1 {
+		t.Error("expected first item to be checked")
+	}
+
+	// Second item: not checked
+	item2 := taskList.Content[1]
+	checked2, _ := item2.Attrs["checked"].(bool)
+	if checked2 {
+		t.Error("expected second item to not be checked")
+	}
+
+	// Both items should have paragraph content
+	if len(item1.Content) == 0 || item1.Content[0].Type != "paragraph" {
+		t.Error("expected paragraph content in task item")
+	}
+}
+
+func TestHTMLToTipTap_RegularListNotTaskList(t *testing.T) {
+	input := `<ul><li>Normal item 1</li><li>Normal item 2</li></ul>`
+	raw, err := HTMLToTipTap(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var doc TipTapNode
+	json.Unmarshal(raw, &doc)
+
+	list := doc.Content[0]
+	if list.Type != "bulletList" {
+		t.Fatalf("expected bulletList for regular list, got %s", list.Type)
+	}
+	if list.Content[0].Type != "listItem" {
+		t.Fatalf("expected listItem, got %s", list.Content[0].Type)
+	}
+}
+
+func TestHTMLToTipTap_AlertBlock(t *testing.T) {
+	tests := []struct {
+		name      string
+		html      string
+		alertType string
+	}{
+		{
+			name:      "warning",
+			html:      `<div class="alert-block" data-type="warning"><p>Attention!</p></div>`,
+			alertType: "warning",
+		},
+		{
+			name:      "tip",
+			html:      `<div class="alert-block" data-type="tip"><p>Useful tip</p></div>`,
+			alertType: "tip",
+		},
+		{
+			name:      "danger",
+			html:      `<div class="alert-block" data-type="danger"><p>Dangerous!</p></div>`,
+			alertType: "danger",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, err := HTMLToTipTap(tt.html)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var doc TipTapNode
+			json.Unmarshal(raw, &doc)
+
+			alert := doc.Content[0]
+			if alert.Type != "alertBlock" {
+				t.Fatalf("expected alertBlock, got %s", alert.Type)
+			}
+			aType, _ := alert.Attrs["type"].(string)
+			if aType != tt.alertType {
+				t.Fatalf("expected type=%s, got %s", tt.alertType, aType)
+			}
+		})
+	}
+}
+
+func TestHTMLToTipTap_HighlightMark(t *testing.T) {
+	input := `<p>This is <mark>highlighted</mark> text.</p>`
+	raw, err := HTMLToTipTap(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var doc TipTapNode
+	json.Unmarshal(raw, &doc)
+
+	para := doc.Content[0]
+	found := false
+	for _, node := range para.Content {
+		if node.Text == "highlighted" {
+			if len(node.Marks) != 1 || node.Marks[0].Type != "highlight" {
+				t.Fatalf("expected highlight mark, got %+v", node.Marks)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("highlighted text node not found")
+	}
+}

@@ -19,6 +19,7 @@ var uuidRegexp = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
 type searchResult struct {
 	ID                string   `json:"id"`
 	Title             string   `json:"title"`
+	Slug              string   `json:"slug,omitempty"`
 	BodyTextHighlight string   `json:"body_text_highlight"`
 	ObjectType        string   `json:"object_type"`
 	URL               string   `json:"url,omitempty"`
@@ -126,6 +127,7 @@ func handleSearch(deps *model.Deps) http.HandlerFunc {
 			sr := searchResult{
 				ID:         getString(m, "id"),
 				Title:      getString(formatted, "title"),
+				Slug:       getString(m, "slug"),
 				ObjectType: getString(m, "object_type"),
 				URL:        getString(m, "url"),
 				DomainID:   getString(m, "domain_id"),

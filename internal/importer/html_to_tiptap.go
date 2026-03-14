@@ -113,6 +113,14 @@ func processElement(n *html.Node, marks []TipTapMark) []TipTapNode {
 		return []TipTapNode{node}
 
 	case "ul":
+		// Check if this is a task list (contains <li> with <input type="checkbox">)
+		if isTaskList(n) {
+			node := TipTapNode{
+				Type:    "taskList",
+				Content: taskListItems(n),
+			}
+			return []TipTapNode{node}
+		}
 		node := TipTapNode{
 			Type:    "bulletList",
 			Content: listItems(n),
@@ -149,6 +157,21 @@ func processElement(n *html.Node, marks []TipTapMark) []TipTapNode {
 			Content: []TipTapNode{
 				{Type: "text", Text: text},
 			},
+		}
+		// Look for <code class="language-xxx"> child to extract language
+		lang := extractCodeLanguage(n)
+		// Fallback: check <pre> class itself (Pandoc uses class="sourceCode python")
+		if lang == "" {
+			preClass := getAttr(n, "class")
+			for _, part := range strings.Fields(preClass) {
+				if part != "sourceCode" {
+					lang = part
+					break
+				}
+			}
+		}
+		if lang != "" {
+			node.Attrs = map[string]any{"language": lang}
 		}
 		return []TipTapNode{node}
 
@@ -191,6 +214,10 @@ func processElement(n *html.Node, marks []TipTapMark) []TipTapNode {
 		newMarks := appendMark(marks, TipTapMark{Type: "strike"})
 		return inlineChildren(n, newMarks)
 
+	case "mark":
+		newMarks := appendMark(marks, TipTapMark{Type: "highlight"})
+		return inlineChildren(n, newMarks)
+
 	case "a":
 		href := getAttr(n, "href")
 		newMarks := appendMark(marks, TipTapMark{
@@ -200,6 +227,19 @@ func processElement(n *html.Node, marks []TipTapMark) []TipTapNode {
 		return inlineChildren(n, newMarks)
 
 	case "span", "div":
+		// Check for alert-block div (from callout preprocessor)
+		if tag == "div" && getAttr(n, "class") == "alert-block" {
+			alertType := getAttr(n, "data-type")
+			if alertType == "" {
+				alertType = "tip"
+			}
+			node := TipTapNode{
+				Type:    "alertBlock",
+				Attrs:   map[string]any{"type": alertType},
+				Content: processChildren(n, nil),
+			}
+			return []TipTapNode{node}
+		}
 		// For div at block level, wrap inline content in paragraphs
 		if tag == "div" {
 			return processChildren(n, marks)
@@ -341,4 +381,143 @@ func appendMark(marks []TipTapMark, m TipTapMark) []TipTapMark {
 	copy(newMarks, marks)
 	newMarks[len(marks)] = m
 	return newMarks
+}
+
+// extractCodeLanguage looks for a <code> child with class="language-xxx"
+// or Pandoc's "sourceCode xxx" format, and returns the language name.
+func extractCodeLanguage(pre *html.Node) string {
+	for c := pre.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && strings.ToLower(c.Data) == "code" {
+			class := getAttr(c, "class")
+			parts := strings.Fields(class)
+			for _, part := range parts {
+				if strings.HasPrefix(part, "language-") {
+					return strings.TrimPrefix(part, "language-")
+				}
+			}
+			// Pandoc format: class="sourceCode python" — language is any class that isn't "sourceCode"
+			for _, part := range parts {
+				if part != "sourceCode" {
+					return part
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// isTaskList checks if a <ul> contains at least one <li> with an <input type="checkbox">.
+func isTaskList(ul *html.Node) bool {
+	for c := ul.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && strings.ToLower(c.Data) == "li" {
+			if liHasCheckbox(c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// liHasCheckbox checks if a <li> contains an <input type="checkbox"> as a direct child.
+func liHasCheckbox(li *html.Node) bool {
+	for c := li.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && strings.ToLower(c.Data) == "input" {
+			if getAttr(c, "type") == "checkbox" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isChecked returns true if the node has a "checked" attribute.
+func isChecked(n *html.Node) bool {
+	for _, a := range n.Attr {
+		if a.Key == "checked" {
+			return true
+		}
+	}
+	return false
+}
+
+// taskListItems processes children of a <ul> that is a task list.
+func taskListItems(ul *html.Node) []TipTapNode {
+	var items []TipTapNode
+	for c := ul.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && strings.ToLower(c.Data) == "li" {
+			checked := false
+			// Find the checkbox and determine checked state
+			for ch := c.FirstChild; ch != nil; ch = ch.NextSibling {
+				if ch.Type == html.ElementNode && strings.ToLower(ch.Data) == "input" &&
+					getAttr(ch, "type") == "checkbox" {
+					checked = isChecked(ch)
+					break
+				}
+			}
+			content := processTaskItemContent(c)
+			item := TipTapNode{
+				Type:    "taskItem",
+				Attrs:   map[string]any{"checked": checked},
+				Content: content,
+			}
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+// processTaskItemContent processes the content of a task list <li>,
+// skipping the <input> checkbox element.
+func processTaskItemContent(li *html.Node) []TipTapNode {
+	// Collect inline nodes, skipping the checkbox input
+	var inlines []TipTapNode
+	hasBlock := false
+	for c := li.FirstChild; c != nil; c = c.NextSibling {
+		// Skip checkbox input
+		if c.Type == html.ElementNode && strings.ToLower(c.Data) == "input" &&
+			getAttr(c, "type") == "checkbox" {
+			continue
+		}
+		if c.Type == html.ElementNode {
+			tag := strings.ToLower(c.Data)
+			if tag == "p" || tag == "ul" || tag == "ol" || tag == "blockquote" || tag == "pre" {
+				hasBlock = true
+			}
+		}
+	}
+
+	if hasBlock {
+		var nodes []TipTapNode
+		for c := li.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && strings.ToLower(c.Data) == "input" &&
+				getAttr(c, "type") == "checkbox" {
+				continue
+			}
+			nodes = append(nodes, processNode(c, nil)...)
+		}
+		return nodes
+	}
+
+	// Wrap inline content in a paragraph, skipping the checkbox
+	for c := li.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && strings.ToLower(c.Data) == "input" &&
+			getAttr(c, "type") == "checkbox" {
+			continue
+		}
+		switch c.Type {
+		case html.TextNode:
+			text := c.Data
+			if text == "" {
+				continue
+			}
+			inlines = append(inlines, TipTapNode{Type: "text", Text: text})
+		case html.ElementNode:
+			inlines = append(inlines, processElement(c, nil)...)
+		}
+	}
+
+	if len(inlines) == 0 {
+		return []TipTapNode{{Type: "paragraph"}}
+	}
+	return []TipTapNode{{Type: "paragraph", Content: inlines}}
 }

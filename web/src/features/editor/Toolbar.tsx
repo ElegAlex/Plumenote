@@ -89,6 +89,9 @@ export default function Toolbar({ editor, documentId }: ToolbarProps) {
       <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italique (Ctrl+I)">
         <em>I</em>
       </Btn>
+      <Btn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Souligne (Ctrl+U)">
+        <u>U</u>
+      </Btn>
       <Btn
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         active={editor.isActive('heading', { level: 1 })}
@@ -102,6 +105,20 @@ export default function Toolbar({ editor, documentId }: ToolbarProps) {
         title="Titre 2"
       >
         H2
+      </Btn>
+      <Btn
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        active={editor.isActive('heading', { level: 3 })}
+        title="Titre 3"
+      >
+        H3
+      </Btn>
+      <Btn
+        onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
+        active={editor.isActive('heading', { level: 4 })}
+        title="Titre 4"
+      >
+        H4
       </Btn>
 
       <Sep />
@@ -119,6 +136,13 @@ export default function Toolbar({ editor, documentId }: ToolbarProps) {
         title="Liste numerotee"
       >
         OL
+      </Btn>
+      <Btn
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        active={editor.isActive('taskList')}
+        title="Liste de taches"
+      >
+        Tasks
       </Btn>
       <Btn
         onClick={() => editor.chain().focus().toggleBlockquote().run()}

@@ -22,10 +22,34 @@ interface SlashItem {
 
 const SLASH_ITEMS: SlashItem[] = [
   {
+    title: 'Titre 4',
+    description: 'Sous-sous-titre',
+    icon: 'H4',
+    command: (editor) => editor.chain().focus().toggleHeading({ level: 4 }).run(),
+  },
+  {
+    title: 'Liste de taches',
+    description: 'Cases a cocher',
+    icon: '\u2611',
+    command: (editor) => editor.chain().focus().toggleTaskList().run(),
+  },
+  {
     title: 'Bloc de code',
     description: 'Bloc avec coloration syntaxique',
     icon: '</>',
     command: (editor) => editor.chain().focus().toggleCodeBlock().run(),
+  },
+  {
+    title: 'Diagramme Mermaid',
+    description: 'Inserer un diagramme Mermaid',
+    icon: '\u25C7',
+    command: (editor) =>
+      editor
+        .chain()
+        .focus()
+        .setCodeBlock({ language: 'mermaid' })
+        .insertContent('flowchart TD\n    A[Start] --> B[End]')
+        .run(),
   },
   {
     title: 'Image',

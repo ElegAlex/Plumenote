@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, lazy, Suspense } from 'react'
+import { createRoot } from 'react-dom/client'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -8,10 +9,16 @@ import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import Highlight from '@tiptap/extension-highlight'
+import Underline from '@tiptap/extension-underline'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import { common, createLowlight } from 'lowlight'
 import { codeToHtml, type BundledLanguage, type BundledTheme } from 'shiki'
 import { useNavigate } from 'react-router-dom'
 import { AlertBlock } from '@/features/editor/AlertBlock'
+
+const MermaidBlock = lazy(() => import('@/components/ui/MermaidBlock'))
 
 const lowlight = createLowlight(common)
 const SHIKI_THEME: BundledTheme = 'github-dark'
@@ -19,11 +26,35 @@ const SHIKI_THEME: BundledTheme = 'github-dark'
 const SUPPORTED_LANGUAGES: Record<string, BundledLanguage> = {
   bash: 'bash', shell: 'bash', sh: 'bash',
   powershell: 'powershell', ps1: 'powershell',
-  sql: 'sql', python: 'python', py: 'python',
-  json: 'json', xml: 'xml', html: 'html',
-  javascript: 'javascript', js: 'javascript',
-  typescript: 'typescript', ts: 'typescript',
+  sql: 'sql',
+  python: 'python', py: 'python',
+  json: 'json', jsonc: 'jsonc',
+  xml: 'xml',
+  html: 'html', htm: 'html',
+  css: 'css', scss: 'scss',
+  javascript: 'javascript', js: 'javascript', jsx: 'jsx',
+  typescript: 'typescript', ts: 'typescript', tsx: 'tsx',
   yaml: 'yaml', yml: 'yaml',
+  markdown: 'markdown', md: 'markdown',
+  go: 'go', golang: 'go',
+  java: 'java',
+  c: 'c', cpp: 'cpp', 'c++': 'cpp',
+  csharp: 'csharp', 'c#': 'csharp', cs: 'csharp',
+  ruby: 'ruby', rb: 'ruby',
+  php: 'php',
+  rust: 'rust', rs: 'rust',
+  swift: 'swift',
+  kotlin: 'kotlin', kt: 'kotlin',
+  docker: 'docker', dockerfile: 'docker',
+  nginx: 'nginx',
+  ini: 'ini', toml: 'toml',
+  diff: 'diff',
+  graphql: 'graphql', gql: 'graphql',
+  lua: 'lua',
+  r: 'r',
+  perl: 'perl',
+  makefile: 'makefile', make: 'makefile',
+  gherkin: 'gherkin', feature: 'gherkin',
 }
 
 interface TocItem {
@@ -59,6 +90,10 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
       TableCell,
       TableHeader,
       CodeBlockLowlight.configure({ lowlight }),
+      Highlight,
+      Underline,
+      TaskList,
+      TaskItem.configure({ nested: true }),
       AlertBlock,
     ],
     []
@@ -126,6 +161,8 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
     const el = contentRef.current
     if (!el) return
 
+    const mermaidRoots: Array<ReturnType<typeof createRoot>> = []
+
     const codeBlocks = el.querySelectorAll('pre > code')
     codeBlocks.forEach(async (codeEl) => {
       const pre = codeEl.parentElement as HTMLPreElement
@@ -135,51 +172,79 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
       const code = codeEl.textContent || ''
       const normalizedCode = code.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 
-      // Add copy button
-      const copyBtn = document.createElement('button')
-      copyBtn.textContent = 'Copier'
-      copyBtn.className =
-        'absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded bg-ink-70 text-ink-45 hover:bg-ink-70 opacity-0 group-hover:opacity-100 transition-opacity'
-      copyBtn.onclick = async () => {
-        await navigator.clipboard.writeText(normalizedCode)
-        copyBtn.textContent = 'Copie !'
-        setTimeout(() => (copyBtn.textContent = 'Copier'), 2000)
-      }
-
-      pre.style.position = 'relative'
-      pre.classList.add('group')
-      pre.appendChild(copyBtn)
-
-      // Apply Shiki highlighting
+      // Check if this is a mermaid block
       const langClass = Array.from(codeEl.classList).find((c) => c.startsWith('language-'))
       const langKey = langClass?.replace('language-', '')?.toLowerCase() || ''
+
+      if (langKey === 'mermaid') {
+        const wrapper = document.createElement('div')
+        pre.replaceWith(wrapper)
+        const root = createRoot(wrapper)
+        mermaidRoots.push(root)
+        root.render(
+          <Suspense fallback={<div className="p-4 text-sm text-ink-45">Chargement du diagramme...</div>}>
+            <MermaidBlock code={normalizedCode} />
+          </Suspense>
+        )
+        return
+      }
+
+      // Create outer wrapper that holds code + overlay button
+      const outerWrapper = document.createElement('div')
+      outerWrapper.className = 'relative isolate group my-4'
+
+      // Apply Shiki highlighting
       const shikiLang = SUPPORTED_LANGUAGES[langKey]
 
       if (shikiLang) {
         try {
           const html = await codeToHtml(normalizedCode, { lang: shikiLang, theme: SHIKI_THEME })
-          const wrapper = document.createElement('div')
-          wrapper.innerHTML = html
-          wrapper.className = 'rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-[#1a1a2e] relative group'
-
-          // Re-add copy button to wrapper
-          const newCopyBtn = copyBtn.cloneNode(true) as HTMLButtonElement
-          newCopyBtn.onclick = async () => {
-            await navigator.clipboard.writeText(normalizedCode)
-            newCopyBtn.textContent = 'Copie !'
-            setTimeout(() => (newCopyBtn.textContent = 'Copier'), 2000)
-          }
-          wrapper.appendChild(newCopyBtn)
-
-          pre.replaceWith(wrapper)
+          const codeDiv = document.createElement('div')
+          codeDiv.innerHTML = html
+          codeDiv.className = 'rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-[#1a1a2e]'
+          outerWrapper.appendChild(codeDiv)
         } catch {
-          // Keep lowlight fallback
-          pre.classList.add('bg-[#1a1a2e]', 'text-ink', 'rounded-lg', 'p-4', 'overflow-x-auto', 'text-sm')
+          // Keep lowlight fallback with dark theme
+          const clone = pre.cloneNode(true) as HTMLPreElement
+          clone.className = 'rounded-lg p-4 overflow-x-auto text-sm'
+          clone.style.background = '#1a1a2e'
+          clone.style.color = '#e2e8f0'
+          outerWrapper.appendChild(clone)
         }
       } else {
-        pre.classList.add('bg-[#1a1a2e]', 'text-ink', 'rounded-lg', 'p-4', 'overflow-x-auto', 'text-sm', 'font-mono')
+        const clone = pre.cloneNode(true) as HTMLPreElement
+        clone.className = 'rounded-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre-wrap break-words'
+        clone.style.background = '#1a1a2e'
+        clone.style.color = '#e2e8f0'
+        outerWrapper.appendChild(clone)
       }
+
+      // Language label (painted after code div, always on top)
+      if (langKey) {
+        const langLabel = document.createElement('span')
+        langLabel.textContent = langKey
+        langLabel.className = 'absolute top-2 left-3 z-20 text-[10px] font-mono uppercase tracking-wider text-white/50 opacity-0 group-hover:opacity-100 transition-opacity select-none pointer-events-none'
+        outerWrapper.appendChild(langLabel)
+      }
+
+      // Copy button (painted after code div, always on top)
+      const copyBtn = document.createElement('button')
+      copyBtn.textContent = 'Copier'
+      copyBtn.className =
+        'absolute top-2 right-2 z-20 px-2 py-1 text-xs rounded bg-white/10 text-white/70 hover:bg-white/20 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity'
+      copyBtn.onclick = async () => {
+        await navigator.clipboard.writeText(normalizedCode)
+        copyBtn.textContent = 'Copié !'
+        setTimeout(() => (copyBtn.textContent = 'Copier'), 2000)
+      }
+      outerWrapper.appendChild(copyBtn)
+
+      pre.replaceWith(outerWrapper)
     })
+
+    return () => {
+      mermaidRoots.forEach((root) => root.unmount())
+    }
   }, [editor])
 
   if (!editor) return null
