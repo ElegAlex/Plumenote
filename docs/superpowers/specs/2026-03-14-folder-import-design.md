@@ -39,12 +39,12 @@ Documents with `folder_id = NULL` live at the domain root level. In the sidebar 
 
 The following existing queries and code paths must be updated to handle `folder_id IS NULL`:
 
-- **`internal/folder/handler.go`** — `getFolder` handler: the query `WHERE folder_id = $1` for listing documents in a folder is unaffected (only matches non-NULL). But `filterPublicFolders` casts `folder_id::text` which returns NULL for root documents — add `WHERE folder_id IS NOT NULL` or handle NULL explicitly.
+- **`internal/folder/handler.go`** — `getFolder` handler: the query `WHERE folder_id = $1` for listing documents in a folder is unaffected (only matches non-NULL). But `filterPublicFolders` casts `folder_id::text` which returns NULL for root documents — add `WHERE folder_id IS NOT NULL` to exclude root documents from folder-based public visibility filtering.
 - **`internal/document/handlers.go`** — `createDocument`: `folder_id` becomes optional in the request body. If absent, insert with `folder_id = NULL`. Permission check: if no folder, require that user is at least editor on any root folder of the domain (or admin).
 - **`internal/document/handlers.go`** — `updateDocument`: allow `folder_id` to be set to `null` (move to domain root). If moving from a folder to root, check editor+ on source folder.
 - **`internal/document/handlers.go`** — `getDocument`: if `folder_id IS NULL`, skip folder path in breadcrumb response.
 - **`internal/document/handlers.go`** — `listDocuments`: add support for `folder_id=null` query parameter to list root documents.
-- **`internal/importer/web_handler.go`** — `HandleImport` / `processOneFile`: `folder_id` form field becomes optional. If empty, insert with `folder_id = NULL` instead of falling back to "General" folder.
+- **`internal/importer/web_handler.go`** — `HandleImport` / `processOneFile`: `folder_id` form field becomes optional. If empty, insert with `folder_id = NULL` instead of falling back to "General" folder. **Note:** This is a breaking change for existing single/batch import consumers who relied on the implicit "General" folder. Acceptable since folder_id can now be explicitly passed by clients that need it.
 
 ## Backend API
 
@@ -112,7 +112,7 @@ Starts an asynchronous folder import job.
 | `type_id` | UUID | no | Document type for all imported docs (default: first type in DB) |
 | `source` | string | yes | `"directory"` or `"zip"` |
 | `paths[]` | string[] | yes | Relative paths of selected files |
-| `files[]` | File[] | if source=directory | The actual files (matched by index to `paths[]`) |
+| `files[]` | File[] | if source=directory | The actual files (matched to `paths[]` by `webkitRelativePath`, not by array index — browser ordering is not guaranteed) |
 | `file` | File | if source=zip | The ZIP archive |
 
 **Output (HTTP 202):**
