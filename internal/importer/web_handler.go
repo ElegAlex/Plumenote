@@ -356,6 +356,44 @@ func (wh *WebHandler) getDefaultFolderID(ctx context.Context, domainID, authorID
 	return folderID
 }
 
+// HandleAnalyzeZip handles POST /api/import/analyze-zip — reads a ZIP's structure without extracting files.
+func (wh *WebHandler) HandleAnalyzeZip(w http.ResponseWriter, r *http.Request) {
+	claims := auth.UserFromContext(r.Context())
+	if claims == nil {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication required"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxZipSize)
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "missing 'file' field or file too large"})
+		return
+	}
+	defer file.Close()
+
+	tmpFile, err := os.CreateTemp("", "plumenote-zip-*.zip")
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"error": "failed to create temp file"})
+		return
+	}
+	defer os.Remove(tmpFile.Name())
+	if _, err := tmpFile.ReadFrom(file); err != nil {
+		tmpFile.Close()
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "failed to read uploaded file"})
+		return
+	}
+	tmpFile.Close()
+
+	tree, err := analyzeZip(tmpFile.Name(), maxZipSize)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{"error": fmt.Sprintf("ZIP analysis failed: %v", err)})
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"tree": tree})
+}
+
 // indexDocumentAsync indexes a document in Meilisearch asynchronously.
 func (wh *WebHandler) indexDocumentAsync(docID string) {
 	if wh.deps.Meili == nil {

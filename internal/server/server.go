@@ -256,6 +256,7 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		wh := importer.NewWebHandler(deps)
 		r.Post("/api/import", wh.HandleImport)
 		r.Post("/api/import/batch", wh.HandleImportBatch)
+		r.Post("/api/import/analyze-zip", wh.HandleAnalyzeZip)
 	})
 
 	// Alias: /api/tags -> /api/documents/tags (frontend expects /api/tags)
