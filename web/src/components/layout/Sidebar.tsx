@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Map, Network, Settings, ChevronsLeft } from 'lucide-react'
+import { Map, Network, Settings, ChevronsLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useStatsHealth } from '@/lib/hooks/useStatsHealth'
 import { useSidebar } from '@/lib/sidebar-context'
+import FolderTree from './FolderTree'
 
 interface Domain {
   id: string; name: string; slug: string; color: string
@@ -27,7 +28,12 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
   const { user, isAuthenticated } = useAuth()
   const [domains, setDomains] = useState<Domain[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
   const { data: health } = useStatsHealth()
+
+  const toggleDomainExpand = useCallback((domainId: string) => {
+    setExpandedDomains(prev => ({ ...prev, [domainId]: !prev[domainId] }))
+  }, [])
 
   useEffect(() => {
     api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
@@ -122,49 +128,80 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
 
       {services.map(s => {
         const isActive = activeService === s.code
+        const isDomainExpanded = expandedDomains[s.code] ?? false
         return (
-          <div
-            key={s.code}
-            onClick={() => handleServiceClick(s)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 11,
-              padding: '11px 20px',
-              cursor: 'pointer',
-              borderBottom: '1px solid rgba(28,28,28,0.03)',
-              transition: 'all 0.1s',
-              userSelect: 'none' as const,
-              background: isActive ? '#1C1C1C' : 'transparent',
-              color: isActive ? '#FAFAF8' : '#1C1C1C',
-            }}
-            onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
-            onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-          >
-            <div style={{
-              width: 12,
-              height: 12,
-              borderRadius: 2,
-              background: s.color,
-              border: `2px solid ${isActive ? 'rgba(250,250,248,0.35)' : '#1C1C1C'}`,
-              flexShrink: 0,
-            }} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{
-                fontFamily: "'IBM Plex Sans', sans-serif",
-                fontSize: 13,
-                fontWeight: 600,
-              }}>
-                {s.label}
+          <div key={s.code}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 11,
+                padding: '11px 20px',
+                cursor: 'pointer',
+                borderBottom: '1px solid rgba(28,28,28,0.03)',
+                transition: 'all 0.1s',
+                userSelect: 'none' as const,
+                background: isActive ? '#1C1C1C' : 'transparent',
+                color: isActive ? '#FAFAF8' : '#1C1C1C',
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+            >
+              <div
+                onClick={() => handleServiceClick(s)}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}
+              >
+                <div style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: 2,
+                  background: s.color,
+                  border: `2px solid ${isActive ? 'rgba(250,250,248,0.35)' : '#1C1C1C'}`,
+                  flexShrink: 0,
+                }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span style={{
+                    fontFamily: "'IBM Plex Sans', sans-serif",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {s.label}
+                  </span>
+                </div>
+                <span style={{
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  fontSize: 10,
+                  opacity: 0.5,
+                  flexShrink: 0,
+                }}>
+                  {s.count}{s.entityCount ? ` + ${s.entityCount}` : ''}
+                </span>
+              </div>
+              <span
+                onClick={(e) => { e.stopPropagation(); toggleDomainExpand(s.code) }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexShrink: 0,
+                  marginLeft: 4,
+                  opacity: 0.5,
+                  transition: 'opacity 0.1s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0.5' }}
+              >
+                {isDomainExpanded
+                  ? <ChevronDown size={14} color={isActive ? '#FAFAF8' : 'rgba(28,28,28,0.6)'} />
+                  : <ChevronRight size={14} color={isActive ? '#FAFAF8' : 'rgba(28,28,28,0.6)'} />
+                }
               </span>
             </div>
-            <span style={{
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 10,
-              opacity: 0.5,
-            }}>
-              {s.count}{s.entityCount ? ` + ${s.entityCount}` : ''}
-            </span>
+            {isDomainExpanded && (
+              <FolderTree domainId={s.code} domainSlug={s.slug} />
+            )}
           </div>
         )
       })}
