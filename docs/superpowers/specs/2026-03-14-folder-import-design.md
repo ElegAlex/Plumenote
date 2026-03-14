@@ -35,6 +35,17 @@ ALTER TABLE documents ALTER COLUMN folder_id SET NOT NULL;
 
 Documents with `folder_id = NULL` live at the domain root level. In the sidebar they appear below the folder tree. No new tables required.
 
+### Queries impacted by nullable `folder_id`
+
+The following existing queries and code paths must be updated to handle `folder_id IS NULL`:
+
+- **`internal/folder/handler.go`** — `getFolder` handler: the query `WHERE folder_id = $1` for listing documents in a folder is unaffected (only matches non-NULL). But `filterPublicFolders` casts `folder_id::text` which returns NULL for root documents — add `WHERE folder_id IS NOT NULL` or handle NULL explicitly.
+- **`internal/document/handlers.go`** — `createDocument`: `folder_id` becomes optional in the request body. If absent, insert with `folder_id = NULL`. Permission check: if no folder, require that user is at least editor on any root folder of the domain (or admin).
+- **`internal/document/handlers.go`** — `updateDocument`: allow `folder_id` to be set to `null` (move to domain root). If moving from a folder to root, check editor+ on source folder.
+- **`internal/document/handlers.go`** — `getDocument`: if `folder_id IS NULL`, skip folder path in breadcrumb response.
+- **`internal/document/handlers.go`** — `listDocuments`: add support for `folder_id=null` query parameter to list root documents.
+- **`internal/importer/web_handler.go`** — `HandleImport` / `processOneFile`: `folder_id` form field becomes optional. If empty, insert with `folder_id = NULL` instead of falling back to "General" folder.
+
 ## Backend API
 
 ### New endpoints
@@ -82,7 +93,7 @@ Analyzes a ZIP file and returns its directory tree without processing any files.
 ```
 
 **Behavior:**
-- Decompresses ZIP to a temp directory, reads the structure, deletes temp.
+- Reads the ZIP central directory via `archive/zip` without extracting files to disk.
 - Filters out unsupported file types (only `.doc`, `.docx`, `.pdf`, `.txt`, `.md`).
 - Filters out hidden files/directories (starting with `.`).
 - Returns error if ZIP exceeds 200 MB or contains more than 1000 files.
@@ -98,6 +109,7 @@ Starts an asynchronous folder import job.
 |-------|------|----------|-------------|
 | `mode` | string | yes | `"root"` or `"domain"` |
 | `domain_id` | UUID | if mode=domain | Target domain ID |
+| `type_id` | UUID | no | Document type for all imported docs (default: first type in DB) |
 | `source` | string | yes | `"directory"` or `"zip"` |
 | `paths[]` | string[] | yes | Relative paths of selected files |
 | `files[]` | File[] | if source=directory | The actual files (matched by index to `paths[]`) |
@@ -115,7 +127,7 @@ Starts an asynchronous folder import job.
 1. **Parse file tree** from `paths[]` to reconstruct the hierarchy.
 2. **Mode "root":**
    - First-level directories → domains. Create domain if it doesn't exist (name = directory name, slug = slugified name).
-   - Files at root level (no parent directory) → assigned to a "Divers" domain (created if needed).
+   - Files at root level (no parent directory) → assigned to a "Divers" domain (slug: `divers`, created if needed). Shown in preview tree as "(Domaine) Divers" with the loose files listed under it.
    - Second-level and deeper directories → folders within the resolved domain.
    - Documents at domain root (directly inside a first-level dir, no subfolder) → `folder_id = NULL`.
 3. **Mode "domain":**
@@ -130,6 +142,10 @@ Starts an asynchronous folder import job.
    - Publish progress event to job channel.
 5. **Cleanup** temp files.
 
+**Authorization:**
+- **Mode "root":** Only admin users can use root mode (domain creation is an admin-level action). Non-admin users get HTTP 403.
+- **Mode "domain":** Requires editor+ role on at least one folder in the target domain, or admin. Folders created during import grant "manager" to the importing user.
+
 **Domain creation (mode root):**
 ```go
 // Auto-create domain from directory name
@@ -137,8 +153,10 @@ name := dirName           // e.g. "CPAM 92"
 slug := slugify(dirName)  // e.g. "cpam-92"
 // INSERT INTO domains (name, slug) VALUES ($1, $2)
 //   ON CONFLICT (slug) DO NOTHING RETURNING id
-// If conflict, SELECT id WHERE slug = $1
+// If conflict, SELECT id FROM domains WHERE slug = $2
 ```
+
+**Folder depth enforcement:** When creating nested folders, enforce `MaxFolderDepth = 10`. If a directory tree exceeds this depth, the deepest directories are flattened into the last allowed level with a warning in the progress stream.
 
 **Error handling:** Individual file failures don't abort the job. Each file's result (ok/error) is reported in the progress stream. The job completes even if some files fail.
 
@@ -161,7 +179,7 @@ event: done
 data: {"total": 42, "success": 38, "failed": 4, "domains_created": ["CPAM 92", "SCI"], "folders_created": 12}
 ```
 
-**Implementation:** A `sync.Map` of `jobId → chan progressEvent` in the WebHandler. The import goroutine writes to the channel; the SSE handler reads from it. Channel is cleaned up after the `done` event.
+**Implementation:** A `sync.Map` of `jobId → *importJob` in the WebHandler. Each job stores the `authorID` — the SSE handler verifies `claims.UserID == job.authorID` before streaming. The channel is buffered (capacity 64). The import goroutine uses `select` with a default case to avoid blocking on a full channel (drops events if consumer is too slow). The job's `cancel` function is called when the SSE client disconnects. Channel is cleaned up 60 seconds after the `done` event (allows late reconnection).
 
 #### `GET /api/domains/{domainId}/root-documents`
 
@@ -220,7 +238,9 @@ The existing ImportPage gets restructured with tabs:
 
 - Radio buttons for mode.
 - Domain selector shown only in "domain" mode.
+- Optional document type selector (applies to all imported documents).
 - Two buttons for source type.
+- In root mode: a note explains that first-level subdirectories will become domains.
 
 #### Step 2 — Preview tree with exclusion
 
@@ -328,8 +348,9 @@ When a domain is expanded in the sidebar:
 ```go
 // In WebHandler
 type importJob struct {
-    ch     chan progressEvent
-    cancel context.CancelFunc
+    ch       chan progressEvent
+    cancel   context.CancelFunc
+    authorID string
 }
 
 type progressEvent struct {
@@ -348,6 +369,10 @@ type progressEvent struct {
 
 // sync.Map for active jobs
 var activeJobs sync.Map // map[string]*importJob
+
+// Max concurrent import jobs (global)
+const maxConcurrentJobs = 3
+var activeJobCount atomic.Int32
 ```
 
 ### File processing reuse
@@ -364,12 +389,19 @@ New functions:
 - `buildTreeFromPaths(paths []string)` → reconstructs hierarchy from flat path list
 - `analyzeZip(zipPath string)` → returns tree structure
 
-### ZIP handling
+### Upload limits
 
+**Directory upload (`webkitdirectory`):**
+- `MaxBytesReader`: 500 MB total (all files combined).
+- Max file count: 1000. Validated client-side before upload; server rejects if exceeded.
+
+**ZIP upload:**
 - Max ZIP size: 200 MB.
 - Max files in ZIP: 1000.
-- Decompression to temp directory with cleanup.
+- ZIP is extracted to temp directory for processing, cleaned up after job completes.
 - Protection against zip bombs: check uncompressed size ratio (max 10:1).
+
+**Concurrency:** Max 3 concurrent import jobs globally. If limit reached, return HTTP 429 "Too many imports in progress, please retry later".
 
 ## Migration strategy
 
