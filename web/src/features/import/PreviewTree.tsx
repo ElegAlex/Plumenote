@@ -42,11 +42,11 @@ export default function PreviewTree({ tree, mode, selected, onSelectionChange }:
 
   return (
     <div>
-      <p className="text-sm text-muted-foreground mb-3">
+      <p className="text-sm text-ink-45 mb-3">
         {mode === 'root' && <>{stats.domains} domaine{stats.domains > 1 ? 's' : ''} · </>}
         {stats.folders} dossier{stats.folders > 1 ? 's' : ''} · {stats.files} fichier{stats.files > 1 ? 's' : ''}
       </p>
-      <div className="border rounded-md p-2 max-h-96 overflow-y-auto">
+      <div className="border border-ink-10 rounded p-2 max-h-96 overflow-y-auto">
         {tree.map(node => (
           <TreeItem key={node.path} node={node} depth={0} mode={mode} selected={selected} onToggle={toggleNode} />
         ))}
@@ -69,7 +69,7 @@ function TreeItem({ node, depth, mode, selected, onToggle }: {
 
   return (
     <div>
-      <div className="flex items-center gap-1 py-0.5 hover:bg-accent rounded px-1"
+      <div className="flex items-center gap-1 py-0.5 hover:bg-ink-05 rounded px-1"
         style={{ paddingLeft: `${depth * 16 + 4}px` }}>
         {!isFile && node.children && node.children.length > 0 ? (
           <button onClick={() => setExpanded(!expanded)} className="p-0.5">
@@ -81,13 +81,13 @@ function TreeItem({ node, depth, mode, selected, onToggle }: {
           checked={isChecked}
           ref={el => { if (el) el.indeterminate = isIndeterminate }}
           onChange={() => onToggle(node)}
-          className="h-4 w-4 rounded border-gray-300"
+          className="h-4 w-4 rounded border-ink-10"
         />
-        {isFile ? <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-          : expanded ? <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-          : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />}
+        {isFile ? <FileText className="h-4 w-4 text-ink-45 shrink-0" />
+          : expanded ? <FolderOpen className="h-4 w-4 text-ink-45 shrink-0" />
+          : <Folder className="h-4 w-4 text-ink-45 shrink-0" />}
         <span className="text-sm truncate">{node.name}</span>
-        {isDomain && <span className="text-xs text-muted-foreground ml-1">(Domaine)</span>}
+        {isDomain && <span className="text-xs text-ink-45 ml-1">(Domaine)</span>}
       </div>
       {!isFile && expanded && node.children?.map(child => (
         <TreeItem key={child.path} node={child} depth={depth + 1} mode={mode} selected={selected} onToggle={onToggle} />

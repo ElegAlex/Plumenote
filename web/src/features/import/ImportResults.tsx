@@ -54,7 +54,7 @@ export default function ImportResults({ result, errors, onReset }: ImportResults
               <li key={i} className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-red-500 shrink-0" />
                 <span>{e.filename}</span>
-                <span className="text-muted-foreground">— {e.error}</span>
+                <span className="text-ink-45">— {e.error}</span>
               </li>
             ))}
           </ul>
@@ -63,7 +63,7 @@ export default function ImportResults({ result, errors, onReset }: ImportResults
 
       <button
         onClick={onReset}
-        className="px-4 py-2 border rounded-md text-sm hover:bg-accent"
+        className="px-4 py-2 text-sm font-medium text-ink-70 border border-ink-10 rounded hover:bg-ink-05 transition"
       >
         Nouvel import
       </button>

@@ -73,11 +73,11 @@ export default function ImportProgress({ jobId, onDone, onError }: ImportProgres
   return (
     <div>
       <h3 className="text-lg font-semibold mb-2">Import en cours...</h3>
-      <div className="h-2 rounded-full bg-muted mb-2 overflow-hidden">
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+      <div className="h-2 rounded-full bg-ink-10 mb-2 overflow-hidden">
+        <div className="h-full rounded-full bg-blue transition-all" style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-sm text-muted-foreground mb-3">{current}/{total} fichiers</p>
-      <div ref={scrollRef} className="border rounded-md p-2 max-h-64 overflow-y-auto space-y-1">
+      <p className="text-sm text-ink-45 mb-3">{current}/{total} fichiers</p>
+      <div ref={scrollRef} className="border border-ink-10 rounded p-2 max-h-64 overflow-y-auto space-y-1">
         {events.map((evt, i) => (
           <div key={i} className="flex items-center gap-2 text-sm">
             {evt.status === 'ok' ? (
