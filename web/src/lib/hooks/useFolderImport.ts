@@ -47,10 +47,9 @@ export function useStartFolderImport() {
       params.paths.forEach(p => fd.append('paths[]', p))
 
       if (params.source === 'directory' && params.files) {
-        // Use stripped path (without root folder) as filename for server matching
+        // Use full webkitRelativePath as filename for server matching
         params.files.forEach(f => {
-          const strippedPath = f.webkitRelativePath.split('/').slice(1).join('/')
-          fd.append('files[]', f, strippedPath)
+          fd.append('files[]', f, f.webkitRelativePath)
         })
       } else if (params.source === 'zip' && params.zipFile) {
         fd.append('file', params.zipFile)

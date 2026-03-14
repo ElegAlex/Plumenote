@@ -57,7 +57,7 @@ export default function FolderImportTab() {
     })
 
     const entries = supported.map(f => ({
-      path: f.webkitRelativePath.split('/').slice(1).join('/'),
+      path: f.webkitRelativePath,
       size: f.size,
     }))
 
@@ -95,8 +95,7 @@ export default function FolderImportTab() {
         source,
         paths,
         files: source === 'directory' ? files.filter(f => {
-          const relPath = f.webkitRelativePath.split('/').slice(1).join('/')
-          return selected.has(relPath)
+          return selected.has(f.webkitRelativePath)
         }) : undefined,
         zipFile: source === 'zip' ? zipFile! : undefined,
       })
