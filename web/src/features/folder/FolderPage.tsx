@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { Folder, Plus, Trash2, Shield } from 'lucide-react'
+import CreateFolderModal from './CreateFolderModal'
+import DeleteFolderModal from './DeleteFolderModal'
+import FolderPermissionsModal from './FolderPermissionsModal'
 
 interface PathItem { id: string; name: string; slug: string }
 interface ChildFolder { id: string; name: string; slug: string }
@@ -49,11 +52,6 @@ export default function FolderPage() {
 
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-  // Suppress unused state warnings — will be wired in Task 14
-  void showDelete
-  void showPerms
-  void showCreate
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
@@ -162,7 +160,29 @@ export default function FolderPage() {
         <p className="text-sm text-ink-45">Aucun document dans ce dossier.</p>
       )}
 
-      {/* Modals placeholder — will be wired in Task 14 */}
+      {showCreate && (
+        <CreateFolderModal
+          domainId={folder.domain_id}
+          parentId={folder.id}
+          onCreated={() => { setShowCreate(false); window.location.reload() }}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
+      {showDelete && (
+        <DeleteFolderModal
+          folderId={folder.id}
+          folderName={folder.name}
+          onDeleted={() => navigate(`/domains/${domainSlug}`)}
+          onClose={() => setShowDelete(false)}
+        />
+      )}
+      {showPerms && (
+        <FolderPermissionsModal
+          folderId={folder.id}
+          folderName={folder.name}
+          onClose={() => setShowPerms(false)}
+        />
+      )}
     </div>
   )
 }
