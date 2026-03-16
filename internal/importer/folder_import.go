@@ -240,8 +240,8 @@ func (wh *WebHandler) processImportJob(ctx context.Context, job *importJob, jobI
 			foldersCreated += len(cache) - prevCacheLen
 		}
 
-		// Convert file
-		tiptapJSON, bodyText, err := convertFile(ctx, tmpPath, ext)
+		// Convert file (with media extraction)
+		result, err := convertFileWithMedia(ctx, tmpPath, ext)
 		if err != nil {
 			failed++
 			job.sendProgress(progressEvent{
@@ -254,6 +254,8 @@ func (wh *WebHandler) processImportJob(ctx context.Context, job *importJob, jobI
 			})
 			continue
 		}
+		tiptapJSON := result.TipTap
+		bodyText := result.BodyText
 
 		// Generate title and slug
 		title := titleFromFilename(path)
@@ -291,6 +293,17 @@ func (wh *WebHandler) processImportJob(ctx context.Context, job *importJob, jobI
 				Error:    fmt.Sprintf("db insert: %v", err),
 			})
 			continue
+		}
+
+		// Process extracted images
+		if result.MediaDir != "" {
+			updatedBody, mediaErr := processExtractedMedia(ctx, wh.deps.DB, docID, result.MediaDir, tiptapJSON)
+			if mediaErr != nil {
+				log.Printf("WARNING: media processing failed for %s: %v", docID, mediaErr)
+			} else {
+				wh.deps.DB.Exec(ctx, `UPDATE documents SET body = $1 WHERE id = $2`, updatedBody, docID)
+			}
+			os.RemoveAll(result.MediaDir)
 		}
 
 		// Index in Meilisearch

@@ -132,6 +132,7 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
         return (
           <div key={s.code}>
             <div
+              onClick={() => handleServiceClick(s)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -148,7 +149,6 @@ export default function Sidebar({ activeService: activeServiceProp, onServiceCli
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
             >
               <div
-                onClick={() => handleServiceClick(s)}
                 style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}
               >
                 <div style={{

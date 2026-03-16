@@ -75,7 +75,7 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !isSupportedExtension(ext) {
-		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "error": "unsupported file type; allowed: .doc, .docx, .pdf, .txt, .md"})
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "error": "unsupported file type; allowed: .doc, .docx, .pptx, .pdf, .txt, .md"})
 		return
 	}
 
@@ -95,11 +95,14 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpFile.Close()
 
-	// Convert file
-	tiptapJSON, bodyText, err := convertFile(r.Context(), tmpPath, ext)
+	// Convert file (with media extraction for docx/pptx)
+	result, err := convertFileWithMedia(r.Context(), tmpPath, ext)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{"success": false, "error": fmt.Sprintf("conversion failed: %v", err)})
 		return
+	}
+	if result.MediaDir != "" {
+		defer os.RemoveAll(result.MediaDir)
 	}
 
 	// Get default type if not provided
@@ -131,11 +134,21 @@ func (wh *WebHandler) HandleImport(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility, folder_id)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi', $8)
 		 RETURNING id`,
-		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderIDParam,
+		title, slug, result.TipTap, result.BodyText, domainID, typeID, authorID, folderIDParam,
 	).Scan(&docID)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "error": "failed to insert document"})
 		return
+	}
+
+	// Process extracted images (upload + rewrite src in body)
+	if result.MediaDir != "" {
+		updatedBody, mediaErr := processExtractedMedia(r.Context(), wh.deps.DB, docID, result.MediaDir, result.TipTap)
+		if mediaErr != nil {
+			log.Printf("WARNING: media processing failed for %s: %v", docID, mediaErr)
+		} else {
+			wh.deps.DB.Exec(r.Context(), `UPDATE documents SET body = $1 WHERE id = $2`, updatedBody, docID)
+		}
 	}
 
 	// Index in Meilisearch async
@@ -245,10 +258,13 @@ func (wh *WebHandler) processOneFile(ctx context.Context, fh *multipart.FileHead
 	}
 	tmpFile.Close()
 
-	// Convert
-	tiptapJSON, bodyText, err := convertFile(ctx, tmpPath, ext)
+	// Convert (with media extraction)
+	result, err := convertFileWithMedia(ctx, tmpPath, ext)
 	if err != nil {
 		return importResult{Filename: filename, Status: "error", Error: fmt.Sprintf("conversion failed: %v", err)}
+	}
+	if result.MediaDir != "" {
+		defer os.RemoveAll(result.MediaDir)
 	}
 
 	title := titleFromFilename(filename)
@@ -269,10 +285,20 @@ func (wh *WebHandler) processOneFile(ctx context.Context, fh *multipart.FileHead
 		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, author_id, visibility, folder_id)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'dsi', $8)
 		 RETURNING id`,
-		title, slug, tiptapJSON, bodyText, domainID, typeID, authorID, folderIDParam,
+		title, slug, result.TipTap, result.BodyText, domainID, typeID, authorID, folderIDParam,
 	).Scan(&docID)
 	if err != nil {
 		return importResult{Filename: filename, Status: "error", Error: "failed to insert document"}
+	}
+
+	// Process extracted images
+	if result.MediaDir != "" {
+		updatedBody, mediaErr := processExtractedMedia(ctx, wh.deps.DB, docID, result.MediaDir, result.TipTap)
+		if mediaErr != nil {
+			log.Printf("WARNING: media processing failed for %s: %v", docID, mediaErr)
+		} else {
+			wh.deps.DB.Exec(ctx, `UPDATE documents SET body = $1 WHERE id = $2`, updatedBody, docID)
+		}
 	}
 
 	go wh.indexDocumentAsync(docID)

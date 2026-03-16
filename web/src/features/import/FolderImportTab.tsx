@@ -15,7 +15,7 @@ interface DocumentType {
   slug: string
 }
 
-const SUPPORTED_EXT = ['.doc', '.docx', '.pdf', '.txt', '.md']
+const SUPPORTED_EXT = ['.doc', '.docx', '.pptx', '.pdf', '.txt', '.md']
 
 type Step = 'select' | 'preview' | 'progress' | 'results'
 

@@ -9,19 +9,19 @@ import FolderPermissionsModal from './FolderPermissionsModal'
 interface PathItem { id: string; name: string; slug: string }
 interface ChildFolder { id: string; name: string; slug: string }
 interface DocItem { id: string; title: string; slug: string; updated_at: string }
-interface DocsByType { type_name: string; type_slug: string; documents: DocItem[] }
+interface DocsByType { type_id: string; type_name: string; docs: DocItem[] }
 
 interface FolderData {
   id: string
   name: string
   slug: string
   domain_id: string
-  domain_name: string
-  domain_slug: string
+  domain_name?: string
+  domain_slug?: string
   parent_id: string | null
   path: PathItem[]
   children: ChildFolder[]
-  documents_by_type: DocsByType[]
+  docs_by_type: DocsByType[]
   user_role: string
 }
 
@@ -59,8 +59,8 @@ export default function FolderPage() {
       <nav className="flex items-center gap-1 text-sm text-ink-45 mb-4 flex-wrap">
         <Link to="/" className="hover:text-blue transition-colors">Accueil</Link>
         <span>&gt;</span>
-        <Link to={`/domains/${folder.domain_slug}`} className="hover:text-blue transition-colors">
-          {folder.domain_name}
+        <Link to={`/domains/${domainSlug}`} className="hover:text-blue transition-colors">
+          {folder.domain_name || domainSlug}
         </Link>
         {folder.path.map((p, i) => (
           <span key={p.id} className="flex items-center gap-1">
@@ -69,7 +69,7 @@ export default function FolderPage() {
               <span className="text-ink font-medium">{p.name}</span>
             ) : (
               <Link
-                to={`/domains/${folder.domain_slug}/folders/${p.id}`}
+                to={`/domains/${domainSlug}/folders/${p.id}`}
                 className="hover:text-blue transition-colors"
               >
                 {p.name}
@@ -136,14 +136,14 @@ export default function FolderPage() {
       )}
 
       {/* Documents by type */}
-      {folder.documents_by_type.length > 0 ? (
-        folder.documents_by_type.map((group) => (
-          <div key={group.type_slug} className="mb-6">
+      {folder.docs_by_type && folder.docs_by_type.length > 0 ? (
+        folder.docs_by_type.map((group) => (
+          <div key={group.type_id} className="mb-6">
             <h2 className="text-xs font-semibold text-ink-45 uppercase tracking-wider mb-3">
               {group.type_name}
             </h2>
             <div className="space-y-1">
-              {group.documents.map((doc) => (
+              {group.docs.map((doc) => (
                 <Link
                   key={doc.id}
                   to={`/documents/${doc.slug}`}

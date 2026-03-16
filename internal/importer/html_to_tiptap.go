@@ -84,6 +84,10 @@ func processNode(n *html.Node, marks []TipTapMark) []TipTapNode {
 		}
 		return []TipTapNode{node}
 
+	case html.CommentNode:
+		// Skip HTML comments (e.g. CSS from pdftohtml)
+		return nil
+
 	case html.ElementNode:
 		return processElement(n, marks)
 	}
@@ -96,6 +100,10 @@ func processElement(n *html.Node, marks []TipTapMark) []TipTapNode {
 	tag := strings.ToLower(n.Data)
 
 	switch tag {
+	// Skip non-content elements (style, script, metadata)
+	case "style", "script", "head", "meta", "link", "title":
+		return nil
+
 	case "h1", "h2", "h3", "h4", "h5", "h6":
 		level := int(tag[1] - '0')
 		node := TipTapNode{

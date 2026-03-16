@@ -127,6 +127,13 @@ export default function MindMapTree({ root, onExpand, expanding }: Props) {
 
     const zoomBehavior = d3zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 3])
+      .filter((event) => {
+        // Let click events through to node handlers
+        if (event.type === 'click' || event.type === 'dblclick') return false
+        // Block drag from starting on interactive nodes
+        if (event.type === 'mousedown' && (event.target as Element).closest?.('.mm-node')) return false
+        return true
+      })
       .on('zoom', (event) => {
         select(g).attr('transform', event.transform.toString())
       })

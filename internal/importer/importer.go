@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -263,7 +264,7 @@ func Import(ctx context.Context, db *pgxpool.Pool, folder string, authorID strin
 
 func isSupportedExtension(ext string) bool {
 	switch ext {
-	case ".doc", ".docx", ".pdf", ".txt", ".md":
+	case ".doc", ".docx", ".pptx", ".pdf", ".txt", ".md":
 		return true
 	}
 	return false
@@ -339,10 +340,29 @@ func resolveDomain(rootFolder, filePath string, domainMap map[string]string, def
 	return defaultDomainID
 }
 
+// convertResult holds the conversion output plus an optional media directory
+// containing images extracted by Pandoc (--extract-media).
+type convertResult struct {
+	TipTap   json.RawMessage
+	BodyText string
+	MediaDir string // empty if no media was extracted; caller must clean up
+}
+
 func convertFile(ctx context.Context, path, ext string) (json.RawMessage, string, error) {
 	switch ext {
 	case ".docx", ".doc":
-		return convertWord(ctx, path)
+		r, err := convertWordWithMedia(ctx, path)
+		if err != nil {
+			return nil, "", err
+		}
+		// MediaDir cleanup is handled by the caller that processes images
+		return r.TipTap, r.BodyText, nil
+	case ".pptx":
+		r, err := convertPPTXWithMedia(ctx, path)
+		if err != nil {
+			return nil, "", err
+		}
+		return r.TipTap, r.BodyText, nil
 	case ".pdf":
 		return convertPDF(ctx, path)
 	case ".txt", ".md":
@@ -351,40 +371,206 @@ func convertFile(ctx context.Context, path, ext string) (json.RawMessage, string
 	return nil, "", fmt.Errorf("unsupported extension: %s", ext)
 }
 
-func convertWord(ctx context.Context, path string) (json.RawMessage, string, error) {
-	htmlOut, err := runPandoc(ctx, path, "docx")
-	if err != nil {
-		return nil, "", fmt.Errorf("pandoc docx: %w", err)
+// convertFileWithMedia is like convertFile but returns a convertResult
+// with a MediaDir when images were extracted (DOCX, PPTX).
+func convertFileWithMedia(ctx context.Context, path, ext string) (*convertResult, error) {
+	switch ext {
+	case ".docx", ".doc":
+		return convertWordWithMedia(ctx, path)
+	case ".pptx":
+		return convertPPTXWithMedia(ctx, path)
+	case ".pdf":
+		return convertPDFWithMedia(ctx, path)
+	case ".txt", ".md":
+		j, t, err := convertMarkdown(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		return &convertResult{TipTap: j, BodyText: t}, nil
 	}
-	tiptap, err := HTMLToTipTap(htmlOut)
-	if err != nil {
-		return nil, "", fmt.Errorf("html to tiptap: %w", err)
-	}
-	bodyText := stripHTMLTags(htmlOut)
-	return tiptap, bodyText, nil
+	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }
 
-func convertPDF(ctx context.Context, path string) (json.RawMessage, string, error) {
-	cmd := exec.CommandContext(ctx, "pdftotext", path, "-")
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, "", fmt.Errorf("pdftotext: %w", err)
-	}
-
-	text := strings.TrimSpace(string(out))
-	if text == "" {
-		// Scanned PDF placeholder
-		placeholder := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Contenu scann\u00e9 \u2014 transcription manuelle recommand\u00e9e"}]}]}`
-		return json.RawMessage(placeholder), "", nil
-	}
-
-	// Split text into paragraphs on double newlines
-	tiptap := textToTipTap(text)
-	j, err := json.Marshal(tiptap)
+func convertWord(ctx context.Context, path string) (json.RawMessage, string, error) {
+	r, err := convertWordWithMedia(ctx, path)
 	if err != nil {
 		return nil, "", err
 	}
-	return j, text, nil
+	if r.MediaDir != "" {
+		os.RemoveAll(r.MediaDir)
+	}
+	return r.TipTap, r.BodyText, nil
+}
+
+func convertWordWithMedia(ctx context.Context, path string) (*convertResult, error) {
+	mediaDir, err := os.MkdirTemp("", "plumenote-media-*")
+	if err != nil {
+		return nil, fmt.Errorf("create media dir: %w", err)
+	}
+
+	htmlOut, err := runPandocWithMedia(ctx, path, "docx", mediaDir)
+	if err != nil {
+		os.RemoveAll(mediaDir)
+		return nil, fmt.Errorf("pandoc docx: %w", err)
+	}
+
+	tiptap, err := HTMLToTipTap(htmlOut)
+	if err != nil {
+		os.RemoveAll(mediaDir)
+		return nil, fmt.Errorf("html to tiptap: %w", err)
+	}
+
+	bodyText := stripHTMLTags(htmlOut)
+
+	// Check if media was actually extracted
+	hasMedia := false
+	if entries, _ := os.ReadDir(filepath.Join(mediaDir, "media")); len(entries) > 0 {
+		hasMedia = true
+	}
+	if !hasMedia {
+		os.RemoveAll(mediaDir)
+		mediaDir = ""
+	}
+
+	return &convertResult{TipTap: tiptap, BodyText: bodyText, MediaDir: mediaDir}, nil
+}
+
+func convertPPTXWithMedia(ctx context.Context, path string) (*convertResult, error) {
+	mediaDir, err := os.MkdirTemp("", "plumenote-media-*")
+	if err != nil {
+		return nil, fmt.Errorf("create media dir: %w", err)
+	}
+
+	// Use pptx2html.py script for structured extraction
+	cmd := exec.CommandContext(ctx, "python3", "/usr/local/bin/pptx2html.py", path, mediaDir)
+	out, err := cmd.Output()
+	if err != nil {
+		os.RemoveAll(mediaDir)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("pptx2html: %w\nstderr: %s", err, string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("pptx2html: %w", err)
+	}
+	htmlOut := string(out)
+
+	tiptap, err := HTMLToTipTap(htmlOut)
+	if err != nil {
+		os.RemoveAll(mediaDir)
+		return nil, fmt.Errorf("html to tiptap: %w", err)
+	}
+
+	bodyText := stripHTMLTags(htmlOut)
+
+	// Check if media was extracted
+	hasMedia := false
+	if entries, _ := os.ReadDir(filepath.Join(mediaDir, "media")); len(entries) > 0 {
+		hasMedia = true
+		log.Printf("PPTX: found %d media files in %s/media", len(entries), mediaDir)
+	} else {
+		log.Printf("PPTX: no media found in %s/media", mediaDir)
+	}
+	if !hasMedia {
+		os.RemoveAll(mediaDir)
+		mediaDir = ""
+	}
+
+	return &convertResult{TipTap: tiptap, BodyText: bodyText, MediaDir: mediaDir}, nil
+}
+
+func convertPDF(ctx context.Context, path string) (json.RawMessage, string, error) {
+	r, err := convertPDFWithMedia(ctx, path)
+	if err != nil {
+		return nil, "", err
+	}
+	if r.MediaDir != "" {
+		os.RemoveAll(r.MediaDir)
+	}
+	return r.TipTap, r.BodyText, nil
+}
+
+func convertPDFWithMedia(ctx context.Context, path string) (*convertResult, error) {
+	outDir, err := os.MkdirTemp("", "plumenote-pdf-*")
+	if err != nil {
+		return nil, fmt.Errorf("create output dir: %w", err)
+	}
+
+	// pdftohtml -s generates a single HTML file + image files in outDir
+	outPrefix := filepath.Join(outDir, "output")
+	cmd := exec.CommandContext(ctx, "pdftohtml",
+		"-s",          // single page
+		"-noframes",   // no frameset
+		"-nodrm",      // ignore DRM
+		path,
+		outPrefix,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.RemoveAll(outDir)
+		return nil, fmt.Errorf("pdftohtml: %w\noutput: %s", err, string(out))
+	}
+
+	// Find the generated HTML file
+	htmlPath := outPrefix + ".html"
+	// pdftohtml with -s sometimes appends -html.html
+	if _, err := os.Stat(htmlPath); err != nil {
+		htmlFiles, _ := filepath.Glob(filepath.Join(outDir, "*.html"))
+		if len(htmlFiles) == 0 {
+			os.RemoveAll(outDir)
+			return nil, fmt.Errorf("pdftohtml produced no HTML output")
+		}
+		htmlPath = htmlFiles[0]
+	}
+
+	htmlBytes, err := os.ReadFile(htmlPath)
+	if err != nil {
+		os.RemoveAll(outDir)
+		return nil, fmt.Errorf("read pdf html: %w", err)
+	}
+	htmlOut := string(htmlBytes)
+
+	if strings.TrimSpace(stripHTMLTags(htmlOut)) == "" {
+		os.RemoveAll(outDir)
+		placeholder := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Contenu scanné — transcription manuelle recommandée"}]}]}`
+		return &convertResult{TipTap: json.RawMessage(placeholder), BodyText: ""}, nil
+	}
+
+	tiptap, err := HTMLToTipTap(htmlOut)
+	if err != nil {
+		os.RemoveAll(outDir)
+		return nil, fmt.Errorf("html to tiptap: %w", err)
+	}
+
+	bodyText := stripHTMLTags(htmlOut)
+
+	// Move extracted images to media/ subdir for processExtractedMedia
+	mediaSub := filepath.Join(outDir, "media")
+	os.MkdirAll(mediaSub, 0755)
+	hasMedia := false
+
+	entries, _ := os.ReadDir(outDir)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" {
+			oldPath := filepath.Join(outDir, e.Name())
+			newPath := filepath.Join(mediaSub, e.Name())
+			os.Rename(oldPath, newPath)
+			// Rewrite references in TipTap JSON
+			tiptapStr := string(tiptap)
+			tiptapStr = strings.ReplaceAll(tiptapStr, e.Name(), filepath.Join(outDir, "media", e.Name()))
+			tiptap = json.RawMessage(tiptapStr)
+			hasMedia = true
+		}
+	}
+
+	mediaDir := outDir
+	if !hasMedia {
+		os.RemoveAll(outDir)
+		mediaDir = ""
+	}
+
+	return &convertResult{TipTap: tiptap, BodyText: bodyText, MediaDir: mediaDir}, nil
 }
 
 func convertMarkdown(ctx context.Context, path string) (json.RawMessage, string, error) {
@@ -416,6 +602,140 @@ func runPandoc(ctx context.Context, path, fromFormat string) (string, error) {
 		return "", err
 	}
 	return string(out), nil
+}
+
+func runPandocWithMedia(ctx context.Context, path, fromFormat, mediaDir string) (string, error) {
+	cmd := exec.CommandContext(ctx, "pandoc",
+		"-f", fromFormat,
+		"-t", "html",
+		"--extract-media="+mediaDir,
+		path,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+const uploadBasePath = "/data/uploads"
+
+// processExtractedMedia copies extracted media files to /data/uploads/{docID}/,
+// inserts attachment records, and rewrites image src paths in the TipTap JSON.
+// Returns updated TipTap JSON. Caller must clean up mediaDir.
+func processExtractedMedia(ctx context.Context, db *pgxpool.Pool, docID, mediaDir string, tiptapJSON json.RawMessage) (json.RawMessage, error) {
+	if mediaDir == "" {
+		return tiptapJSON, nil
+	}
+
+	mediaSrc := filepath.Join(mediaDir, "media")
+	entries, err := os.ReadDir(mediaSrc)
+	if err != nil || len(entries) == 0 {
+		log.Printf("processExtractedMedia: no files in %s (err=%v)", mediaSrc, err)
+		return tiptapJSON, nil
+	}
+	log.Printf("processExtractedMedia: processing %d media files for doc %s", len(entries), docID)
+
+	// Create upload directory
+	uploadDir := filepath.Join(uploadBasePath, docID)
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return tiptapJSON, fmt.Errorf("create upload dir: %w", err)
+	}
+
+	// Build a map of old path → new path for rewriting
+	pathMap := make(map[string]string)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		srcPath := filepath.Join(mediaSrc, name)
+		dstPath := filepath.Join(uploadDir, name)
+
+		// Copy file
+		if err := copyFile(srcPath, dstPath); err != nil {
+			log.Printf("WARNING: failed to copy media %s: %v", name, err)
+			continue
+		}
+
+		// Detect MIME type
+		mimeType := detectMIME(name)
+
+		// Get file size
+		info, _ := os.Stat(dstPath)
+		var size int64
+		if info != nil {
+			size = info.Size()
+		}
+
+		// Insert attachment record
+		_, dbErr := db.Exec(ctx,
+			`INSERT INTO attachments (document_id, filename, filepath, mime_type, size_bytes)
+			 VALUES ($1, $2, $3, $4, $5)`,
+			docID, name, dstPath, mimeType, size,
+		)
+		if dbErr != nil {
+			log.Printf("WARNING: failed to insert attachment for %s: %v", name, dbErr)
+		}
+
+		// Map: Pandoc generates paths like "{mediaDir}/media/image1.png"
+		oldPath := filepath.Join(mediaDir, "media", name)
+		pathMap[oldPath] = dstPath
+	}
+
+	if len(pathMap) == 0 {
+		return tiptapJSON, nil
+	}
+
+	// Rewrite src in TipTap JSON
+	content := string(tiptapJSON)
+	for oldPath, newPath := range pathMap {
+		content = strings.ReplaceAll(content, oldPath, newPath)
+	}
+
+	return json.RawMessage(content), nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
+}
+
+func detectMIME(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	case ".webp":
+		return "image/webp"
+	case ".svg":
+		return "image/svg+xml"
+	case ".bmp":
+		return "image/bmp"
+	case ".tiff", ".tif":
+		return "image/tiff"
+	case ".emf", ".wmf":
+		return "image/x-emf"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // runPandocStdin runs Pandoc reading from stdin instead of a file.

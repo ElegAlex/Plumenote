@@ -12,7 +12,7 @@ interface DocumentType {
   slug: string
 }
 
-const ACCEPTED_EXTENSIONS = '.doc,.docx,.pdf,.txt,.md'
+const ACCEPTED_EXTENSIONS = '.doc,.docx,.pptx,.pdf,.txt,.md'
 const MAX_SIZE_MB = 50
 
 export default function ImportPage() {
@@ -107,7 +107,7 @@ export default function ImportPage() {
         Importer des fichiers
       </h1>
       <p className="text-ink-45 text-sm mb-6">
-        Importez vos documents existants dans PlumeNote. Formats acceptés : .doc, .docx, .pdf, .txt, .md
+        Importez vos documents existants dans PlumeNote. Formats acceptés : .doc, .docx, .pptx, .pdf, .txt, .md
       </p>
 
       {/* Tab bar */}
@@ -241,7 +241,7 @@ export default function ImportPage() {
                 Glissez vos fichiers ici ou cliquez pour parcourir
               </p>
               <p className="text-xs text-ink-45">
-                .doc, .docx, .pdf, .txt, .md — max 50 Mo
+                .doc, .docx, .pptx, .pdf, .txt, .md — max 50 Mo
               </p>
             </div>
           )}

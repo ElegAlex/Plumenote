@@ -274,6 +274,13 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 		docRouter.ServeHTTP(w, r)
 	})
 
+	// Serve uploaded files (images, attachments)
+	uploadsFS := http.StripPrefix("/data/uploads/", http.FileServer(http.Dir("/data/uploads")))
+	r.Get("/data/uploads/*", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		uploadsFS.ServeHTTP(w, r)
+	})
+
 	// Serve embedded SPA
 	if staticFS != nil {
 		fileServer := http.FileServer(http.FS(staticFS))
@@ -287,6 +294,10 @@ func New(deps *model.Deps, staticFS fs.FS) http.Handler {
 				// SPA fallback: serve index.html for client-side routing
 				path = "index.html"
 				r.URL.Path = "/"
+			}
+			// Immutable cache for hashed assets (e.g. /assets/index-abc123.js)
+			if strings.HasPrefix(path, "assets/") {
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 			}
 			fileServer.ServeHTTP(w, r)
 		})
