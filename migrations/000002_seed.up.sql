@@ -1,13 +1,7 @@
 -- PlumeNote — Seed Data
 -- 4 domains, 11 document types, 10 templates, 1 admin, default config
 
--- 4 Domains
-INSERT INTO domains (id, name, slug, color, icon, sort_order) VALUES
-    ('d0000000-0000-0000-0000-000000000001', 'SCI', 'sci', '#3B82F6', 'monitor', 1),
-    ('d0000000-0000-0000-0000-000000000002', 'Etudes & Dev', 'etudes-dev', '#10B981', 'code', 2),
-    ('d0000000-0000-0000-0000-000000000003', 'Infrastructure', 'infrastructure', '#F59E0B', 'server', 3),
-    ('d0000000-0000-0000-0000-000000000004', 'Support', 'support', '#EF4444', 'headphones', 4)
-ON CONFLICT (id) DO NOTHING;
+-- Domains: none seeded — created via admin UI
 
 -- 11 Document Types (10 + "Autre")
 INSERT INTO document_types (id, name, slug, icon, sort_order) VALUES

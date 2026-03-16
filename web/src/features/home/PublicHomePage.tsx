@@ -24,7 +24,7 @@ export default function PublicHomePage() {
   }, [])
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold font-display text-ink mb-1">PlumeNote</h1>
