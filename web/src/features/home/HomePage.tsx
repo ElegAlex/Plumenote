@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import FeedPanel from "./FeedPanel";
@@ -17,6 +17,7 @@ interface Doc {
 export default function HomePage() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loaded, setLoaded] = useState(false);
   const [recentDocs, setRecentDocs] = useState<Doc[]>([]);
 
@@ -24,7 +25,7 @@ export default function HomePage() {
 
   useEffect(() => {
     api.get<Doc[]>("/documents?limit=20&sort=recent").then(setRecentDocs).catch(() => {});
-  }, []);
+  }, [location.key]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 58px)", fontFamily: "'IBM Plex Sans', sans-serif", color: "#1C1C1C" }}>

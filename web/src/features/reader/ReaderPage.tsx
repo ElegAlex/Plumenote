@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import Breadcrumb from './Breadcrumb'
@@ -51,6 +52,7 @@ interface TocItem {
 export default function ReaderPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { user, isAdmin } = useAuth()
 
   const [doc, setDoc] = useState<Document | null>(null)
@@ -155,6 +157,8 @@ export default function ReaderPage() {
     setDeleting(true)
     try {
       await api.delete(`/documents/${doc.id}`)
+      queryClient.invalidateQueries({ queryKey: ['feed'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       showToast('Document supprime')
       navigate('/')
     } catch {
