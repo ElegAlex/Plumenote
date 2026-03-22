@@ -81,7 +81,7 @@ func (h *handler) getFeed(w http.ResponseWriter, r *http.Request) {
 		       COALESCE(dt.name, '') AS type_name,
 		       COALESCE(dt.slug, '') AS type_slug,
 		       u.display_name AS author_name,
-		       d.updated_at, d.last_verified_at, d.visibility
+		       d.created_at, d.updated_at, d.last_verified_at, d.visibility
 		FROM documents d
 		JOIN users u ON u.id = d.author_id
 		LEFT JOIN domains dom ON dom.id = d.domain_id
@@ -102,16 +102,16 @@ func (h *handler) getFeed(w http.ResponseWriter, r *http.Request) {
 	var items []feedItem
 	for rows.Next() {
 		var item feedItem
-		var updatedAt time.Time
+		var createdAt, updatedAt time.Time
 		var lastVerifiedAt *time.Time
 		if err := rows.Scan(&item.ID, &item.Title, &item.Slug, &item.DomainID,
 			&item.DomainName, &item.DomainColor, &item.TypeName, &item.TypeSlug,
-			&item.AuthorName, &updatedAt, &lastVerifiedAt, &item.Visibility); err != nil {
+			&item.AuthorName, &createdAt, &updatedAt, &lastVerifiedAt, &item.Visibility); err != nil {
 			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan feed item"})
 			return
 		}
 		item.UpdatedAt = updatedAt.Format(time.RFC3339)
-		item.FreshnessBadge = document.ComputeFreshness(lastVerifiedAt, greenDays, yellowDays)
+		item.FreshnessBadge = document.ComputeFreshness(createdAt, updatedAt, lastVerifiedAt, greenDays, yellowDays)
 		item.Tags = h.getDocumentTags(r, item.ID)
 		items = append(items, item)
 	}
@@ -169,7 +169,7 @@ func (h *handler) getPendingReviews(w http.ResponseWriter, r *http.Request) {
 		       COALESCE(dt.name, '') AS type_name,
 		       COALESCE(dt.slug, '') AS type_slug,
 		       u.display_name AS author_name,
-		       d.updated_at, d.last_verified_at, d.visibility
+		       d.created_at, d.updated_at, d.last_verified_at, d.visibility
 		FROM documents d
 		JOIN users u ON u.id = d.author_id
 		LEFT JOIN domains dom ON dom.id = d.domain_id
@@ -190,16 +190,16 @@ func (h *handler) getPendingReviews(w http.ResponseWriter, r *http.Request) {
 	var items []feedItem
 	for rows.Next() {
 		var item feedItem
-		var updatedAt time.Time
+		var createdAt, updatedAt time.Time
 		var lastVerifiedAt *time.Time
 		if err := rows.Scan(&item.ID, &item.Title, &item.Slug, &item.DomainID,
 			&item.DomainName, &item.DomainColor, &item.TypeName, &item.TypeSlug,
-			&item.AuthorName, &updatedAt, &lastVerifiedAt, &item.Visibility); err != nil {
+			&item.AuthorName, &createdAt, &updatedAt, &lastVerifiedAt, &item.Visibility); err != nil {
 			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan review item"})
 			return
 		}
 		item.UpdatedAt = updatedAt.Format(time.RFC3339)
-		item.FreshnessBadge = document.ComputeFreshness(lastVerifiedAt, greenDays, yellowDays)
+		item.FreshnessBadge = document.ComputeFreshness(createdAt, updatedAt, lastVerifiedAt, greenDays, yellowDays)
 		item.Tags = h.getDocumentTags(r, item.ID)
 		items = append(items, item)
 	}

@@ -9,25 +9,32 @@ import (
 )
 
 func TestComputeFreshness(t *testing.T) {
+	now := time.Now()
+	old := now.AddDate(-1, 0, 0) // 1 year ago
+
 	tests := []struct {
 		name       string
+		created    time.Time
+		updated    time.Time
 		verified   *time.Time
 		greenDays  int
 		yellowDays int
 		want       string
 	}{
-		{"nil = red", nil, 30, 180, "red"},
-		{"just verified = green", timePtr(time.Now()), 30, 180, "green"},
-		{"10 days ago = green", timePtr(time.Now().AddDate(0, 0, -10)), 30, 180, "green"},
-		{"29 days ago = green", timePtr(time.Now().AddDate(0, 0, -29)), 30, 180, "green"},
-		{"60 days ago = yellow", timePtr(time.Now().AddDate(0, 0, -60)), 30, 180, "yellow"},
-		{"180 days ago = yellow", timePtr(time.Now().AddDate(0, 0, -180)), 30, 180, "yellow"},
-		{"200 days ago = red", timePtr(time.Now().AddDate(0, 0, -200)), 30, 180, "red"},
-		{"365 days ago = red", timePtr(time.Now().AddDate(-1, 0, 0)), 30, 180, "red"},
+		{"all old, no verify = red", old, old, nil, 30, 180, "red"},
+		{"just created = green", now, now, nil, 30, 180, "green"},
+		{"old but just verified = green", old, old, timePtr(now), 30, 180, "green"},
+		{"old but recently updated = green", old, now, nil, 30, 180, "green"},
+		{"created 10 days ago = green", now.AddDate(0, 0, -10), now.AddDate(0, 0, -10), nil, 30, 180, "green"},
+		{"updated 60 days ago = yellow", old, now.AddDate(0, 0, -60), nil, 30, 180, "yellow"},
+		{"verified 60 days ago = yellow", old, old, timePtr(now.AddDate(0, 0, -60)), 30, 180, "yellow"},
+		{"all 200 days ago = red", now.AddDate(0, 0, -200), now.AddDate(0, 0, -200), nil, 30, 180, "red"},
+		{"verified wins over old dates", old, old, timePtr(now.AddDate(0, 0, -5)), 30, 180, "green"},
+		{"updated wins over old verify", old, now.AddDate(0, 0, -5), timePtr(old), 30, 180, "green"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ComputeFreshness(tt.verified, tt.greenDays, tt.yellowDays)
+			got := ComputeFreshness(tt.created, tt.updated, tt.verified, tt.greenDays, tt.yellowDays)
 			if got != tt.want {
 				t.Errorf("ComputeFreshness() = %q, want %q", got, tt.want)
 			}

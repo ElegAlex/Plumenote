@@ -327,7 +327,7 @@ func (h *handler) getEntity(w http.ResponseWriter, r *http.Request) {
 	// Linked documents
 	e.LinkedDocs = []linkedDoc{}
 	rowsDocs, err := h.deps.DB.Query(r.Context(),
-		`SELECT d.id, d.title, d.slug, d.last_verified_at
+		`SELECT d.id, d.title, d.slug, d.created_at, d.updated_at, d.last_verified_at
 		 FROM entity_documents ed
 		 JOIN documents d ON d.id = ed.document_id
 		 WHERE ed.entity_id = $1
@@ -337,11 +337,12 @@ func (h *handler) getEntity(w http.ResponseWriter, r *http.Request) {
 		greenDays, yellowDays := h.freshnessThresholds(r.Context())
 		for rowsDocs.Next() {
 			var ld linkedDoc
+			var createdAt, updatedAt time.Time
 			var lastVerified *time.Time
-			if err := rowsDocs.Scan(&ld.ID, &ld.Title, &ld.Slug, &lastVerified); err != nil {
+			if err := rowsDocs.Scan(&ld.ID, &ld.Title, &ld.Slug, &createdAt, &updatedAt, &lastVerified); err != nil {
 				continue
 			}
-			ld.FreshnessBadge = document.ComputeFreshness(lastVerified, greenDays, yellowDays)
+			ld.FreshnessBadge = document.ComputeFreshness(createdAt, updatedAt, lastVerified, greenDays, yellowDays)
 			e.LinkedDocs = append(e.LinkedDocs, ld)
 		}
 	}

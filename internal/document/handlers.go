@@ -286,7 +286,7 @@ func (h *handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to scan document"})
 			return
 		}
-		d.FreshnessBadge = ComputeFreshness(d.LastVerifiedAt, greenDays, yellowDays)
+		d.FreshnessBadge = ComputeFreshness(d.CreatedAt, d.UpdatedAt, d.LastVerifiedAt, greenDays, yellowDays)
 		docs = append(docs, d)
 	}
 	if docs == nil {
@@ -405,7 +405,7 @@ func (h *handler) getDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gd, yd := h.freshnessThresholds(r.Context())
-	doc.Freshness = ComputeFreshness(doc.LastVerifiedAt, gd, yd)
+	doc.Freshness = ComputeFreshness(doc.CreatedAt, doc.UpdatedAt, doc.LastVerifiedAt, gd, yd)
 
 	// Fetch tags
 	tags, _ := h.getDocumentTags(r.Context(), doc.ID)

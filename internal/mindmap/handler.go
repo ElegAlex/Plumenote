@@ -236,18 +236,19 @@ func (h *handler) loadDocument(ctx context.Context, id string, greenDays, yellow
 	var node TreeNode
 	var slug, typeName, domainName, domainColor string
 	var viewCount int
+	var createdAt, updatedAt time.Time
 	var lastVerifiedAt *time.Time
 
 	err := h.deps.DB.QueryRow(ctx,
 		`SELECT d.id, d.title, d.slug,
 		        COALESCE(dt.name, ''), COALESCE(dt.icon, '📄'),
 		        COALESCE(dom.name, ''), COALESCE(dom.color, '#6B7280'),
-		        d.view_count, d.last_verified_at
+		        d.view_count, d.created_at, d.updated_at, d.last_verified_at
 		 FROM documents d
 		 LEFT JOIN document_types dt ON dt.id = d.type_id
 		 LEFT JOIN domains dom ON dom.id = d.domain_id
 		 WHERE d.id = $1`, id,
-	).Scan(&node.ID, &node.Label, &slug, &typeName, &node.Icon, &domainName, &domainColor, &viewCount, &lastVerifiedAt)
+	).Scan(&node.ID, &node.Label, &slug, &typeName, &node.Icon, &domainName, &domainColor, &viewCount, &createdAt, &updatedAt, &lastVerifiedAt)
 	if err != nil {
 		return TreeNode{}, fmt.Errorf("document %s not found: %w", id, err)
 	}
@@ -257,7 +258,7 @@ func (h *handler) loadDocument(ctx context.Context, id string, greenDays, yellow
 	node.DomainColor = domainColor
 	node.URL = "/documents/" + slug
 
-	badge := document.ComputeFreshness(lastVerifiedAt, greenDays, yellowDays)
+	badge := document.ComputeFreshness(createdAt, updatedAt, lastVerifiedAt, greenDays, yellowDays)
 	if badge != "" {
 		node.FreshnessBadge = &badge
 	}

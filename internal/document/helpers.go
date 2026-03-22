@@ -64,12 +64,17 @@ type markAttrs struct {
 	Href string `json:"href"`
 }
 
-// ComputeFreshness returns "green", "yellow", or "red" based on last verification date.
-func ComputeFreshness(lastVerifiedAt *time.Time, greenDays, yellowDays int) string {
-	if lastVerifiedAt == nil {
-		return "red"
+// ComputeFreshness returns "green", "yellow", or "red" based on the most recent
+// of: creation date, last modification date, or last verification date.
+func ComputeFreshness(createdAt, updatedAt time.Time, lastVerifiedAt *time.Time, greenDays, yellowDays int) string {
+	latest := createdAt
+	if updatedAt.After(latest) {
+		latest = updatedAt
 	}
-	days := int(time.Since(*lastVerifiedAt).Hours() / 24)
+	if lastVerifiedAt != nil && lastVerifiedAt.After(latest) {
+		latest = *lastVerifiedAt
+	}
+	days := int(time.Since(latest).Hours() / 24)
 	if days < greenDays {
 		return "green"
 	}
