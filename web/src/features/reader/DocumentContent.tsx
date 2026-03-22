@@ -80,6 +80,19 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
   const navigate = useNavigate()
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Handle double-encoded bodies: if content is a string (legacy double-encoded JSONB),
+  // parse it back to an object so TipTap can render it properly.
+  const resolvedContent = useMemo(() => {
+    if (typeof content === 'string') {
+      try {
+        return JSON.parse(content)
+      } catch {
+        return content
+      }
+    }
+    return content
+  }, [content])
+
   const extensions = useMemo(
     () => [
       StarterKit.configure({ codeBlock: false }),
@@ -101,7 +114,7 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
 
   const editor = useEditor({
     extensions,
-    content,
+    content: resolvedContent,
     editable: false,
     editorProps: {
       attributes: {

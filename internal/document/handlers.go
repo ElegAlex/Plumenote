@@ -147,6 +147,7 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	req.Body = UnwrapDoubleEncodedBody(req.Body)
 	bodyText := ExtractBodyText(req.Body)
 	slug := httputil.GenerateSlug(req.Title)
 
@@ -516,6 +517,7 @@ func (h *handler) updateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Body = UnwrapDoubleEncodedBody(req.Body)
 	bodyText := ExtractBodyText(req.Body)
 	slug := httputil.GenerateSlug(req.Title)
 	slug, err := h.ensureUniqueSlug(r.Context(), slug, docID)

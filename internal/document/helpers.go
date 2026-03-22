@@ -79,6 +79,25 @@ func ComputeFreshness(lastVerifiedAt *time.Time, greenDays, yellowDays int) stri
 	return "red"
 }
 
+// UnwrapDoubleEncodedBody detects and fixes a body that was stored as a JSON string
+// instead of a JSON object (e.g. `"{\"type\":\"doc\",...}"` instead of `{"type":"doc",...}`).
+// This can happen if the frontend double-encodes the body before sending it.
+func UnwrapDoubleEncodedBody(body json.RawMessage) json.RawMessage {
+	if len(body) < 2 || body[0] != '"' {
+		return body // already a JSON object/array, not a string
+	}
+	var s string
+	if err := json.Unmarshal(body, &s); err != nil {
+		return body
+	}
+	// Verify the unwrapped string is valid JSON object
+	candidate := json.RawMessage(s)
+	if len(candidate) > 0 && (candidate[0] == '{' || candidate[0] == '[') && json.Valid(candidate) {
+		return candidate
+	}
+	return body
+}
+
 // ExtractBodyText traverses a TipTap/ProseMirror JSON tree and extracts plain text.
 func ExtractBodyText(tiptapJSON json.RawMessage) string {
 	if len(tiptapJSON) == 0 {

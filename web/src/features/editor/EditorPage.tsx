@@ -116,9 +116,20 @@ export default function EditorPage() {
     if (saving) return
     setSaving(true)
     try {
+      // body is a JSON string from TipTapEditor (JSON.stringify of getJSON()).
+      // Parse it back to an object so api.post doesn't double-encode it.
+      let parsedBody: unknown = {}
+      if (body) {
+        try {
+          parsedBody = typeof body === 'string' ? JSON.parse(body) : body
+        } catch {
+          parsedBody = {}
+        }
+      }
+
       const payload = {
         title,
-        body,
+        body: parsedBody,
         domain_id: domainId,
         type_id: typeId,
         folder_id: folderId || null,
