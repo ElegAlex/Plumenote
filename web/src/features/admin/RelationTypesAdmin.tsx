@@ -1,12 +1,37 @@
+// web/src/features/admin/RelationTypesAdmin.tsx
+// Vue "Types de relations" — alignement tokens + logique CRUD préservée.
 import { useState, useCallback } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { ApiError } from '@/lib/api'
 import { useRelationTypes, useCreateRelationType, useDeleteRelationType } from '@/lib/hooks'
 import type { RelationType } from '@/lib/types'
+import {
+  Button,
+  Card,
+  Dialog,
+  DialogBody,
+  DialogFoot,
+  DialogHead,
+  Field,
+  FieldError,
+  FieldHint,
+  FieldLabel,
+  IconButton,
+  Input,
+  Table,
+  TBody,
+  THead,
+  Td,
+  Th,
+  TitleEyebrow,
+  Tr,
+} from '@/components/ui'
+import { cn } from '@/lib/cn'
 
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '')
 }
@@ -61,111 +86,133 @@ export default function RelationTypesAdmin() {
       setDeleteConfirm(null)
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
-        setDeleteError('Ce type de relation est utilise. Supprimez les relations avant.')
+        setDeleteError('Ce type de relation est utilisé. Supprimez les relations avant.')
       } else {
         setDeleteError(e instanceof ApiError ? e.message : 'Erreur lors de la suppression')
       }
     }
   }
 
-  if (isLoading) return <p className="text-ink-45">Chargement...</p>
+  if (isLoading) return <p className="text-ink-muted">Chargement...</p>
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-ink">Types de relations</h2>
-        <button onClick={openCreate} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
-          + Nouveau type
-        </button>
-      </div>
+    <div className="flex flex-col gap-[18px]">
+      <section className="flex items-center justify-between gap-5 flex-wrap">
+        <div>
+          <TitleEyebrow>Administration</TitleEyebrow>
+          <h1 className="font-serif font-semibold text-[28px] leading-[1.15] tracking-[-0.02em] text-navy-900">
+            Types de relations
+          </h1>
+          <p className="mt-1.5 text-[13.5px] text-ink-soft leading-[1.55] max-w-[620px]">
+            Chaque relation est bidirectionnelle : à un nom correspond un nom inverse (ex. « hébergé sur » / « héberge »).
+          </p>
+        </div>
+        <Button variant="cta" leftIcon={<Plus size={14} strokeWidth={2.5} />} onClick={openCreate}>
+          Nouveau type
+        </Button>
+      </section>
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-ink-10 text-left text-ink-45">
-            <th className="py-3 pr-4 font-medium">Nom</th>
-            <th className="py-3 pr-4 font-medium">Nom inverse</th>
-            <th className="py-3 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {relationTypes?.map((rt) => (
-            <tr key={rt.id} className="border-b border-ink-05 even:bg-bg hover:bg-ink-05">
-              <td className="py-3 pr-4 font-medium text-ink">{rt.name}</td>
-              <td className="py-3 pr-4 text-ink-70">{rt.inverse_name}</td>
-              <td className="py-3 text-right">
-                <button onClick={() => { setDeleteConfirm(rt); setDeleteError('') }} className="text-red hover:text-red/80 text-sm">Supprimer</button>
-              </td>
-            </tr>
-          ))}
-          {(!relationTypes || relationTypes.length === 0) && (
-            <tr><td colSpan={3} className="py-8 text-center text-ink-45">Aucun type de relation</td></tr>
-          )}
-        </tbody>
-      </table>
+      <Card className="overflow-hidden">
+        <Table>
+          <THead>
+            <Tr className="!bg-cream-light hover:!bg-cream-light">
+              <Th>Nom</Th>
+              <Th>Nom inverse</Th>
+              <Th className="text-right !pr-4">
+                <span className="sr-only">Actions</span>
+              </Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {relationTypes?.map((rt) => (
+              <Tr key={rt.id}>
+                <Td>
+                  <span className="font-semibold text-ink">{rt.name}</span>
+                </Td>
+                <Td>
+                  <span className="text-ink-soft">{rt.inverse_name}</span>
+                </Td>
+                <Td className="text-right whitespace-nowrap">
+                  <IconButton
+                    aria-label="Supprimer le type de relation"
+                    icon={<Trash2 size={13} />}
+                    className={cn('!w-[30px] !h-[30px] !rounded-md', 'hover:!border-danger hover:!text-danger hover:!bg-danger-bg')}
+                    onClick={() => {
+                      setDeleteConfirm(rt)
+                      setDeleteError('')
+                    }}
+                  />
+                </Td>
+              </Tr>
+            ))}
+            {(!relationTypes || relationTypes.length === 0) && (
+              <Tr>
+                <Td colSpan={3} className="py-8 text-center text-ink-muted">
+                  Aucun type de relation défini.
+                </Td>
+              </Tr>
+            )}
+          </TBody>
+        </Table>
+      </Card>
 
       {/* Create modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setShowForm(false)}>
-          <div className="bg-bg rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-ink mb-4">Nouveau type de relation</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-ink-70 mb-1">Nom (ex: "heberge sur")</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                />
-                <p className="text-xs text-ink-45 mt-1">Slug: {slugify(form.name) || '—'}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-ink-70 mb-1">Nom inverse (ex: "heberge")</label>
-                <input
-                  type="text"
-                  value={form.inverse_name}
-                  onChange={(e) => setForm({ ...form, inverse_name: e.target.value })}
-                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                />
-                <p className="text-xs text-ink-45 mt-1">Slug: {slugify(form.inverse_name) || '—'}</p>
-              </div>
-            </div>
-
-            {error && <p className="text-red text-sm mt-3">{error}</p>}
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
-                Annuler
-              </button>
-              <button onClick={save} className="px-4 py-2 text-sm text-white bg-blue rounded-md hover:bg-blue/90">
-                Creer
-              </button>
-            </div>
+      <Dialog open={showForm} onClose={() => setShowForm(false)} aria-label="Nouveau type de relation">
+        <DialogHead>
+          <h3 className="font-serif font-semibold text-[18px] text-navy-900">Nouveau type de relation</h3>
+        </DialogHead>
+        <DialogBody>
+          <div className="flex flex-col gap-4">
+            <Field>
+              <FieldLabel required>Nom (ex : « hébergé sur »)</FieldLabel>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <FieldHint>Slug : {slugify(form.name) || '—'}</FieldHint>
+            </Field>
+            <Field>
+              <FieldLabel required>Nom inverse (ex : « héberge »)</FieldLabel>
+              <Input value={form.inverse_name} onChange={(e) => setForm({ ...form, inverse_name: e.target.value })} />
+              <FieldHint>Slug : {slugify(form.inverse_name) || '—'}</FieldHint>
+            </Field>
+            {error && <FieldError>{error}</FieldError>}
           </div>
-        </div>
-      )}
+        </DialogBody>
+        <DialogFoot>
+          <Button variant="secondary" onClick={() => setShowForm(false)}>
+            Annuler
+          </Button>
+          <Button variant="primary" onClick={save}>
+            Créer
+          </Button>
+        </DialogFoot>
+      </Dialog>
 
       {/* Delete confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-bg rounded-lg shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-ink mb-2">Confirmer la suppression</h3>
-            <p className="text-sm text-ink-70 mb-4">
-              Supprimer le type &laquo;&nbsp;{deleteConfirm.name}&nbsp;&raquo; ?
+      <Dialog
+        open={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        aria-label="Confirmer la suppression"
+        maxWidth={420}
+      >
+        <DialogHead>
+          <h3 className="font-serif font-semibold text-[18px] text-navy-900">Confirmer la suppression</h3>
+        </DialogHead>
+        <DialogBody>
+          {deleteConfirm && (
+            <p className="text-[13.5px] text-ink-soft">
+              Supprimer le type <strong className="text-navy-900">« {deleteConfirm.name} »</strong> ?
             </p>
-            {deleteError && <p className="text-red text-sm mb-4">{deleteError}</p>}
-            <div className="flex justify-end space-x-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
-                Annuler
-              </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm text-white bg-red rounded-md hover:bg-red/90">
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+          {deleteError && <p className="mt-3 text-[12.5px] text-danger">{deleteError}</p>}
+        </DialogBody>
+        <DialogFoot>
+          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+            Annuler
+          </Button>
+          <Button variant="danger" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
+            Supprimer
+          </Button>
+        </DialogFoot>
+      </Dialog>
     </div>
   )
 }

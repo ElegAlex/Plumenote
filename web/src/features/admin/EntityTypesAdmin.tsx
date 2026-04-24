@@ -1,4 +1,8 @@
+// web/src/features/admin/EntityTypesAdmin.tsx
+// Vue "Types de fiche" — version allégée alignée sur tokens (gabarit g9).
+// Logique CRUD et schema editor préservés.
 import { useState, useCallback } from 'react'
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, X } from 'lucide-react'
 import { ApiError } from '@/lib/api'
 import {
   useEntityTypes,
@@ -8,6 +12,28 @@ import {
   useEntityLabel,
 } from '@/lib/hooks'
 import type { EntityTypeSchemaField, EntityType } from '@/lib/types'
+import {
+  Button,
+  Card,
+  Dialog,
+  DialogBody,
+  DialogFoot,
+  DialogHead,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input,
+  Select,
+  Table,
+  TBody,
+  THead,
+  Td,
+  Th,
+  TitleEyebrow,
+  Tr,
+} from '@/components/ui'
+import { cn } from '@/lib/cn'
 
 const FIELD_TYPES = ['text', 'textarea', 'url', 'number', 'date', 'select'] as const
 
@@ -24,7 +50,7 @@ const emptyForm: FormState = { name: '', icon: '', schema: [] }
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '')
 }
@@ -64,12 +90,10 @@ export default function EntityTypesAdmin() {
       setError('Le nom est requis')
       return
     }
-    // Auto-generate field names from labels
     const schema = form.schema.map((f) => ({
       ...f,
       name: f.name || slugify(f.label),
     }))
-
     try {
       if (editing) {
         await updateEntityType.mutateAsync({ id: editing, name: form.name, icon: form.icon, schema })
@@ -105,7 +129,7 @@ export default function EntityTypesAdmin() {
   }
 
   function updateField(index: number, patch: Partial<EntityTypeSchemaField>) {
-    const schema = form.schema.map((f, i) => i === index ? { ...f, ...patch } : f)
+    const schema = form.schema.map((f, i) => (i === index ? { ...f, ...patch } : f))
     setForm({ ...form, schema })
   }
 
@@ -117,185 +141,257 @@ export default function EntityTypesAdmin() {
     setForm({ ...form, schema })
   }
 
-  if (isLoading) return <p className="text-ink-45">Chargement...</p>
+  if (isLoading) return <p className="text-ink-muted">Chargement...</p>
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-ink">Types de {entityLabel.toLowerCase()}</h2>
-        <button onClick={openCreate} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
-          + Nouveau type
-        </button>
-      </div>
+    <div className="flex flex-col gap-[18px]">
+      <section className="flex items-center justify-between gap-5 flex-wrap">
+        <div>
+          <TitleEyebrow>Administration</TitleEyebrow>
+          <h1 className="font-serif font-semibold text-[28px] leading-[1.15] tracking-[-0.02em] text-navy-900">
+            Types de {entityLabel.toLowerCase()}
+          </h1>
+          <p className="mt-1.5 text-[13.5px] text-ink-soft leading-[1.55] max-w-[620px]">
+            Définissez les schémas de {entityLabel.toLowerCase()} utilisés pour la création d'entités typées.
+          </p>
+        </div>
+        <Button variant="cta" leftIcon={<Plus size={14} strokeWidth={2.5} />} onClick={openCreate}>
+          Nouveau type
+        </Button>
+      </section>
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-ink-10 text-left text-ink-45">
-            <th className="py-3 pr-4 font-medium">Icone</th>
-            <th className="py-3 pr-4 font-medium">Nom</th>
-            <th className="py-3 pr-4 font-medium">Champs</th>
-            <th className="py-3 pr-4 font-medium">{entityLabel}s</th>
-            <th className="py-3 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entityTypes?.map((et) => (
-            <tr key={et.id} className="border-b border-ink-05 even:bg-bg hover:bg-ink-05">
-              <td className="py-3 pr-4 text-lg">{et.icon}</td>
-              <td className="py-3 pr-4 font-medium text-ink">{et.name}</td>
-              <td className="py-3 pr-4 text-ink-70">{et.schema.length}</td>
-              <td className="py-3 pr-4 text-ink-70">{et.entity_count}</td>
-              <td className="py-3 text-right space-x-2">
-                <button onClick={() => openEdit(et)} className="text-blue hover:text-blue/80 text-sm">Modifier</button>
-                <button onClick={() => { setDeleteConfirm(et); setDeleteError('') }} className="text-red hover:text-red/80 text-sm">Supprimer</button>
-              </td>
-            </tr>
-          ))}
-          {(!entityTypes || entityTypes.length === 0) && (
-            <tr><td colSpan={5} className="py-8 text-center text-ink-45">Aucun type</td></tr>
-          )}
-        </tbody>
-      </table>
+      <Card className="overflow-hidden">
+        <Table>
+          <THead>
+            <Tr className="!bg-cream-light hover:!bg-cream-light">
+              <Th>Icône</Th>
+              <Th>Nom</Th>
+              <Th>Champs</Th>
+              <Th>{entityLabel}s</Th>
+              <Th className="text-right !pr-4">
+                <span className="sr-only">Actions</span>
+              </Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {entityTypes?.map((et) => (
+              <Tr key={et.id}>
+                <Td>
+                  <span className="text-lg" aria-hidden>
+                    {et.icon}
+                  </span>
+                </Td>
+                <Td>
+                  <span className="font-semibold text-ink">{et.name}</span>
+                </Td>
+                <Td>
+                  <span className="tabular-nums text-ink-soft">{et.schema.length}</span>
+                </Td>
+                <Td>
+                  <span className="tabular-nums font-semibold text-navy-900">{et.entity_count}</span>
+                </Td>
+                <Td className="text-right whitespace-nowrap">
+                  <div className="inline-flex gap-1 justify-end">
+                    <IconButton
+                      aria-label="Modifier le type"
+                      icon={<Pencil size={13} />}
+                      className="!w-[30px] !h-[30px] !rounded-md"
+                      onClick={() => openEdit(et)}
+                    />
+                    <IconButton
+                      aria-label="Supprimer le type"
+                      icon={<Trash2 size={13} />}
+                      className={cn('!w-[30px] !h-[30px] !rounded-md', 'hover:!border-danger hover:!text-danger hover:!bg-danger-bg')}
+                      onClick={() => {
+                        setDeleteConfirm(et)
+                        setDeleteError('')
+                      }}
+                    />
+                  </div>
+                </Td>
+              </Tr>
+            ))}
+            {(!entityTypes || entityTypes.length === 0) && (
+              <Tr>
+                <Td colSpan={5} className="py-8 text-center text-ink-muted">
+                  Aucun type défini.
+                </Td>
+              </Tr>
+            )}
+          </TBody>
+        </Table>
+      </Card>
 
       {/* Form modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[5vh] bg-ink/50 overflow-y-auto" onClick={() => setShowForm(false)}>
-          <div className="bg-bg rounded-lg shadow-xl w-full max-w-2xl p-6 my-8" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-ink mb-4">
-              {editing ? 'Modifier le type' : 'Nouveau type'}
-            </h3>
+      <Dialog
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        aria-label={editing ? 'Modifier le type' : 'Nouveau type'}
+        maxWidth={720}
+      >
+        <DialogHead>
+          <h3 className="font-serif font-semibold text-[18px] text-navy-900">
+            {editing ? 'Modifier le type' : 'Nouveau type'}
+          </h3>
+        </DialogHead>
+        <DialogBody>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel required>Nom</FieldLabel>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </Field>
+              <Field>
+                <FieldLabel>Icône (emoji)</FieldLabel>
+                <Input
+                  value={form.icon}
+                  onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                  placeholder="ex: 📦"
+                />
+              </Field>
+            </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-ink-70 mb-1">Nom</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-ink-70 mb-1">Icone (emoji)</label>
-                  <input
-                    type="text"
-                    value={form.icon}
-                    onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                    className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                    placeholder="ex: &#x1F4E6;"
-                  />
-                </div>
+            {/* Schema editor */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[12.5px] font-semibold text-ink">Champs du schéma</span>
+                <Button variant="ghost" size="sm" onClick={addField} leftIcon={<Plus size={12} />}>
+                  Ajouter un champ
+                </Button>
               </div>
 
-              {/* Schema editor */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-ink-70">Champs du schema</label>
-                  <button onClick={addField} className="text-sm text-blue hover:text-blue/80">+ Ajouter un champ</button>
-                </div>
+              {form.schema.length === 0 && (
+                <p className="text-[13px] text-ink-muted py-4 text-center border border-dashed border-line rounded-lg">
+                  Aucun champ. Cliquez sur « Ajouter un champ ».
+                </p>
+              )}
 
-                {form.schema.length === 0 && (
-                  <p className="text-sm text-ink-45 py-4 text-center border border-dashed border-ink-10 rounded-md">
-                    Aucun champ. Cliquez sur &laquo;&nbsp;Ajouter un champ&nbsp;&raquo;.
-                  </p>
-                )}
-
-                <div className="space-y-3">
-                  {form.schema.map((field, i) => (
-                    <div key={i} className="border border-ink-10 rounded-md p-3 bg-ink-05/50">
-                      <div className="grid grid-cols-3 gap-2 mb-2">
-                        <div>
-                          <label className="block text-xs text-ink-45 mb-0.5">Label</label>
+              <div className="flex flex-col gap-3">
+                {form.schema.map((field, i) => (
+                  <div key={i} className="border border-line rounded-lg p-3 bg-cream-light/60">
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      <Field>
+                        <FieldLabel>Label</FieldLabel>
+                        <Input
+                          value={field.label}
+                          onChange={(e) => updateField(i, { label: e.target.value, name: slugify(e.target.value) })}
+                          placeholder="ex: Adresse IP"
+                          inputClassName="!py-[7px] !text-[13px]"
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel>Type</FieldLabel>
+                        <Select
+                          value={field.type}
+                          onChange={(e) => updateField(i, { type: e.target.value as EntityTypeSchemaField['type'] })}
+                          className="!py-[8px]"
+                        >
+                          {FIELD_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <div className="flex items-end gap-2">
+                        <label className="flex items-center gap-1.5 text-[12px] text-ink-soft">
                           <input
-                            type="text"
-                            value={field.label}
-                            onChange={(e) => updateField(i, { label: e.target.value, name: slugify(e.target.value) })}
-                            className="w-full border border-ink-10 rounded px-2 py-1 text-sm bg-bg focus:outline-none focus:ring-1 focus:ring-blue"
-                            placeholder="ex: Adresse IP"
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) => updateField(i, { required: e.target.checked })}
+                            className="accent-coral"
                           />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-ink-45 mb-0.5">Type</label>
-                          <select
-                            value={field.type}
-                            onChange={(e) => updateField(i, { type: e.target.value as EntityTypeSchemaField['type'] })}
-                            className="w-full border border-ink-10 rounded px-2 py-1 text-sm bg-bg focus:outline-none focus:ring-1 focus:ring-blue"
+                          Requis
+                        </label>
+                        <div className="flex gap-1 ml-auto">
+                          <button
+                            type="button"
+                            onClick={() => moveField(i, -1)}
+                            disabled={i === 0}
+                            aria-label="Déplacer vers le haut"
+                            className="text-ink-muted hover:text-ink disabled:opacity-25 text-xs px-1"
                           >
-                            {FIELD_TYPES.map((t) => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex items-end gap-2">
-                          <label className="flex items-center gap-1 text-xs text-ink-70">
-                            <input
-                              type="checkbox"
-                              checked={field.required}
-                              onChange={(e) => updateField(i, { required: e.target.checked })}
-                              className="accent-blue"
-                            />
-                            Requis
-                          </label>
-                          <div className="flex gap-1 ml-auto">
-                            <button onClick={() => moveField(i, -1)} disabled={i === 0} className="text-ink-45 hover:text-ink disabled:opacity-25 text-xs px-1">&uarr;</button>
-                            <button onClick={() => moveField(i, 1)} disabled={i === form.schema.length - 1} className="text-ink-45 hover:text-ink disabled:opacity-25 text-xs px-1">&darr;</button>
-                            <button onClick={() => removeField(i)} className="text-red hover:text-red/80 text-xs px-1">&times;</button>
-                          </div>
+                            <ArrowUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveField(i, 1)}
+                            disabled={i === form.schema.length - 1}
+                            aria-label="Déplacer vers le bas"
+                            className="text-ink-muted hover:text-ink disabled:opacity-25 text-xs px-1"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeField(i)}
+                            aria-label="Supprimer le champ"
+                            className="text-danger hover:opacity-80 text-xs px-1"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
                       </div>
-                      {field.type === 'select' && (
-                        <div>
-                          <label className="block text-xs text-ink-45 mb-0.5">Options (separees par des virgules)</label>
-                          <input
-                            type="text"
-                            value={field.options?.join(', ') ?? ''}
-                            onChange={(e) => updateField(i, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                            className="w-full border border-ink-10 rounded px-2 py-1 text-sm bg-bg focus:outline-none focus:ring-1 focus:ring-blue"
-                            placeholder="ex: Option A, Option B, Option C"
-                          />
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
+                    {field.type === 'select' && (
+                      <Field>
+                        <FieldLabel>Options (séparées par des virgules)</FieldLabel>
+                        <Input
+                          value={field.options?.join(', ') ?? ''}
+                          onChange={(e) =>
+                            updateField(i, {
+                              options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                            })
+                          }
+                          placeholder="ex: Option A, Option B, Option C"
+                          inputClassName="!py-[7px] !text-[13px]"
+                        />
+                      </Field>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-
-            {error && <p className="text-red text-sm mt-3">{error}</p>}
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
-                Annuler
-              </button>
-              <button onClick={save} className="px-4 py-2 text-sm text-white bg-blue rounded-md hover:bg-blue/90">
-                {editing ? 'Enregistrer' : 'Creer'}
-              </button>
-            </div>
+            {error && <FieldError>{error}</FieldError>}
           </div>
-        </div>
-      )}
+        </DialogBody>
+        <DialogFoot>
+          <Button variant="secondary" onClick={() => setShowForm(false)}>
+            Annuler
+          </Button>
+          <Button variant="primary" onClick={save}>
+            {editing ? 'Enregistrer' : 'Créer'}
+          </Button>
+        </DialogFoot>
+      </Dialog>
 
       {/* Delete confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-bg rounded-lg shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-ink mb-2">Confirmer la suppression</h3>
-            <p className="text-sm text-ink-70 mb-4">
-              Supprimer le type &laquo;&nbsp;{deleteConfirm.name}&nbsp;&raquo; ?
+      <Dialog
+        open={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        aria-label="Confirmer la suppression"
+        maxWidth={420}
+      >
+        <DialogHead>
+          <h3 className="font-serif font-semibold text-[18px] text-navy-900">Confirmer la suppression</h3>
+        </DialogHead>
+        <DialogBody>
+          {deleteConfirm && (
+            <p className="text-[13.5px] text-ink-soft">
+              Supprimer le type <strong className="text-navy-900">« {deleteConfirm.name} »</strong> ?
             </p>
-            {deleteError && <p className="text-red text-sm mb-4">{deleteError}</p>}
-            <div className="flex justify-end space-x-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
-                Annuler
-              </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm text-white bg-red rounded-md hover:bg-red/90">
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+          {deleteError && <p className="mt-3 text-[12.5px] text-danger">{deleteError}</p>}
+        </DialogBody>
+        <DialogFoot>
+          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+            Annuler
+          </Button>
+          <Button variant="danger" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
+            Supprimer
+          </Button>
+        </DialogFoot>
+      </Dialog>
     </div>
   )
 }
