@@ -1,370 +1,435 @@
-import { useEffect, useState, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { Map, Network, Settings, ChevronsLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import {
+  AlertTriangle,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  ChevronsLeft,
+  Code2,
+  FileText,
+  Headphones,
+  Home,
+  Layers,
+  Map,
+  Network,
+  RefreshCw,
+  Search,
+  Settings,
+  Sparkles,
+  Users,
+  Zap,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
+import { cn } from '@/lib/cn'
 import { useAuth } from '@/lib/auth-context'
 import { useStatsHealth } from '@/lib/hooks/useStatsHealth'
 import { useSidebar } from '@/lib/sidebar-context'
 import FolderTree from './FolderTree'
 
 interface Domain {
-  id: string; name: string; slug: string; color: string
-  doc_count: number; entity_count: number; features_enabled: string[]
-}
-interface Stats {
-  documents: number; entities: number; searches_month: number
-  contributors: number; updates_month: number
+  id: string
+  name: string
+  slug: string
+  color: string
+  doc_count: number
+  entity_count: number
+  features_enabled: string[]
 }
 
 interface SidebarProps {
-  activeService?: string | null
-  onServiceClick?: (domainId: string | null) => void
+  /** Optionnel : ouvre la palette de recherche (depuis le Shell). */
+  onSearchOpen?: () => void
+  /** Transmis depuis Shell pour que Topbar puisse enrichir le breadcrumb. */
+  onDomainsLoaded?: (domains: Domain[]) => void
 }
 
-export default function Sidebar({ activeService: activeServiceProp, onServiceClick }: SidebarProps) {
+const DOMAIN_ICONS: Record<string, LucideIcon> = {
+  infra: Zap,
+  infrastructure: Zap,
+  support: Headphones,
+  sci: Users,
+  etudes: Code2,
+  'etudes-dev': Code2,
+  'études-dev': Code2,
+  data: BarChart3,
+}
+
+function iconForDomain(slug: string): LucideIcon {
+  return DOMAIN_ICONS[slug.toLowerCase()] ?? Layers
+}
+
+/**
+ * Sidebar — volet de navigation navy (g2).
+ *
+ * Logique préservée :
+ * - Fetch `/domains` + `/stats/health`.
+ * - Expansion dynamique des sous-dossiers via FolderTree (state localStorage).
+ * - Routage dynamique vers `/domains/:slug`.
+ *
+ * Nouveautés Vague 1 :
+ * - Structure en 3 sections : Navigation / Domaines / Gestion.
+ * - Plume mark SVG inline, "PlumeNote" Fraunces.
+ * - Badge coral soft sur compteurs, variante danger pour "À vérifier".
+ * - Suppression de la grille 2×2 /stats (consommée par la home page).
+ */
+export default function Sidebar({ onSearchOpen, onDomainsLoaded }: SidebarProps) {
   const { isOpen, toggle } = useSidebar()
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isAuthenticated } = useAuth()
-  const [domains, setDomains] = useState<Domain[]>([])
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
   const { data: health } = useStatsHealth()
 
+  const [domains, setDomains] = useState<Domain[]>([])
+  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
+
   const toggleDomainExpand = useCallback((domainId: string) => {
-    setExpandedDomains(prev => ({ ...prev, [domainId]: !prev[domainId] }))
+    setExpandedDomains((prev) => ({ ...prev, [domainId]: !prev[domainId] }))
   }, [])
 
   useEffect(() => {
-    api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
-    api.get<Stats>('/stats').then(setStats).catch(() => {})
-  }, [])
+    api.get<Domain[]>('/domains').then((data) => {
+      setDomains(data)
+      onDomainsLoaded?.(data)
+    }).catch(() => {})
+  }, [onDomainsLoaded])
 
-  // Derive active service from URL if not provided via prop
-  const activeService = activeServiceProp !== undefined
-    ? activeServiceProp
-    : (() => {
-        const match = location.pathname.match(/^\/domains\/([^/]+)/)
-        if (match) {
-          const d = domains.find(d => d.slug === match[1])
-          return d?.id ?? null
-        }
-        return null
-      })()
+  const isAdmin = user?.role === 'admin'
+  const isDsiOrAdmin = isAuthenticated && (user?.role === 'admin' || user?.role === 'dsi')
 
-  const services = domains.map(d => ({
-    code: d.id,
-    label: d.name,
-    slug: d.slug,
-    color: d.color,
-    count: d.doc_count,
-    entityCount: d.entity_count || 0,
-    features: d.features_enabled || ['documents'],
-  }))
+  const activeDomainSlug = useMemo(() => {
+    const m = location.pathname.match(/^\/domains\/([^/]+)/)
+    return m ? m[1] : null
+  }, [location.pathname])
 
-  const handleServiceClick = (svc: typeof services[0]) => {
-    if (onServiceClick) {
-      onServiceClick(activeService === svc.code ? null : svc.code)
-    } else {
-      navigate(`/domains/${svc.slug}`)
-    }
-  }
+  const redCount = health?.red ?? 0
 
-  const statsData = [
-    { label: 'Documents', value: stats?.documents ?? 0, trend: stats ? `+${stats.updates_month}` : undefined },
-    { label: 'Fiches', value: stats?.entities ?? 0 },
-    { label: 'Recherches / mois', value: stats?.searches_month ?? 0 },
-    { label: 'Contributeurs', value: stats?.contributors ?? 0 },
-  ]
+  if (!isOpen) return null
 
   return (
-    <aside style={{
-      width: isOpen ? 240 : 0,
-      minWidth: isOpen ? 240 : 0,
-      overflow: 'hidden',
-      opacity: isOpen ? 1 : 0,
-      borderRight: isOpen ? '1px solid rgba(28,28,28,0.1)' : 'none',
-      display: 'flex',
-      flexDirection: 'column',
-      background: '#F7F6F3',
-      transition: 'width 0.2s ease, min-width 0.2s ease, opacity 0.2s ease',
-      flexShrink: 0,
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '14px 20px 10px',
-      }}>
-        <span style={{
-          fontFamily: "'IBM Plex Sans', sans-serif",
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: 3,
-          textTransform: 'uppercase' as const,
-          color: 'rgba(28,28,28,0.6)',
-        }}>
-          Services
-        </span>
+    <aside
+      className={cn(
+        'sticky top-0 h-screen overflow-y-auto',
+        'w-[248px] shrink-0',
+        'bg-navy-900 text-[#C9CFE4]',
+        'flex flex-col gap-6',
+        'py-6 px-4',
+      )}
+    >
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-2 pb-5 border-b border-white/10">
         <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="flex items-center gap-3 cursor-pointer text-left"
+          title="Accueil"
+        >
+          <BrandMark />
+          <span className="flex flex-col leading-tight">
+            <span className="font-serif font-semibold text-[15px] text-white">PlumeNote</span>
+            <span className="font-sans text-[10px] font-medium tracking-[0.1em] uppercase text-[#8A93B8] mt-0.5">
+              Base de connaissances
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={toggle}
           title="Masquer la sidebar"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 2,
-            display: 'flex',
-            alignItems: 'center',
-            color: 'rgba(28,28,28,0.35)',
-            transition: 'color 0.1s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = 'rgba(28,28,28,0.7)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'rgba(28,28,28,0.35)'}
+          aria-label="Masquer la sidebar"
+          className={cn(
+            'ml-auto p-1 rounded-md text-[#8A93B8]',
+            'hover:text-white hover:bg-white/5 transition-colors',
+          )}
         >
           <ChevronsLeft size={16} />
         </button>
       </div>
 
-      {services.map(s => {
-        const isActive = activeService === s.code
-        const isDomainExpanded = expandedDomains[s.code] ?? false
-        return (
-          <div key={s.code}>
-            <div
-              onClick={() => handleServiceClick(s)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 11,
-                padding: '11px 20px',
-                cursor: 'pointer',
-                borderBottom: '1px solid rgba(28,28,28,0.03)',
-                transition: 'all 0.1s',
-                userSelect: 'none' as const,
-                background: isActive ? '#1C1C1C' : 'transparent',
-                color: isActive ? '#FAFAF8' : '#1C1C1C',
-              }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-            >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}
-              >
-                <div style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 2,
-                  background: s.color,
-                  border: `2px solid ${isActive ? 'rgba(250,250,248,0.35)' : '#1C1C1C'}`,
-                  flexShrink: 0,
-                }} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                  <span style={{
-                    fontFamily: "'IBM Plex Sans', sans-serif",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {s.label}
-                  </span>
-                </div>
-                <span style={{
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  fontSize: 10,
-                  opacity: 0.5,
-                  flexShrink: 0,
-                }}>
-                  {s.count}{s.entityCount ? ` + ${s.entityCount}` : ''}
-                </span>
-              </div>
-              <span
-                onClick={(e) => { e.stopPropagation(); toggleDomainExpand(s.code) }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexShrink: 0,
-                  marginLeft: 4,
-                  opacity: 0.5,
-                  transition: 'opacity 0.1s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = '0.5' }}
-              >
-                {isDomainExpanded
-                  ? <ChevronDown size={14} color={isActive ? '#FAFAF8' : 'rgba(28,28,28,0.6)'} />
-                  : <ChevronRight size={14} color={isActive ? '#FAFAF8' : 'rgba(28,28,28,0.6)'} />
-                }
-              </span>
-            </div>
-            {isDomainExpanded && (
-              <FolderTree domainId={s.code} domainSlug={s.slug} />
-            )}
-          </div>
-        )
-      })}
+      <nav className="flex flex-col gap-[18px] flex-1">
+        {/* Navigation */}
+        <NavSection label="Navigation">
+          <NavItem
+            icon={Home}
+            label="Accueil"
+            active={location.pathname === '/'}
+            onClick={() => navigate('/')}
+          />
+          <NavItem
+            icon={Search}
+            label="Recherche"
+            onClick={onSearchOpen}
+            rightSlot={<SidebarKbd>⌘ K</SidebarKbd>}
+          />
+          <NavItem
+            icon={FileText}
+            label="Mes documents"
+            onClick={() => navigate('/search?filter=mine')}
+          />
+          <NavItem
+            icon={RefreshCw}
+            label="Récemment modifiés"
+            onClick={() => navigate('/search?sort=recent')}
+          />
+          <NavItem
+            icon={AlertTriangle}
+            label="À vérifier"
+            count={redCount > 0 ? redCount : undefined}
+            countVariant="urgent"
+            onClick={() => navigate('/search?status=stale')}
+          />
+        </NavSection>
 
-      {health && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(28,28,28,0.08)' }}>
-          <div style={{
-            fontFamily: "'IBM Plex Sans', sans-serif",
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: 3,
-            textTransform: 'uppercase' as const,
-            color: 'rgba(28,28,28,0.6)',
-            marginBottom: 8,
-          }}>
-            Sante documentaire
-          </div>
-          <div style={{
-            display: 'flex',
-            height: 6,
-            borderRadius: 1,
-            overflow: 'hidden',
-            background: 'rgba(28,28,28,0.06)',
-          }}>
-            {health.total > 0 && (
+        {/* Domaines (dynamique) */}
+        {domains.length > 0 && (
+          <NavSection label="Domaines">
+            {domains.map((d) => {
+              const Icon = iconForDomain(d.slug)
+              const isActive = activeDomainSlug === d.slug
+              const isExpanded = expandedDomains[d.id] ?? false
+              return (
+                <div key={d.id}>
+                  <NavItem
+                    icon={Icon}
+                    label={d.name}
+                    active={isActive}
+                    count={d.doc_count || undefined}
+                    onClick={() => navigate(`/domains/${d.slug}`)}
+                    rightSlot={
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleDomainExpand(d.id)
+                        }}
+                        aria-label={isExpanded ? 'Replier' : 'Déplier'}
+                        className={cn(
+                          'ml-1 p-0.5 rounded transition-opacity opacity-60 hover:opacity-100',
+                          'text-current',
+                        )}
+                      >
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    }
+                  />
+                  {isExpanded && <FolderTree domainId={d.id} domainSlug={d.slug} />}
+                </div>
+              )
+            })}
+          </NavSection>
+        )}
+
+        {/* Gestion (dsi / admin) */}
+        {isDsiOrAdmin && (
+          <NavSection label="Gestion">
+            <NavItem
+              icon={Map}
+              label="Cartographie"
+              active={location.pathname === '/cartography'}
+              onClick={() => navigate('/cartography')}
+            />
+            <NavItem
+              icon={Network}
+              label="Mind Map"
+              active={location.pathname === '/mindmap'}
+              onClick={() => navigate('/mindmap')}
+            />
+            {isAdmin && (
               <>
-                <div style={{ width: `${(health.green / health.total) * 100}%`, background: '#22C55E' }} />
-                <div style={{ width: `${(health.yellow / health.total) * 100}%`, background: '#EAB308' }} />
-                <div style={{ width: `${(health.red / health.total) * 100}%`, background: '#C23B22' }} />
+                <NavItem
+                  icon={Sparkles}
+                  label="Templates"
+                  active={location.pathname.startsWith('/admin/templates')}
+                  onClick={() => navigate('/admin/templates')}
+                />
+                <NavItem
+                  icon={Settings}
+                  label="Administration"
+                  active={
+                    location.pathname === '/admin' ||
+                    (location.pathname.startsWith('/admin') && !location.pathname.startsWith('/admin/templates'))
+                  }
+                  onClick={() => navigate('/admin')}
+                />
               </>
             )}
-          </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: 4,
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 9,
-            color: 'rgba(28,28,28,0.5)',
-          }}>
-            <span>{health.green} vert{health.green !== 1 ? 's' : ''}</span>
-            <span>{health.yellow} jaune{health.yellow !== 1 ? 's' : ''}</span>
-            <span>{health.red} rouge{health.red !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
-      )}
+          </NavSection>
+        )}
+      </nav>
 
-      {/* Vues globales — visible DSI/admin authentifiés */}
-      {isAuthenticated && user && (user.role === 'admin' || user.role === 'dsi') && (
-        <div style={{ borderTop: '1px solid rgba(28,28,28,0.08)', marginTop: 'auto' }}>
-          <div style={{
-            fontFamily: "'IBM Plex Sans', sans-serif",
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: 3,
-            textTransform: 'uppercase' as const,
-            color: 'rgba(28,28,28,0.6)',
-            padding: '14px 20px 6px',
-          }}>
-            Vues globales
-          </div>
-          {[
-            { icon: Map, label: 'Cartographie', path: '/cartography' },
-            { icon: Network, label: 'Mind Map', path: '/mindmap' },
-          ].map((item) => {
-            const isActive = location.pathname === item.path
-            const Icon = item.icon
-            return (
-              <div
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '9px 20px',
-                  cursor: 'pointer',
-                  transition: 'all 0.1s',
-                  userSelect: 'none' as const,
-                  background: isActive ? '#1C1C1C' : 'transparent',
-                  color: isActive ? '#FAFAF8' : 'rgba(28,28,28,0.7)',
-                  fontFamily: "'IBM Plex Sans', sans-serif",
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-              >
-                <Icon size={16} color={isActive ? '#FAFAF8' : 'rgba(28,28,28,0.45)'} />
-                <span>{item.label}</span>
-              </div>
-            )
-          })}
-          {user.role === 'admin' && (
-            <div
-              onClick={() => navigate('/admin')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '9px 20px',
-                cursor: 'pointer',
-                transition: 'all 0.1s',
-                userSelect: 'none' as const,
-                background: location.pathname.startsWith('/admin') ? '#1C1C1C' : 'transparent',
-                color: location.pathname.startsWith('/admin') ? '#FAFAF8' : 'rgba(28,28,28,0.7)',
-                fontFamily: "'IBM Plex Sans', sans-serif",
-                fontSize: 12.5,
-                fontWeight: 600,
-              }}
-              onMouseEnter={e => { if (!location.pathname.startsWith('/admin')) e.currentTarget.style.background = 'rgba(28,28,28,0.025)' }}
-              onMouseLeave={e => { if (!location.pathname.startsWith('/admin')) e.currentTarget.style.background = 'transparent' }}
-            >
-              <Settings size={16} color={location.pathname.startsWith('/admin') ? '#FAFAF8' : 'rgba(28,28,28,0.45)'} />
-              <span>Admin</span>
-            </div>
-          )}
-        </div>
+      {/* Footer santé documentaire */}
+      {health && health.total > 0 && (
+        <SidebarFooter
+          green={health.green}
+          yellow={health.yellow}
+          red={health.red}
+          total={health.total}
+        />
       )}
-
-      <div style={{
-        marginTop: isAuthenticated && user && (user.role === 'admin' || user.role === 'dsi') ? 0 : 'auto',
-        borderTop: '2px solid rgba(28,28,28,0.1)',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-      }}>
-        {statsData.map((s, i) => (
-          <div key={i} style={{
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-            borderBottom: '1px solid rgba(28,28,28,0.04)',
-            borderRight: i % 2 === 0 ? '1px solid rgba(28,28,28,0.04)' : 'none',
-          }}>
-            <div style={{
-              fontFamily: "'Archivo Black', sans-serif",
-              fontSize: 24,
-              lineHeight: 1,
-            }}>
-              {s.value}
-            </div>
-            <div style={{
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 8,
-              textTransform: 'uppercase' as const,
-              letterSpacing: 1.5,
-              color: 'rgba(28,28,28,0.5)',
-            }}>
-              {s.label}
-            </div>
-            {s.trend && (
-              <div style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 9,
-                color: '#2B5797',
-              }}>
-                {s.trend}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
     </aside>
+  )
+}
+
+/* ---------------- Internals ---------------- */
+
+function BrandMark() {
+  return (
+    <span
+      className={cn(
+        'grid place-items-center shrink-0',
+        'w-10 h-10 rounded-lg',
+        'bg-cream text-navy-900',
+      )}
+      aria-hidden
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-5 h-5"
+      >
+        <path d="M4 20 L 13 11" />
+        <path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z" />
+        <path d="M9 15 L 15 9" />
+      </svg>
+    </span>
+  )
+}
+
+function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div
+        className={cn(
+          'px-3 pb-2',
+          'text-[10px] font-bold uppercase tracking-[0.14em]',
+          'text-[#7A83A8]',
+        )}
+      >
+        {label}
+      </div>
+      <div className="flex flex-col gap-[2px]">{children}</div>
+    </div>
+  )
+}
+
+interface NavItemProps {
+  icon: LucideIcon
+  label: string
+  active?: boolean
+  count?: number
+  countVariant?: 'default' | 'urgent'
+  onClick?: () => void
+  rightSlot?: React.ReactNode
+}
+
+function NavItem({
+  icon: Icon,
+  label,
+  active,
+  count,
+  countVariant = 'default',
+  onClick,
+  rightSlot,
+}: NavItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group relative w-full text-left',
+        'flex items-center gap-2.5 px-3 py-2.5 rounded-lg',
+        'text-[13.5px] font-medium',
+        'transition-colors',
+        active
+          ? cn(
+              'text-white',
+              'bg-gradient-to-b from-coral/20 to-coral/10',
+            )
+          : 'text-[#C9CFE4] hover:bg-white/5 hover:text-white',
+      )}
+    >
+      {active && (
+        <span
+          className={cn(
+            'absolute -left-4 top-1/2 -translate-y-1/2',
+            'w-[3px] h-[22px] bg-coral',
+            'rounded-r',
+          )}
+          aria-hidden
+        />
+      )}
+      <Icon size={17} strokeWidth={1.8} className="shrink-0" />
+      <span className="truncate flex-1">{label}</span>
+      {typeof count === 'number' && count > 0 && (
+        <span
+          className={cn(
+            'ml-auto px-1.5 py-0.5 rounded-md',
+            'text-[11px] font-bold tabular-nums',
+            countVariant === 'urgent'
+              ? 'bg-danger/30 text-[#F3B6BE]'
+              : 'bg-coral/20 text-coral-soft',
+          )}
+        >
+          {count}
+        </span>
+      )}
+      {rightSlot}
+    </button>
+  )
+}
+
+function SidebarKbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'ml-auto px-1.5 py-0.5 rounded',
+        'bg-white/10 text-[#9299BD]',
+        'text-[10px] font-semibold',
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+function SidebarFooter({
+  green,
+  yellow,
+  red,
+  total,
+}: {
+  green: number
+  yellow: number
+  red: number
+  total: number
+}) {
+  const pctGreen = (green / total) * 100
+  const pctYellow = (yellow / total) * 100
+  const pctRed = (red / total) * 100
+
+  return (
+    <div
+      className={cn(
+        'mt-auto p-3 rounded-lg',
+        'bg-white/5 text-[11.5px] text-[#8A93B8] leading-snug',
+      )}
+    >
+      <div className="font-semibold text-cream mb-2">Santé documentaire</div>
+      <div className="flex h-1.5 rounded overflow-hidden bg-white/10">
+        <span className="bg-success block" style={{ width: `${pctGreen}%` }} />
+        <span className="bg-warn block" style={{ width: `${pctYellow}%` }} />
+        <span className="bg-danger block" style={{ width: `${pctRed}%` }} />
+      </div>
+      <div className="flex justify-between mt-1.5 font-mono text-[10px]">
+        <span>{green} à jour</span>
+        <span>{yellow} tièdes</span>
+        <span>{red} périmés</span>
+      </div>
+    </div>
   )
 }
