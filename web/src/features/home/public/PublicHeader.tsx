@@ -39,15 +39,17 @@ export default function PublicHeader() {
       </Link>
 
       <nav className="flex items-center gap-5.5 max-[640px]:hidden">
-        <Link to="/search" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
+        {/* TODO: câbler vers /domains (index), /recent, /help quand routes créées.
+            Liens passifs pour le moment : ne pas rediriger vers /search (trompeur). */}
+        <a href="#" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
           Domaines
-        </Link>
-        <Link to="/search" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
+        </a>
+        <a href="#" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
           Fiches récentes
-        </Link>
-        <Link to="/search" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
+        </a>
+        <a href="#" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
           Aide
-        </Link>
+        </a>
       </nav>
 
       <div className="flex items-center gap-3">

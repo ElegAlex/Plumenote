@@ -15,7 +15,7 @@ import {
   Phone,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { Button, Kbd } from '@/components/ui'
+import { Kbd } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import PublicHeader from './public/PublicHeader'
 import DomainTile from './public/DomainTile'
@@ -480,16 +480,28 @@ export default function PublicHomePage() {
           </div>
 
           <div className="relative z-1 flex gap-2.5 flex-wrap">
-            {/* Bouton primaire CTA coral : on utilise la variante cta existante mais rendue comme <a> via Link */}
+            {/* CTA coral rendue directement en <a> : un <button> dans <a> est invalide en HTML5.
+                Classes alignées sur Button variant="cta" size="md" (cf. components/ui/Button.tsx). */}
             <a
               href={ticketUrl || '#'}
               target={ticketUrl ? '_blank' : undefined}
               rel={ticketUrl ? 'noopener noreferrer' : undefined}
-              className="no-underline"
+              className={cn(
+                'inline-flex items-center justify-center gap-2 no-underline',
+                'rounded-xl border-[1.5px] font-semibold font-sans',
+                'transition-[transform,box-shadow,background-color,border-color,color]',
+                '[&_svg]:w-[14px] [&_svg]:h-[14px] [&_svg]:shrink-0',
+                'px-4 py-[10px] text-[13px]',
+                'bg-coral text-white border-transparent',
+                'shadow-[0_6px_18px_rgba(232,132,92,0.35)]',
+                'hover:bg-[#E0734A] hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(232,132,92,0.45)] active:translate-y-0',
+                '[&>[data-right-icon]]:transition-transform hover:[&>[data-right-icon]]:translate-x-[3px]',
+              )}
             >
-              <Button variant="cta" size="md" rightIcon={<ArrowRight />} tabIndex={-1}>
-                Ouvrir un ticket GLPI
-              </Button>
+              Ouvrir un ticket GLPI
+              <span data-right-icon className="inline-flex">
+                <ArrowRight aria-hidden="true" />
+              </span>
             </a>
 
             {/* Secondaire outline-on-dark : one-off, pas de variante Button pour ce contexte dark */}
