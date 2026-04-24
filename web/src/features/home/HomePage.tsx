@@ -339,8 +339,13 @@ function GreetingBanner({
     <section
       className={cn(
         'relative overflow-hidden rounded-[20px] px-8 py-7 text-cream',
-        'bg-gradient-to-br from-navy-900 via-navy-700 to-navy-600',
       )}
+      style={{
+        // Gabarit g2 : linear-gradient 120deg avec navy-700 positionné à 60%
+        // (Tailwind `to-br` = 135deg et `via` sans stop = 50%, écart visible)
+        background:
+          'linear-gradient(120deg, var(--color-navy-900) 0%, var(--color-navy-700) 60%, var(--color-navy-600) 100%)',
+      }}
     >
       {/* halo coral décoratif haut-droite */}
       <div
@@ -566,10 +571,14 @@ function ActivityPanel() {
     <Card>
       <CardHead>
         <CardTitle>Activité récente</CardTitle>
-        <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink-muted">
+        <a
+          href="#"
+          className="group inline-flex items-center gap-1 text-[13px] font-semibold text-navy-700 transition-colors hover:text-coral"
+          aria-label="Voir le journal complet (bientôt)"
+        >
           Journal complet
-          <ArrowRight className="w-3 h-3" strokeWidth={2.5} />
-        </span>
+          <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-[3px]" strokeWidth={2.5} />
+        </a>
       </CardHead>
       <CardBody>
         <Timeline>
