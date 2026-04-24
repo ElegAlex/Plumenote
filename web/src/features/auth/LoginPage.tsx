@@ -62,7 +62,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[1.1fr_1fr]">
+    <div className="grid min-h-screen grid-cols-1 min-[960px]:grid-cols-[1.1fr_1fr]">
       {/* Style local : animation dot-pulse du footer illustration
           (rgba coral non exprimable en token). */}
       <style>{`
@@ -75,7 +75,7 @@ export default function LoginPage() {
       {/* ============ GAUCHE : ILLUSTRATION ============ */}
       {/* Couleur texte #E9ECF6 : cream-blueish du gabarit g1 non exprimable via tokens
           (déjà utilisée telle quelle dans index.css .code-block-fallback). */}
-      <section className="relative flex min-h-[360px] flex-col overflow-hidden bg-gradient-to-br from-navy-900 from-0% via-navy-700 via-60% to-navy-600 to-100% px-7 py-9 text-[#E9ECF6] md:min-h-0 md:px-14 md:py-12">
+      <section className="relative flex min-h-[360px] flex-col overflow-hidden bg-gradient-to-br from-navy-900 from-0% via-navy-700 via-60% to-navy-600 to-100% px-7 py-9 text-[#E9ECF6] min-[960px]:min-h-0 min-[960px]:px-14 min-[960px]:py-12">
         {/* Halo coral haut-droit */}
         <div
           aria-hidden
@@ -130,7 +130,7 @@ export default function LoginPage() {
             Knowledge Management interne
           </div>
 
-          <h2 className="max-w-[520px] font-serif text-[32px] font-semibold leading-[1.08] tracking-[-0.02em] text-cream-light md:text-[42px] [&_em]:font-medium [&_em]:italic [&_em]:text-coral">
+          <h2 className="max-w-[520px] font-serif text-[32px] font-semibold leading-[1.08] tracking-[-0.02em] text-cream-light min-[960px]:text-[42px] [&_em]:font-medium [&_em]:italic [&_em]:text-coral">
             Un seul endroit pour <em>tout ce que sait la DSI</em>.
           </h2>
 
@@ -157,11 +157,11 @@ export default function LoginPage() {
       </section>
 
       {/* ============ DROITE : FORMULAIRE ============ */}
-      <section className="relative flex flex-col justify-center bg-bg px-7 py-10 md:px-14 md:py-12">
+      <section className="relative flex flex-col justify-center bg-bg px-7 py-10 min-[960px]:px-14 min-[960px]:py-12">
         <div className="mx-auto w-full max-w-[420px]">
           <TitleEyebrow>Authentification</TitleEyebrow>
 
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-navy-900 md:text-[44px] [&_em]:font-medium [&_em]:italic [&_em]:text-coral">
+          <h1 className="font-serif text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-navy-900 min-[960px]:text-[44px] [&_em]:font-medium [&_em]:italic [&_em]:text-coral">
             Bon retour,
             <br />
             <em>connectez-vous</em>.
