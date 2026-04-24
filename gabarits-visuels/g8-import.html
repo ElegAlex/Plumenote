@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Importer un dossier — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688; --navy-600: #2E42A0;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+    --success: #2F7D5B; --success-bg: #E3F0E9;
+    --warn: #C97B1A; --warn-bg: #FBEBD0;
+    --danger: #B1304A; --danger-bg: #F9DFE4;
+    --plum: #7A3E8C; --plum-bg: #F0E5F3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Manrope', system-ui, sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; -webkit-font-smoothing: antialiased; font-feature-settings: "ss01"; }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+
+  .sidebar { background: var(--navy-900); color: #C9CFE4; padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand-mark { width: 40px; height: 40px; background: var(--cream); color: var(--navy-900); border-radius: 10px; display: grid; place-items: center; }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'Fraunces', serif; color: var(--white); font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .brand-name small { display: block; font: 500 10px/1 'Manrope'; color: #8A93B8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7A83A8; padding: 0 12px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px; color: #C9CFE4; text-decoration: none; font-weight: 500; font-size: 13.5px; position: relative; }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: var(--white); }
+  .nav-item.active { background: linear-gradient(180deg, rgba(232,132,92,.18), rgba(232,132,92,.08)); color: var(--white); }
+  .nav-item.active::before { content:""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; background: var(--coral); border-radius: 0 3px 3px 0; }
+  .nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-section + .nav-section { margin-top: 18px; }
+
+  .main { display: flex; flex-direction: column; min-width: 0; padding-bottom: 30px; }
+  .header { background: var(--white); border-bottom: 1px solid var(--line); padding: 14px 32px; display: flex; align-items: center; gap: 20px; position: sticky; top: 0; z-index: 5; }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .crumb a { color: var(--ink-soft); text-decoration: none; }
+  .crumb strong { color: var(--navy-900); font-weight: 600; font-family: 'Fraunces', serif; }
+  .crumb-sep { color: var(--ink-muted); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .user-chip { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--coral)); color: var(--white); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+
+  .content { padding: 28px 32px 48px; max-width: 1200px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+  .title-block { margin-bottom: 4px; }
+  .title-eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--coral); margin-bottom: 12px; }
+  .title-eyebrow::before { content: "◆"; color: var(--coral-soft); }
+  .title-block h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 32px; line-height: 1.1; letter-spacing: -0.02em; color: var(--navy-900); }
+  .title-block h1 em { font-style: italic; color: var(--coral); font-weight: 500; }
+  .title-block p { margin-top: 8px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); max-width: 720px; }
+
+  /* ============ STEPPER ============ */
+  .stepper {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px 22px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 10px; border-radius: 9px;
+    position: relative;
+    text-decoration: none; color: inherit;
+  }
+  .step + .step::before {
+    content: ""; position: absolute;
+    left: -4px; top: 50%; transform: translateY(-50%);
+    width: 8px; height: 1px; background: var(--line);
+  }
+  .step-bullet {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    border: 1.5px solid var(--line); background: var(--white);
+    color: var(--ink-muted); font-family: 'Fraunces', serif;
+    font-weight: 600; font-size: 13px;
+    transition: all .15s;
+    flex-shrink: 0;
+  }
+  .step-bullet svg { width: 13px; height: 13px; }
+  .step.done .step-bullet { background: var(--success); border-color: var(--success); color: var(--white); }
+  .step.current { background: linear-gradient(135deg, var(--coral-bg), var(--cream-light)); }
+  .step.current .step-bullet { background: var(--coral); border-color: var(--coral); color: var(--white); box-shadow: 0 0 0 4px rgba(232,132,92,.2); animation: pulse-bullet 2.4s infinite; }
+  @keyframes pulse-bullet { 0%,100% { box-shadow: 0 0 0 4px rgba(232,132,92,.2); } 50% { box-shadow: 0 0 0 8px rgba(232,132,92,.1); } }
+  .step-body { min-width: 0; }
+  .step-label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-muted); }
+  .step.done .step-label { color: var(--success); }
+  .step.current .step-label { color: var(--coral); }
+  .step-title { display: block; font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+
+  /* ============ STEP 1 + 2 SUMMARY (done) ============ */
+  .summary-card {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px; overflow: hidden;
+  }
+  .summary-head {
+    padding: 14px 22px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .summary-head-title {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 14px; color: var(--navy-900);
+  }
+  .summary-head-title .dot-done {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--success); color: var(--white);
+    display: grid; place-items: center;
+  }
+  .summary-head-title .dot-done svg { width: 11px; height: 11px; }
+  .summary-edit {
+    font-size: 11.5px; font-weight: 600; color: var(--navy-700);
+    text-decoration: none; cursor: pointer; background: none; border: none; padding: 0;
+  }
+  .summary-edit:hover { color: var(--coral); }
+  .summary-body { padding: 14px 22px 16px; font-size: 13px; color: var(--ink); }
+
+  .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 12.5px; }
+  .summary-grid dt { color: var(--ink-soft); font-weight: 600; }
+  .summary-grid dd { color: var(--navy-900); font-weight: 600; }
+
+  /* Tree summary */
+  .tree {
+    background: var(--cream-light); border: 1px solid var(--line-soft);
+    border-radius: 10px; padding: 14px 16px;
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; line-height: 1.8;
+    color: var(--ink-soft);
+    max-height: 180px; overflow-y: auto;
+  }
+  .tree .folder { color: var(--navy-800); font-weight: 600; }
+  .tree .folder::before { content: "📁 "; }
+  .tree .file { color: var(--ink-soft); padding-left: 24px; }
+  .tree .file.docx::before { content: "📄 "; }
+  .tree .file.pdf::before { content: "📕 "; }
+  .tree .file.md::before { content: "📝 "; }
+  .tree .skip { color: var(--ink-muted); padding-left: 24px; font-style: italic; }
+
+  /* ============ STEP 3 PROGRESS (current) ============ */
+  .progress-card {
+    background: var(--white); border: 2px solid var(--coral);
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 14px 36px rgba(232,132,92,.15);
+  }
+  .progress-head {
+    padding: 22px 28px 18px;
+    background: linear-gradient(120deg, var(--coral-bg), var(--cream-light));
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+  }
+  .progress-head-left { display: flex; align-items: center; gap: 14px; }
+  .progress-ico {
+    width: 48px; height: 48px;
+    background: var(--coral); color: var(--white);
+    border-radius: 12px; display: grid; place-items: center;
+    box-shadow: 0 8px 22px rgba(232,132,92,.35);
+    animation: pulse-ico 2s infinite;
+  }
+  .progress-ico svg { width: 22px; height: 22px; }
+  @keyframes pulse-ico { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .progress-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 21px; color: var(--navy-900); line-height: 1.2; }
+  .progress-title em { font-style: italic; color: var(--coral); font-weight: 500; }
+  .progress-sub { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+  .progress-head-right { text-align: right; }
+  .progress-percent { font-family: 'Fraunces', serif; font-weight: 600; font-size: 40px; color: var(--coral); font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.02em; }
+  .progress-files { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .progress-files strong { color: var(--navy-900); font-weight: 700; }
+
+  .progress-bar {
+    height: 6px; background: var(--line-soft);
+  }
+  .progress-bar-fill {
+    height: 100%;
+    width: 68%;
+    background: linear-gradient(90deg, var(--coral), var(--coral-soft));
+    transition: width .4s;
+  }
+
+  .progress-counters {
+    padding: 18px 28px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .counter {
+    padding: 14px; background: var(--bg); border-radius: 12px;
+    border: 1px solid var(--line-soft);
+  }
+  .counter-label { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 5px; }
+  .counter-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 28px; color: var(--navy-900); font-variant-numeric: tabular-nums; line-height: 1; }
+  .counter-value.success { color: var(--success); }
+  .counter-value.warn { color: var(--warn); }
+  .counter-value.danger { color: var(--danger); }
+
+  .progress-stream {
+    padding: 16px 28px 20px;
+  }
+  .stream-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .stream-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 14px; color: var(--navy-900); }
+  .stream-hint { font-size: 11.5px; color: var(--ink-muted); display: inline-flex; align-items: center; gap: 5px; }
+  .stream-hint .live { width: 7px; height: 7px; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 3px rgba(47,125,91,.18); animation: pulse-live 1.4s infinite; }
+  @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+  .stream-list {
+    background: var(--bg); border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    max-height: 260px; overflow-y: auto;
+  }
+  .stream-row {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    gap: 12px; align-items: center;
+    font-size: 12.5px;
+  }
+  .stream-row:last-child { border-bottom: none; }
+  .stream-row:first-child { background: var(--cream-light); }
+  .stream-ico {
+    width: 24px; height: 24px; border-radius: 6px;
+    display: grid; place-items: center;
+  }
+  .stream-ico svg { width: 12px; height: 12px; }
+  .stream-ico.success { background: var(--success-bg); color: var(--success); }
+  .stream-ico.warn { background: var(--warn-bg); color: var(--warn); }
+  .stream-ico.danger { background: var(--danger-bg); color: var(--danger); }
+  .stream-ico.current { background: var(--coral-bg); color: var(--coral); animation: pulse-live 1s infinite; }
+  .stream-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .stream-path strong { color: var(--navy-900); }
+  .stream-time {
+    font-size: 11px; color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .stream-action {
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 5px;
+  }
+  .stream-action.ok { background: var(--success-bg); color: var(--success); }
+  .stream-action.err { background: var(--danger-bg); color: var(--danger); }
+  .stream-action.warn { background: var(--warn-bg); color: var(--warn); }
+
+  .progress-actions {
+    padding: 16px 28px;
+    border-top: 1px solid var(--line-soft);
+    background: var(--cream-light);
+    display: flex; gap: 10px; align-items: center;
+  }
+  .progress-actions .eta { font-size: 12.5px; color: var(--ink-soft); }
+  .progress-actions .eta strong { color: var(--navy-900); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .progress-actions .spacer { flex: 1; }
+  .btn-secondary {
+    padding: 10px 16px; background: var(--white); color: var(--navy-800);
+    border: 1px solid var(--line); border-radius: 10px; font: inherit;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-secondary:hover { border-color: var(--navy-800); background: var(--cream-light); }
+  .btn-secondary svg { width: 14px; height: 14px; }
+  .btn-danger {
+    padding: 10px 16px; background: var(--danger-bg); color: var(--danger);
+    border: 1px solid rgba(177,48,74,.3); border-radius: 10px; font: inherit;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-danger svg { width: 14px; height: 14px; }
+
+  /* ============ STEP 4 UPCOMING PREVIEW ============ */
+  .upcoming-card {
+    background: var(--white); border: 1.5px dashed var(--line);
+    border-radius: 16px; padding: 22px;
+    opacity: .75;
+  }
+  .upcoming-head {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .upcoming-ico {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--cream); color: var(--ink-muted);
+    display: grid; place-items: center;
+  }
+  .upcoming-title {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px; color: var(--navy-800);
+  }
+  .upcoming-desc { font-size: 12.5px; color: var(--ink-muted); line-height: 1.5; max-width: 560px; }
+
+  .upcoming-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .upcoming-tile {
+    padding: 12px 14px; background: var(--bg); border: 1px solid var(--line-soft);
+    border-radius: 10px; display: flex; align-items: center; gap: 10px;
+  }
+  .upcoming-tile-ico { width: 28px; height: 28px; border-radius: 7px; background: var(--white); color: var(--ink-muted); display: grid; place-items: center; border: 1px solid var(--line-soft); }
+  .upcoming-tile-ico svg { width: 13px; height: 13px; }
+  .upcoming-tile-text { font-size: 12px; color: var(--ink-soft); line-height: 1.3; }
+  .upcoming-tile-text strong { display: block; color: var(--ink); font-weight: 600; font-family: 'Fraunces', serif; font-size: 13px; }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L 13 11"/><path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/><path d="M9 15 L 15 9"/></svg></div>
+      <div class="brand-name">PlumeNote<small>Base de connaissances</small></div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Accueil</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Recherche</a>
+        <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importer</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Domaines</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>Infrastructure</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>SCI</a>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="main">
+
+    <div class="header">
+      <nav class="crumb">
+        <a href="#">Accueil</a>
+        <span class="crumb-sep">›</span>
+        <strong>Importer un dossier</strong>
+      </nav>
+      <div class="header-right">
+        <button class="user-chip"><span class="avatar-sm">AB</span></button>
+      </div>
+    </div>
+
+    <main class="content">
+
+      <div class="title-block">
+        <span class="title-eyebrow">Import par lot · Pipeline Pandoc + pdftotext</span>
+        <h1>Importer un dossier <em>dans la base</em></h1>
+        <p>Convertissez en un clic un dossier complet de documentation (.docx, .pdf, .pptx, .txt, .md) vers PlumeNote. La structure de dossiers devient l'arborescence de domaines. Conversion 80/20 acceptée, validation manuelle possible après import.</p>
+      </div>
+
+      <!-- STEPPER -->
+      <div class="stepper">
+
+        <div class="step done">
+          <span class="step-bullet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <div class="step-body">
+            <span class="step-label">Étape 1 · terminé</span>
+            <span class="step-title">Source</span>
+          </div>
+        </div>
+
+        <div class="step done">
+          <span class="step-bullet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <div class="step-body">
+            <span class="step-label">Étape 2 · terminé</span>
+            <span class="step-title">Aperçu</span>
+          </div>
+        </div>
+
+        <div class="step current">
+          <span class="step-bullet">3</span>
+          <div class="step-body">
+            <span class="step-label">Étape 3 · en cours</span>
+            <span class="step-title">Conversion</span>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-bullet">4</span>
+          <div class="step-body">
+            <span class="step-label">Étape 4 · à venir</span>
+            <span class="step-title">Rapport</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- STEP 1 + 2 SUMMARY -->
+      <div class="summary-card">
+        <div class="summary-head">
+          <div class="summary-head-title">
+            <span class="dot-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Source et aperçu validés
+          </div>
+          <button class="summary-edit">Modifier</button>
+        </div>
+        <div class="summary-body">
+          <dl class="summary-grid">
+            <dt>Mode</dt>
+            <dd>Dossier local · 1 247 fichiers · 842 Mo</dd>
+
+            <dt>Source</dt>
+            <dd style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--navy-800);">/srv/docs/SCI/Procedures-2024-2026/</dd>
+
+            <dt>Domaine cible</dt>
+            <dd><span style="padding:3px 10px; background:rgba(38,54,136,.1); color:var(--navy-700); border-radius:999px; font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;">SCI</span></dd>
+
+            <dt>Mapping</dt>
+            <dd>Sous-dossiers convertis en tags · structure préservée</dd>
+
+            <dt>Types d'extraction</dt>
+            <dd>.docx Pandoc · .pdf pdftotext · .pptx python-pptx · .txt brut</dd>
+
+            <dt>Fichiers ignorés</dt>
+            <dd>~.doc (temp) · Thumbs.db · .DS_Store (24 fichiers ignorés)</dd>
+          </dl>
+
+          <div class="tree">
+            <div class="folder">Procedures-2024-2026/</div>
+            <div class="folder">&nbsp;&nbsp;Accueil/</div>
+            <div class="file docx">&nbsp;&nbsp;&nbsp;&nbsp;Mode-operatoire-passeport-2026.docx</div>
+            <div class="file docx">&nbsp;&nbsp;&nbsp;&nbsp;Procedure-accueil-agent.docx</div>
+            <div class="file pdf">&nbsp;&nbsp;&nbsp;&nbsp;Flyer-nouveau-passeport-national.pdf</div>
+            <div class="folder">&nbsp;&nbsp;Habilitations/</div>
+            <div class="file docx">&nbsp;&nbsp;&nbsp;&nbsp;QERSI-archivage-RH-v3.docx</div>
+            <div class="file docx">&nbsp;&nbsp;&nbsp;&nbsp;Matrice-habilitations-2026.docx</div>
+            <div class="skip">&nbsp;&nbsp;&nbsp;&nbsp;~$Matrice-habilitations-2026.docx (ignoré)</div>
+            <div class="folder">&nbsp;&nbsp;Annuaire/</div>
+            <div class="file md">&nbsp;&nbsp;&nbsp;&nbsp;Procedure-mot-de-passe-annuaire.md</div>
+            <div class="skip">&nbsp;&nbsp;... 1 234 autres fichiers</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3 PROGRESS -->
+      <div class="progress-card">
+        <div class="progress-head">
+          <div class="progress-head-left">
+            <div class="progress-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div>
+              <div class="progress-title">Conversion <em>en cours</em></div>
+              <div class="progress-sub">Pipeline Pandoc 3 → HTML → TipTap JSON · indexation Meilisearch async</div>
+            </div>
+          </div>
+          <div class="progress-head-right">
+            <div class="progress-percent">68%</div>
+            <div class="progress-files"><strong>847</strong> / 1 247 fichiers</div>
+          </div>
+        </div>
+
+        <div class="progress-bar">
+          <div class="progress-bar-fill"></div>
+        </div>
+
+        <!-- Counters -->
+        <div class="progress-counters">
+          <div class="counter">
+            <div class="counter-label">Convertis</div>
+            <div class="counter-value success">824</div>
+          </div>
+          <div class="counter">
+            <div class="counter-label">Avertissements</div>
+            <div class="counter-value warn">18</div>
+          </div>
+          <div class="counter">
+            <div class="counter-label">Erreurs</div>
+            <div class="counter-value danger">5</div>
+          </div>
+          <div class="counter">
+            <div class="counter-label">Restant</div>
+            <div class="counter-value">400</div>
+          </div>
+        </div>
+
+        <!-- Stream SSE -->
+        <div class="progress-stream">
+          <div class="stream-head">
+            <span class="stream-title">Flux SSE · fichiers traités</span>
+            <span class="stream-hint"><span class="live"></span>Live · mise à jour en continu</span>
+          </div>
+
+          <div class="stream-list">
+
+            <div class="stream-row">
+              <span class="stream-ico current"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></span>
+              <span class="stream-path">Habilitations / <strong>Matrice-habilitations-2026.docx</strong></span>
+              <span class="stream-time">14:32:18</span>
+              <span class="stream-action warn">En cours…</span>
+            </div>
+
+            <div class="stream-row">
+              <span class="stream-ico success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="stream-path">Habilitations / <strong>QERSI-archivage-RH-v3.docx</strong></span>
+              <span class="stream-time">14:32:16</span>
+              <span class="stream-action ok">Importé</span>
+            </div>
+
+            <div class="stream-row">
+              <span class="stream-ico warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+              <span class="stream-path">Accueil / <strong>Flyer-nouveau-passeport-national.pdf</strong></span>
+              <span class="stream-time">14:32:14</span>
+              <span class="stream-action warn">PDF scanné · contenu limité</span>
+            </div>
+
+            <div class="stream-row">
+              <span class="stream-ico success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="stream-path">Accueil / <strong>Procedure-accueil-agent.docx</strong></span>
+              <span class="stream-time">14:32:12</span>
+              <span class="stream-action ok">Importé</span>
+            </div>
+
+            <div class="stream-row">
+              <span class="stream-ico success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="stream-path">Accueil / <strong>Mode-operatoire-passeport-2026.docx</strong></span>
+              <span class="stream-time">14:32:09</span>
+              <span class="stream-action ok">Importé · 2 images</span>
+            </div>
+
+            <div class="stream-row">
+              <span class="stream-ico danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+              <span class="stream-path">Archives / <strong>Doc-corrompu-2019.doc</strong></span>
+              <span class="stream-time">14:32:05</span>
+              <span class="stream-action err">Format non reconnu</span>
+            </div>
+
+            <div class="stream-row">
+              <span class="stream-ico success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="stream-path">Annuaire / <strong>Procedure-mot-de-passe-annuaire.md</strong></span>
+              <span class="stream-time">14:32:02</span>
+              <span class="stream-action ok">Importé</span>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="progress-actions">
+          <span class="eta">Vitesse moyenne <strong>6.2 fichiers/s</strong> · Temps restant estimé <strong>≈ 1 min 04</strong> · <strong>842 Mo</strong> lus sur 1.2 Go</span>
+          <span class="spacer"></span>
+          <button class="btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            Mettre en pause
+          </button>
+          <button class="btn-danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            Annuler l'import
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 4 UPCOMING -->
+      <div class="upcoming-card">
+        <div class="upcoming-head">
+          <div class="upcoming-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          </div>
+          <div>
+            <div class="upcoming-title">Rapport d'import détaillé · étape 4</div>
+            <div class="upcoming-desc">À l'issue de la conversion, le rapport liste chaque document créé, les erreurs et les avertissements. Il permet de valider la qualité et d'ouvrir les fiches concernées pour retouche manuelle.</div>
+          </div>
+        </div>
+
+        <div class="upcoming-grid">
+          <div class="upcoming-tile">
+            <span class="upcoming-tile-ico" style="color:var(--success);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="upcoming-tile-text"><strong>Importés</strong>Documents créés avec succès</div>
+          </div>
+          <div class="upcoming-tile">
+            <span class="upcoming-tile-ico" style="color:var(--warn);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+            <div class="upcoming-tile-text"><strong>Avertissements</strong>Conversions partielles (PDF scannés, formatage complexe)</div>
+          </div>
+          <div class="upcoming-tile">
+            <span class="upcoming-tile-ico" style="color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <div class="upcoming-tile-text"><strong>Erreurs</strong>Fichiers non importables (format, corruption)</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C;
+    --navy-800: #1E2D6B;
+    --navy-700: #263688;
+    --navy-600: #2E42A0;
+    --coral: #E8845C;
+    --coral-soft: #F3B69A;
+    --coral-bg: #FCEEE4;
+    --cream: #F4E9D8;
+    --cream-light: #FAF3E6;
+    --bg: #F7F4EC;
+    --ink: #1A1F3A;
+    --ink-soft: #5A6380;
+    --ink-muted: #8B93AE;
+    --line: #E4DBC9;
+    --line-soft: #EFE8D6;
+    --white: #FFFFFF;
+    --success: #2F7D5B;
+    --success-bg: #E3F0E9;
+    --warn: #C97B1A;
+    --warn-bg: #FBEBD0;
+    --danger: #B1304A;
+    --danger-bg: #F9DFE4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Manrope', -apple-system, system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    font-size: 14px;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; }
+
+  /* ============ LAYOUT ============ */
+  .auth {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    min-height: 100vh;
+  }
+
+  /* ============ PANEL ILLUSTRATION ============ */
+  .panel-illus {
+    background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-700) 60%, var(--navy-600) 100%);
+    color: #E9ECF6;
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel-illus::before {
+    content: "";
+    position: absolute;
+    top: -60px; right: -80px;
+    width: 360px; height: 360px;
+    background: radial-gradient(circle, rgba(232,132,92,.22), transparent 60%);
+    opacity: .9;
+    pointer-events: none;
+  }
+  .panel-illus::after {
+    content: "";
+    position: absolute;
+    bottom: -120px; left: -60px;
+    width: 340px; height: 340px;
+    background: radial-gradient(circle, rgba(244,233,216,.08), transparent 60%);
+    pointer-events: none;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    z-index: 2;
+  }
+  .brand-mark {
+    width: 44px; height: 44px;
+    background: var(--cream);
+    color: var(--navy-900);
+    border-radius: 11px;
+    display: grid; place-items: center;
+    box-shadow: 0 6px 18px rgba(20,35,92,.3);
+  }
+  .brand-mark svg { width: 22px; height: 22px; }
+  .brand-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    color: var(--cream);
+    line-height: 1.1;
+  }
+  .brand-name small {
+    display: block;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--coral-soft);
+    margin-top: 3px;
+  }
+
+  .illus-body {
+    margin-top: 56px;
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .illus-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--coral);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .illus-eyebrow::before {
+    content: "";
+    width: 22px; height: 1.5px;
+    background: var(--coral);
+  }
+  .illus-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--cream-light);
+    max-width: 520px;
+  }
+  .illus-title em {
+    font-style: italic;
+    color: var(--coral);
+    font-weight: 500;
+  }
+  .illus-desc {
+    margin-top: 22px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #C9CFE4;
+    max-width: 460px;
+  }
+
+  /* Graphe de connaissances SVG */
+  .illus-graph {
+    margin-top: 46px;
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .illus-footer {
+    margin-top: auto;
+    padding-top: 36px;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--coral-soft);
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .illus-footer .dot {
+    width: 6px; height: 6px;
+    background: var(--coral);
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(232,132,92,.18);
+    animation: dot-pulse 2.4s infinite;
+  }
+  @keyframes dot-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(232,132,92,.18); }
+    50% { box-shadow: 0 0 0 6px rgba(232,132,92,.08); }
+  }
+
+  /* ============ PANEL FORM ============ */
+  .panel-form {
+    background: var(--bg);
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+  }
+  .form-wrap {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .title-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin-bottom: 14px;
+  }
+  .title-eyebrow::before {
+    content: "◆";
+    color: var(--coral-soft);
+  }
+
+  .form-wrap h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 44px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--navy-900);
+  }
+  .form-wrap h1 em {
+    font-style: italic;
+    color: var(--coral);
+    font-weight: 500;
+  }
+  .form-wrap p.lead {
+    margin-top: 10px;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+
+  form {
+    margin-top: 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  }
+  .field > label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .field > label .req { color: var(--coral); font-weight: 700; margin-left: 2px; }
+  .field > label a {
+    color: var(--navy-700);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    transition: color .15s;
+  }
+  .field > label a:hover { color: var(--coral); }
+
+  .control {
+    width: 100%;
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .control::placeholder { color: var(--ink-muted); }
+  .control:focus {
+    border-color: var(--navy-600);
+    box-shadow: 0 0 0 3px rgba(46,66,160,.12);
+  }
+  .control.with-icon {
+    padding-left: 42px;
+  }
+  .field-with-icon {
+    position: relative;
+  }
+  .field-with-icon .input-icon {
+    position: absolute;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    pointer-events: none;
+  }
+  .field-with-icon .input-icon svg { width: 16px; height: 16px; }
+
+  .pwd-toggle {
+    position: absolute;
+    right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+    transition: color .15s, background .15s;
+  }
+  .pwd-toggle:hover { color: var(--navy-800); background: var(--cream-light); }
+
+  .row-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .remember {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .remember input { display: none; }
+  .remember .box {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    background: var(--white);
+    display: inline-grid;
+    place-items: center;
+    transition: border-color .15s, background .15s;
+  }
+  .remember input:checked + .box {
+    background: var(--navy-800);
+    border-color: var(--navy-800);
+  }
+  .remember input:checked + .box::after {
+    content: "";
+    width: 8px; height: 4px;
+    border-left: 2px solid var(--white);
+    border-bottom: 2px solid var(--white);
+    transform: rotate(-45deg) translate(1px,-1px);
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px 20px;
+    background: var(--navy-800);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 6px 20px rgba(20,35,92,.22);
+    transition: transform .15s, box-shadow .15s, background .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .btn-primary:hover {
+    background: var(--navy-900);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px rgba(20,35,92,.28);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary svg { transition: transform .15s; }
+  .btn-primary:hover svg { transform: translateX(3px); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 28px 0 6px;
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .help-box {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-top: 18px;
+  }
+  .help-box .help-icon {
+    width: 30px; height: 30px;
+    flex-shrink: 0;
+    background: var(--cream);
+    color: var(--navy-800);
+    border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .help-box .help-icon svg { width: 15px; height: 15px; }
+  .help-box-text {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  .help-box-text strong {
+    display: block;
+    color: var(--navy-900);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .help-box-text a {
+    color: var(--navy-700);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .help-box-text a:hover { color: var(--coral); }
+
+  /* Inline error example */
+  .inline-msg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+  .inline-msg.info { color: var(--navy-700); }
+  .inline-msg.error { color: var(--danger); }
+  .inline-msg svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+  .footer-form {
+    margin-top: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--ink-muted);
+    letter-spacing: .06em;
+  }
+  .footer-form .env-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--success-bg);
+    color: var(--success);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .footer-form .env-tag::before {
+    content: "";
+    width: 6px; height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+  }
+
+  /* Responsive */
+  @media (max-width: 960px) {
+    .auth { grid-template-columns: 1fr; }
+    .panel-illus { padding: 36px 28px; min-height: 360px; }
+    .panel-form { padding: 40px 28px; }
+    .illus-title { font-size: 32px; }
+    .form-wrap h1 { font-size: 34px; }
+    .illus-graph { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="auth">
+
+  <!-- ============ GAUCHE : ILLUSTRATION ============ -->
+  <section class="panel-illus">
+    <div class="brand">
+      <div class="brand-mark">
+        <!-- Plume stylisée -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20 L 13 11"/>
+          <path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/>
+          <path d="M9 15 L 15 9"/>
+        </svg>
+      </div>
+      <div class="brand-name">
+        PlumeNote
+        <small>Base de connaissances · DSI</small>
+      </div>
+    </div>
+
+    <div class="illus-body">
+      <div class="illus-eyebrow">Knowledge Management interne</div>
+      <h2 class="illus-title">Un seul endroit pour <em>tout ce que sait la DSI</em>.</h2>
+      <p class="illus-desc">
+        Procédures, cartographies, modes opératoires, architecture.
+        Recherche transversale, contenu versionné, graphe de liens entre documents.
+        Hébergé sur notre infrastructure, accessible sans installation.
+      </p>
+
+      <!-- Graphe de connaissances stylisé -->
+      <svg class="illus-graph" viewBox="0 0 520 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="link" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#E8845C" stop-opacity=".2"/>
+            <stop offset="1" stop-color="#E8845C" stop-opacity=".55"/>
+          </linearGradient>
+          <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.4"/>
+          </filter>
+        </defs>
+
+        <!-- Liens -->
+        <g stroke="url(#link)" stroke-width="1.3" fill="none" opacity=".8">
+          <path d="M 90 160 Q 180 100 260 140"/>
+          <path d="M 260 140 Q 340 70 430 110"/>
+          <path d="M 260 140 Q 350 210 440 200"/>
+          <path d="M 90 160 Q 160 220 250 230"/>
+          <path d="M 250 230 Q 330 200 440 200"/>
+          <path d="M 260 140 L 250 230"/>
+          <path d="M 430 110 Q 480 150 440 200"/>
+          <path d="M 90 160 L 260 140"/>
+        </g>
+
+        <!-- Noeuds secondaires -->
+        <g>
+          <circle cx="90" cy="160" r="22" fill="#FCEEE4" stroke="#E8845C" stroke-width="1.5"/>
+          <text x="90" y="164" text-anchor="middle" fill="#14235C" font-family="Fraunces" font-weight="600" font-size="13">INF</text>
+        </g>
+        <g>
+          <circle cx="430" cy="110" r="20" fill="#FAF3E6" stroke="#F4E9D8" stroke-width="1.5"/>
+          <text x="430" y="114" text-anchor="middle" fill="#14235C" font-family="Fraunces" font-weight="600" font-size="11">SUP</text>
+        </g>
+        <g>
+          <circle cx="440" cy="200" r="20" fill="#FAF3E6" stroke="#F4E9D8" stroke-width="1.5"/>
+          <text x="440" y="204" text-anchor="middle" fill="#14235C" font-family="Fraunces" font-weight="600" font-size="11">SCI</text>
+        </g>
+        <g>
+          <circle cx="250" cy="230" r="18" fill="#FAF3E6" stroke="#F4E9D8" stroke-width="1.5"/>
+          <text x="250" y="234" text-anchor="middle" fill="#14235C" font-family="Fraunces" font-weight="600" font-size="10">E&amp;D</text>
+        </g>
+
+        <!-- Noeud central avec "pulse" -->
+        <circle cx="260" cy="140" r="40" fill="#E8845C" opacity=".18" filter="url(#soft)"/>
+        <circle cx="260" cy="140" r="30" fill="#E8845C"/>
+        <circle cx="260" cy="140" r="30" fill="none" stroke="#FCEEE4" stroke-width="2"/>
+        <text x="260" y="145" text-anchor="middle" fill="#FFFFFF" font-family="Fraunces" font-weight="600" font-size="14">VPN</text>
+
+        <!-- Micro-noeuds -->
+        <circle cx="155" cy="205" r="6" fill="#F3B69A"/>
+        <circle cx="355" cy="60" r="5" fill="#F3B69A"/>
+        <circle cx="490" cy="155" r="5" fill="#F3B69A"/>
+        <circle cx="185" cy="75" r="4" fill="#C9CFE4" opacity=".6"/>
+        <circle cx="380" cy="245" r="4" fill="#C9CFE4" opacity=".6"/>
+      </svg>
+    </div>
+
+    <div class="illus-footer">
+      <span class="dot"></span>
+      Self-hosted · CPAM 92
+    </div>
+  </section>
+
+  <!-- ============ DROITE : FORMULAIRE ============ -->
+  <section class="panel-form">
+    <div class="form-wrap">
+      <span class="title-eyebrow">Authentification</span>
+      <h1>Bon retour,<br><em>connectez-vous</em>.</h1>
+      <p class="lead">Utilisez votre identifiant PlumeNote. L'accès est restreint aux agents de la DSI et contributeurs autorisés.</p>
+
+      <form onsubmit="event.preventDefault()">
+
+        <div class="field">
+          <label for="login">Identifiant <span class="req">*</span></label>
+          <div class="field-with-icon">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input id="login" class="control with-icon" type="text" placeholder="prenom.nom" autocomplete="username" value="alexandre.berge">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pwd">Mot de passe <span class="req">*</span><a href="#">Mot de passe oublié</a></label>
+          <div class="field-with-icon">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input id="pwd" class="control with-icon" type="password" placeholder="••••••••••" autocomplete="current-password" value="demopassword">
+            <button type="button" class="pwd-toggle" aria-label="Afficher le mot de passe">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <span class="inline-msg info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+            </svg>
+            Changez votre mot de passe depuis « Mon compte » après la première connexion.
+          </span>
+        </div>
+
+        <div class="row-between">
+          <label class="remember">
+            <input type="checkbox" checked>
+            <span class="box"></span>
+            Rester connecté sur ce poste
+          </label>
+          <span style="color: var(--ink-muted); font-size: 11.5px;">Session 8 h</span>
+        </div>
+
+        <button class="btn-primary" type="submit">
+          Se connecter
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="M13 5l7 7-7 7"/>
+          </svg>
+        </button>
+
+        <div class="divider">ou</div>
+
+        <div class="help-box">
+          <div class="help-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4"/>
+              <path d="M12 17h.01"/>
+            </svg>
+          </div>
+          <div class="help-box-text">
+            <strong>Pas de compte ?</strong>
+            Les comptes PlumeNote sont créés par l'administrateur DSI. <a href="#">Ouvrir un ticket GLPI</a> pour demander un accès.
+          </div>
+        </div>
+
+      </form>
+
+      <div class="footer-form">
+        <span>PlumeNote v0.1 (MVP) · 2026</span>
+        <span class="env-tag">Production</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

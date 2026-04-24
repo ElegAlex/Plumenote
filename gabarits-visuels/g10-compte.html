@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon compte — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688; --navy-600: #2E42A0;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+    --success: #2F7D5B; --success-bg: #E3F0E9;
+    --warn: #C97B1A; --warn-bg: #FBEBD0;
+    --danger: #B1304A; --danger-bg: #F9DFE4;
+    --plum: #7A3E8C; --plum-bg: #F0E5F3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Manrope', system-ui, sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; font-feature-settings: "ss01"; -webkit-font-smoothing: antialiased; }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+
+  .sidebar { background: var(--navy-900); color: #C9CFE4; padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand-mark { width: 40px; height: 40px; background: var(--cream); color: var(--navy-900); border-radius: 10px; display: grid; place-items: center; }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'Fraunces', serif; color: var(--white); font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .brand-name small { display: block; font: 500 10px/1 'Manrope'; color: #8A93B8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7A83A8; padding: 0 12px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px; color: #C9CFE4; text-decoration: none; font-weight: 500; font-size: 13.5px; position: relative; transition: all .15s; }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: var(--white); }
+  .nav-item.active { background: linear-gradient(180deg, rgba(232,132,92,.18), rgba(232,132,92,.08)); color: var(--white); }
+  .nav-item.active::before { content:""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; background: var(--coral); border-radius: 0 3px 3px 0; }
+  .nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-section + .nav-section { margin-top: 18px; }
+
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .header { background: var(--white); border-bottom: 1px solid var(--line); padding: 14px 32px; display: flex; align-items: center; gap: 20px; position: sticky; top: 0; z-index: 5; }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .crumb a { color: var(--ink-soft); text-decoration: none; }
+  .crumb strong { color: var(--navy-900); font-weight: 600; font-family: 'Fraunces', serif; }
+  .crumb-sep { color: var(--ink-muted); }
+  .header-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .user-chip-sm { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--coral)); color: var(--white); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+
+  .content { padding: 28px 32px 60px; max-width: 1280px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+  /* ============ IDENTITY HERO ============ */
+  .identity-hero {
+    background: linear-gradient(130deg, var(--navy-900) 0%, var(--navy-700) 55%, var(--coral) 120%);
+    border-radius: 22px;
+    padding: 32px 36px;
+    color: var(--cream);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 28px;
+    align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .identity-hero::before {
+    content: "";
+    position: absolute; right: -80px; top: -80px;
+    width: 340px; height: 340px;
+    background: radial-gradient(circle, rgba(244,233,216,.15), transparent 60%);
+  }
+
+  .avatar-xl {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--coral), var(--coral-soft));
+    color: var(--white);
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 30px;
+    display: grid; place-items: center;
+    border: 3px solid rgba(255,255,255,.25);
+    box-shadow: 0 8px 20px rgba(20,35,92,.3);
+    position: relative; z-index: 1;
+  }
+
+  .identity-text { position: relative; z-index: 1; min-width: 0; }
+  .identity-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--coral-soft);
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .identity-eyebrow::before { content: ""; width: 22px; height: 1.5px; background: var(--coral-soft); }
+  .identity-text h1 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 34px; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+  .identity-meta {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+  }
+  .id-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; background: rgba(255,255,255,.1);
+    color: var(--cream); border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .id-chip svg { width: 12px; height: 12px; }
+  .id-chip strong { font-weight: 700; color: var(--white); }
+  .id-chip.coral { background: rgba(232,132,92,.24); border-color: rgba(232,132,92,.35); }
+
+  .identity-right {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; gap: 6px;
+    text-align: right;
+  }
+  .id-meta-mini { font-size: 11.5px; color: #C9CFE4; }
+  .id-meta-mini strong { color: var(--white); font-family: 'Fraunces', serif; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 13px; }
+
+  /* ============ TABS ============ */
+  .tabs-bar {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 14px; padding: 4px;
+    display: flex; gap: 2px;
+  }
+  .tab {
+    padding: 10px 16px; border-radius: 10px;
+    text-decoration: none; color: var(--ink-soft);
+    font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 8px;
+    position: relative;
+    transition: all .15s;
+    border: none; background: transparent; cursor: pointer; font-family: inherit;
+  }
+  .tab:hover { background: var(--cream-light); color: var(--navy-800); }
+  .tab.active {
+    background: var(--navy-900); color: var(--white);
+  }
+  .tab svg { width: 14px; height: 14px; }
+  .tab .badge {
+    padding: 1px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700;
+    background: rgba(255,255,255,.2); color: var(--cream);
+    font-variant-numeric: tabular-nums;
+  }
+  .tab:not(.active) .badge { background: var(--cream); color: var(--navy-800); }
+
+  /* ============ 2-COL LAYOUT ============ */
+  .content-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 22px; }
+
+  /* Card */
+  .card { background: var(--white); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .card-head {
+    padding: 16px 22px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-title {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 17px; color: var(--navy-900); letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-title svg { width: 15px; height: 15px; color: var(--coral); }
+  .card-hint { font-size: 12px; color: var(--ink-muted); }
+  .card-body { padding: 20px 22px; }
+
+  /* Form */
+  .form-grid { display: grid; gap: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > label {
+    font-size: 12.5px; font-weight: 600; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .field > label .req { color: var(--coral); font-weight: 700; }
+  .field > label .hint-inline { font-size: 11px; font-weight: 500; color: var(--ink-muted); }
+  .control {
+    width: 100%; padding: 10px 14px;
+    font: inherit; font-size: 13.5px; color: var(--ink);
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 10px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .control:focus { border-color: var(--navy-600); box-shadow: 0 0 0 3px rgba(46,66,160,.12); }
+  .control.readonly { background: var(--cream-light); color: var(--ink-soft); cursor: not-allowed; }
+  .hint {
+    font-size: 11.5px; color: var(--ink-muted);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .hint svg { width: 12px; height: 12px; }
+
+  .inline-msg {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 500;
+  }
+  .inline-msg.success { color: var(--success); }
+  .inline-msg.info { color: var(--navy-700); }
+  .inline-msg svg { width: 13px; height: 13px; }
+
+  /* Avatar editor */
+  .avatar-edit {
+    display: flex; align-items: center; gap: 18px;
+    padding: 16px; background: var(--cream-light);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+  }
+  .avatar-edit-xl {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy-700), var(--coral));
+    color: var(--white); display: grid; place-items: center;
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px;
+    flex-shrink: 0;
+  }
+  .avatar-edit-text { flex: 1; min-width: 0; }
+  .avatar-edit-text strong { display: block; color: var(--navy-900); font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .avatar-edit-text p { font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; }
+  .avatar-edit-actions { display: flex; gap: 6px; }
+  .btn-sm {
+    padding: 7px 12px; background: var(--white); color: var(--navy-800);
+    border: 1px solid var(--line); border-radius: 8px;
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn-sm:hover { border-color: var(--navy-800); background: var(--cream-light); }
+  .btn-sm svg { width: 12px; height: 12px; }
+
+  /* Form footer */
+  .card-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-soft);
+    background: var(--cream-light);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .card-foot-left { font-size: 12px; color: var(--ink-soft); }
+  .card-foot-right { display: flex; gap: 8px; margin-left: auto; }
+  .btn {
+    padding: 10px 16px; border-radius: 10px; font: inherit;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1.5px solid transparent;
+    transition: all .15s;
+  }
+  .btn svg { width: 14px; height: 14px; }
+  .btn-secondary { background: var(--white); color: var(--navy-800); border-color: var(--line); }
+  .btn-secondary:hover { border-color: var(--navy-800); background: var(--white); }
+  .btn-primary {
+    background: var(--coral); color: var(--white);
+    box-shadow: 0 6px 18px rgba(232,132,92,.35);
+  }
+  .btn-primary:hover { background: #E0734A; transform: translateY(-1px); }
+
+  /* Stats side */
+  .stat-row {
+    padding: 14px 22px;
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 12px; align-items: center;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-ico {
+    width: 36px; height: 36px; border-radius: 9px;
+    display: grid; place-items: center;
+  }
+  .stat-ico svg { width: 16px; height: 16px; }
+  .stat-ico.coral { background: var(--coral-bg); color: var(--coral); }
+  .stat-ico.success { background: var(--success-bg); color: var(--success); }
+  .stat-ico.navy { background: #E9EAF7; color: var(--navy-700); }
+  .stat-ico.plum { background: var(--plum-bg); color: var(--plum); }
+  .stat-text {
+    min-width: 0;
+  }
+  .stat-label { font-size: 12.5px; color: var(--ink-soft); font-weight: 500; }
+  .stat-sub { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+  .stat-value {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 26px; color: var(--navy-900);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1;
+  }
+
+  /* Badges / Achievements */
+  .badges-grid { padding: 16px 22px 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .badge-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px; background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+  }
+  .badge-card.earned { border-color: var(--coral); background: var(--coral-bg); }
+  .badge-ico {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--white); color: var(--ink-muted);
+    border: 1px solid var(--line-soft);
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+  .badge-card.earned .badge-ico { background: var(--white); color: var(--coral); border-color: var(--coral-soft); }
+  .badge-text { font-size: 12px; line-height: 1.35; }
+  .badge-text strong { display: block; color: var(--navy-900); font-weight: 700; font-family: 'Fraunces', serif; font-size: 13px; margin-bottom: 2px; }
+  .badge-card:not(.earned) { opacity: .55; }
+
+  /* Notification matrix */
+  .pref-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .pref-row:last-child { border-bottom: none; }
+  .pref-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .pref-hint { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; line-height: 1.4; }
+
+  /* Toggle switch */
+  .switch {
+    width: 38px; height: 22px; background: var(--line);
+    border-radius: 999px; position: relative;
+    cursor: pointer;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .switch::after {
+    content: "";
+    width: 16px; height: 16px; background: var(--white);
+    border-radius: 50%;
+    position: absolute; top: 3px; left: 3px;
+    transition: transform .2s, background .15s;
+    box-shadow: 0 1px 3px rgba(20,35,92,.2);
+  }
+  .switch.on { background: var(--success); }
+  .switch.on::after { transform: translateX(16px); }
+
+  @media (max-width: 1000px) {
+    .content-grid { grid-template-columns: 1fr; }
+    .identity-hero { grid-template-columns: auto 1fr; }
+    .identity-right { grid-column: 1 / -1; text-align: left; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
+  }
+  @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L 13 11"/><path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/><path d="M9 15 L 15 9"/></svg></div>
+      <div class="brand-name">PlumeNote<small>Base de connaissances</small></div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Accueil</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Recherche</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Personnel</div>
+        <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Mon compte</a>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="main">
+
+    <div class="header">
+      <nav class="crumb">
+        <a href="#">Accueil</a>
+        <span class="crumb-sep">›</span>
+        <strong>Mon compte</strong>
+      </nav>
+      <div class="header-right">
+        <button class="user-chip-sm">
+          <span class="avatar-sm">AB</span>
+        </button>
+      </div>
+    </div>
+
+    <main class="content">
+
+      <!-- Identity hero -->
+      <section class="identity-hero">
+        <div class="avatar-xl">AB</div>
+        <div class="identity-text">
+          <div class="identity-eyebrow">Compte · Administrateur DSI</div>
+          <h1>Alexandre Berge</h1>
+          <div class="identity-meta">
+            <span class="id-chip coral">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Rôle : <strong>Administrateur</strong>
+            </span>
+            <span class="id-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+              Domaines : <strong>Tous (4)</strong>
+            </span>
+            <span class="id-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Compte créé : <strong>15 mars 2026</strong>
+            </span>
+          </div>
+        </div>
+        <div class="identity-right">
+          <div class="id-meta-mini">Dernière connexion</div>
+          <div class="id-meta-mini"><strong>aujourd'hui · 08:14</strong></div>
+          <div style="height:4px;"></div>
+          <div class="id-meta-mini">Contributions · <strong>47</strong></div>
+          <div class="id-meta-mini">Documents consultés · <strong>312</strong></div>
+        </div>
+      </section>
+
+      <!-- Tabs -->
+      <div class="tabs-bar">
+        <button class="tab active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Profil
+        </button>
+        <button class="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Sécurité
+        </button>
+        <button class="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51"/></svg>
+          Préférences
+        </button>
+        <button class="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Activité
+          <span class="badge">47</span>
+        </button>
+      </div>
+
+      <!-- 2-col content -->
+      <section class="content-grid">
+
+        <!-- LEFT : forms -->
+        <div style="display:flex; flex-direction:column; gap: 22px;">
+
+          <!-- Profile -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/></svg>
+                Informations personnelles
+              </div>
+              <span class="card-hint">Visible par les autres contributeurs DSI</span>
+            </div>
+            <div class="card-body">
+              <div class="avatar-edit">
+                <div class="avatar-edit-xl">AB</div>
+                <div class="avatar-edit-text">
+                  <strong>Avatar</strong>
+                  <p>Les initiales sont dérivées de votre nom. Vous pouvez téléverser une image (carré, PNG/JPG, max 1 Mo).</p>
+                </div>
+                <div class="avatar-edit-actions">
+                  <button class="btn-sm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Téléverser
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-grid" style="margin-top: 18px;">
+                <div class="form-row">
+                  <div class="field">
+                    <label>Prénom <span class="req">*</span></label>
+                    <input class="control" type="text" value="Alexandre">
+                  </div>
+                  <div class="field">
+                    <label>Nom <span class="req">*</span></label>
+                    <input class="control" type="text" value="Berge">
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Fonction <span class="hint-inline">affichée dans les métadonnées des documents</span></label>
+                  <input class="control" type="text" value="Responsable du Système d'Information — CPAM 92">
+                </div>
+
+                <div class="form-row">
+                  <div class="field">
+                    <label>Adresse e-mail <span class="req">*</span></label>
+                    <input class="control" type="email" value="ab@cpam92.cramif.local">
+                    <span class="inline-msg info">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                      Utilisée pour les notifications et la récupération de compte.
+                    </span>
+                  </div>
+                  <div class="field">
+                    <label>Identifiant de connexion</label>
+                    <input class="control readonly" type="text" value="alexandre.berge" readonly>
+                    <span class="hint">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      Modification réservée à l'administrateur
+                    </span>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Biographie courte <span class="hint-inline">220 caractères max</span></label>
+                  <textarea class="control" rows="3" style="resize:vertical; min-height: 80px; line-height:1.55; font-family:inherit;">DSI CPAM 92. Responsable de la plateforme PlumeNote. Fait de la documentation une base de connaissance vivante.</textarea>
+                </div>
+              </div>
+            </div>
+            <div class="card-foot">
+              <div class="card-foot-left">
+                <span class="inline-msg success">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><polyline points="20 6 9 17 4 12"/></svg>
+                  Modifications non publiées
+                </span>
+              </div>
+              <div class="card-foot-right">
+                <button class="btn btn-secondary">Annuler</button>
+                <button class="btn btn-primary">
+                  Enregistrer
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Préférences raccourcies -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Notifications
+              </div>
+              <span class="card-hint">Matrice e-mail &amp; in-app</span>
+            </div>
+            <div class="card-body" style="padding: 6px 22px;">
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Un document que j'ai rédigé a été consulté 10+ fois</div>
+                  <div class="pref-hint">Récap hebdomadaire, par e-mail uniquement.</div>
+                </div>
+                <div class="switch on"></div>
+              </div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Un de mes documents est devenu 🔴 périmé</div>
+                  <div class="pref-hint">Alerte immédiate in-app + rappel hebdomadaire par e-mail.</div>
+                </div>
+                <div class="switch on"></div>
+              </div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Quelqu'un mentionne un de mes documents via lien interne</div>
+                  <div class="pref-hint">In-app uniquement.</div>
+                </div>
+                <div class="switch on"></div>
+              </div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Digest hebdomadaire de l'activité DSI</div>
+                  <div class="pref-hint">Chaque lundi matin : nouveaux documents, top recherches, contributions.</div>
+                </div>
+                <div class="switch"></div>
+              </div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Astuces d'utilisation (ex. raccourcis Ctrl+K)</div>
+                  <div class="pref-hint">Une fois par mois, in-app uniquement.</div>
+                </div>
+                <div class="switch on"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT : side -->
+        <aside style="display:flex; flex-direction:column; gap:16px;">
+
+          <!-- Stats activité -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title" style="font-size:15px;">Mon activité</div>
+              <a href="#" style="font-size:12px; color:var(--navy-700); font-weight:600; text-decoration:none;">Voir le détail →</a>
+            </div>
+            <div style="padding: 4px 0;">
+              <div class="stat-row">
+                <div class="stat-ico coral">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </div>
+                <div class="stat-text">
+                  <div class="stat-label">Contributions</div>
+                  <div class="stat-sub">Publications + révisions</div>
+                </div>
+                <div class="stat-value">47</div>
+              </div>
+              <div class="stat-row">
+                <div class="stat-ico navy">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div class="stat-text">
+                  <div class="stat-label">Vues générées</div>
+                  <div class="stat-sub">Sur vos 47 documents</div>
+                </div>
+                <div class="stat-value">1 284</div>
+              </div>
+              <div class="stat-row">
+                <div class="stat-ico success">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="stat-text">
+                  <div class="stat-label">Documents vérifiés</div>
+                  <div class="stat-sub">Cette année</div>
+                </div>
+                <div class="stat-value">38</div>
+              </div>
+              <div class="stat-row">
+                <div class="stat-ico plum">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                </div>
+                <div class="stat-text">
+                  <div class="stat-label">Recherches</div>
+                  <div class="stat-sub">30 derniers jours</div>
+                </div>
+                <div class="stat-value">94</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title" style="font-size:15px;">Badges</div>
+              <span class="card-hint">3 / 8</span>
+            </div>
+            <div class="badges-grid">
+              <div class="badge-card earned">
+                <div class="badge-ico">🌱</div>
+                <div class="badge-text">
+                  <strong>Premier pas</strong>
+                  Première contribution publiée
+                </div>
+              </div>
+              <div class="badge-card earned">
+                <div class="badge-ico">🔍</div>
+                <div class="badge-text">
+                  <strong>Veilleur</strong>
+                  10+ documents marqués vérifiés
+                </div>
+              </div>
+              <div class="badge-card earned">
+                <div class="badge-ico">✍️</div>
+                <div class="badge-text">
+                  <strong>Rédacteur</strong>
+                  25+ documents publiés
+                </div>
+              </div>
+              <div class="badge-card">
+                <div class="badge-ico">📚</div>
+                <div class="badge-text">
+                  <strong>Bibliothécaire</strong>
+                  50+ documents publiés
+                </div>
+              </div>
+              <div class="badge-card">
+                <div class="badge-ico">🔗</div>
+                <div class="badge-text">
+                  <strong>Tisseur</strong>
+                  100+ liens internes créés
+                </div>
+              </div>
+              <div class="badge-card">
+                <div class="badge-ico">🏆</div>
+                <div class="badge-text">
+                  <strong>Référent</strong>
+                  Document cité 20+ fois
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raccourcis clavier -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title" style="font-size:15px;">Raccourcis clavier</div>
+            </div>
+            <div style="padding: 10px 22px 16px;">
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:12.5px;">
+                <span style="color:var(--ink-soft);">Ouvrir la recherche</span>
+                <span><kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">Ctrl</kbd> <kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">K</kbd></span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:12.5px;">
+                <span style="color:var(--ink-soft);">Nouveau document</span>
+                <span><kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">Ctrl</kbd> <kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">N</kbd></span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:12.5px;">
+                <span style="color:var(--ink-soft);">Sauvegarder (éditeur)</span>
+                <span><kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">Ctrl</kbd> <kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">S</kbd></span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:12.5px;">
+                <span style="color:var(--ink-soft);">Lien interne dans l'éditeur</span>
+                <span><kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">[</kbd> <kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">[</kbd></span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:12.5px;">
+                <span style="color:var(--ink-soft);">Menu slash commands</span>
+                <span><kbd style="background:var(--bg); border:1px solid var(--line); padding:2px 7px; border-radius:5px; font:inherit; font-size:11px; font-weight:700;">/</kbd></span>
+              </div>
+            </div>
+          </div>
+
+        </aside>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

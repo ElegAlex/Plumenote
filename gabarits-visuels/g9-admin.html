@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administration — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688; --navy-600: #2E42A0;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+    --success: #2F7D5B; --success-bg: #E3F0E9;
+    --warn: #C97B1A; --warn-bg: #FBEBD0;
+    --danger: #B1304A; --danger-bg: #F9DFE4;
+    --plum: #7A3E8C; --plum-bg: #F0E5F3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Manrope', system-ui, sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; -webkit-font-smoothing: antialiased; font-feature-settings: "ss01"; }
+
+  /* 3-col layout */
+  .app { display: grid; grid-template-columns: 248px 224px 1fr; min-height: 100vh; }
+
+  /* Primary sidebar */
+  .sidebar { background: var(--navy-900); color: #C9CFE4; padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand-mark { width: 40px; height: 40px; background: var(--cream); color: var(--navy-900); border-radius: 10px; display: grid; place-items: center; }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'Fraunces', serif; color: var(--white); font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .brand-name small { display: block; font: 500 10px/1 'Manrope'; color: #8A93B8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7A83A8; padding: 0 12px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px; color: #C9CFE4; text-decoration: none; font-weight: 500; font-size: 13.5px; position: relative; transition: all .15s; }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: var(--white); }
+  .nav-item.active { background: linear-gradient(180deg, rgba(232,132,92,.18), rgba(232,132,92,.08)); color: var(--white); }
+  .nav-item.active::before { content:""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; background: var(--coral); border-radius: 0 3px 3px 0; }
+  .nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-section + .nav-section { margin-top: 18px; }
+
+  /* Subnav (secondary) */
+  .subnav {
+    background: var(--white);
+    border-right: 1px solid var(--line);
+    padding: 22px 14px;
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .subnav-brand {
+    padding: 4px 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .subnav-brand-eyebrow {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--coral);
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 6px;
+  }
+  .subnav-brand-eyebrow::before { content: "◆"; color: var(--coral-soft); }
+  .subnav-brand h2 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 19px; color: var(--navy-900);
+    letter-spacing: -0.01em; line-height: 1.2;
+  }
+
+  .subnav-group { display: flex; flex-direction: column; gap: 2px; }
+  .subnav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-muted);
+    padding: 0 12px 6px;
+  }
+  .subnav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 9px;
+    text-decoration: none; color: var(--ink);
+    font-size: 13px; font-weight: 500;
+    transition: all .15s;
+    position: relative;
+  }
+  .subnav-item:hover { background: var(--cream-light); color: var(--navy-900); }
+  .subnav-item.active {
+    background: linear-gradient(90deg, var(--coral-bg), var(--cream-light));
+    color: var(--navy-900); font-weight: 700;
+  }
+  .subnav-item.active::before {
+    content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 18px; background: var(--coral); border-radius: 0 3px 3px 0;
+  }
+  .subnav-item svg { width: 15px; height: 15px; color: var(--ink-soft); }
+  .subnav-item.active svg { color: var(--coral); }
+  .subnav-badge {
+    margin-left: auto;
+    padding: 1px 8px; background: var(--cream); color: var(--navy-800);
+    border-radius: 6px; font-size: 10.5px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .subnav-badge.pending { background: var(--warn-bg); color: var(--warn); position: relative; }
+  .subnav-badge.pending::after {
+    content: ""; position: absolute; top: -2px; right: -2px;
+    width: 6px; height: 6px; background: var(--warn); border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--white);
+  }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .header {
+    background: var(--white); border-bottom: 1px solid var(--line);
+    padding: 14px 32px; display: flex; align-items: center; gap: 20px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .crumb a { color: var(--ink-soft); text-decoration: none; }
+  .crumb strong { color: var(--navy-900); font-weight: 600; font-family: 'Fraunces', serif; }
+  .crumb-sep { color: var(--ink-muted); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .user-chip { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--coral)); color: var(--white); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+
+  .content { padding: 22px 32px 48px; max-width: 1300px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+
+  /* Version banner */
+  .version-banner {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, var(--cream), var(--cream-light));
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .vb-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; color: var(--ink-soft);
+  }
+  .vb-pill.ok { background: var(--success-bg); color: var(--success); border-color: transparent; }
+  .vb-pill.ok::before { content: ""; width: 7px; height: 7px; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 3px rgba(47,125,91,.15); }
+  .vb-pill strong { color: var(--navy-900); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+  .vb-pill svg { width: 12px; height: 12px; }
+
+  /* Title block */
+  .title-block h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; color: var(--navy-900); }
+  .title-block h1 em { font-style: italic; color: var(--coral); font-weight: 500; }
+  .title-block .subtitle { margin-top: 6px; font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; }
+
+  .page-head-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+  .btn-cta {
+    padding: 12px 20px; background: var(--coral); color: var(--white);
+    border: none; border-radius: 12px; cursor: pointer; font: inherit;
+    font-size: 13px; font-weight: 700;
+    box-shadow: 0 8px 22px rgba(232,132,92,.35);
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: all .15s;
+  }
+  .btn-cta:hover { background: #E0734A; transform: translateY(-1px); }
+  .btn-cta svg { width: 14px; height: 14px; }
+
+  /* KPI micro */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi-tile {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 18px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .kpi-tile-left { min-width: 0; }
+  .kpi-tile-label { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+  .kpi-tile-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; color: var(--navy-900); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; }
+  .kpi-tile-sub { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+  .kpi-tile-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--cream-light); color: var(--navy-800); display: grid; place-items: center; }
+  .kpi-tile-ico svg { width: 15px; height: 15px; }
+  .kpi-tile-ico.coral { background: var(--coral-bg); color: var(--coral); }
+  .kpi-tile-ico.success { background: var(--success-bg); color: var(--success); }
+
+  /* Toolbar / filter */
+  .table-toolbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 16px;
+  }
+  .search-inline {
+    flex: 1; max-width: 320px;
+    position: relative;
+  }
+  .search-inline input {
+    width: 100%; padding: 9px 12px 9px 36px;
+    border: 1px solid var(--line); background: var(--bg);
+    border-radius: 9px; font: inherit; font-size: 13px; color: var(--ink);
+    outline: none;
+  }
+  .search-inline svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); width: 14px; height: 14px; }
+
+  .filter-chip-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 9px; font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--ink); cursor: pointer;
+  }
+  .filter-chip-btn:hover { border-color: var(--navy-600); }
+  .filter-chip-btn svg { width: 12px; height: 12px; color: var(--ink-muted); }
+  .filter-chip-btn .cnt { padding: 1px 7px; background: var(--cream); border-radius: 5px; font-weight: 700; }
+
+  .toolbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* Table */
+  .table-card {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--cream-light);
+    padding: 11px 16px; text-align: left;
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-soft);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  thead th.sortable { cursor: pointer; }
+  thead th.sorted { color: var(--navy-900); }
+  thead th .sort-arrow { color: var(--coral); margin-left: 3px; }
+  tbody tr { border-bottom: 1px solid var(--line-soft); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--cream-light); }
+  tbody td { padding: 13px 16px; vertical-align: middle; font-size: 13px; }
+
+  td.user-cell {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .user-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    color: var(--white); font-size: 11px; font-weight: 700;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .user-avatar.a { background: linear-gradient(135deg, var(--navy-700), var(--coral)); }
+  .user-avatar.b { background: linear-gradient(135deg, var(--navy-900), var(--success)); }
+  .user-avatar.c { background: linear-gradient(135deg, var(--coral), var(--coral-soft)); }
+  .user-avatar.d { background: linear-gradient(135deg, var(--plum), var(--coral)); }
+  .user-avatar.e { background: linear-gradient(135deg, var(--success), var(--navy-600)); }
+  .user-name { font-weight: 600; color: var(--ink); font-size: 13.5px; line-height: 1.3; }
+  .user-login { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-muted); margin-top: 1px; }
+
+  .role-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .role-pill.admin { background: var(--danger-bg); color: var(--danger); }
+  .role-pill.editor { background: var(--coral-bg); color: var(--coral); }
+  .role-pill.reader { background: var(--cream); color: var(--navy-800); }
+
+  .domain-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; background: var(--cream-light); color: var(--navy-800);
+    border-radius: 5px; font-size: 11px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    border: 1px solid var(--line);
+  }
+  .domain-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .domain-pill.infra::before { background: var(--coral); }
+  .domain-pill.support::before { background: var(--success); }
+  .domain-pill.sci::before { background: var(--navy-700); }
+  .domain-pill.etudes::before { background: var(--plum); }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+  }
+  .status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .status-pill.active { background: var(--success-bg); color: var(--success); }
+  .status-pill.active::before { background: var(--success); box-shadow: 0 0 0 3px rgba(47,125,91,.15); }
+  .status-pill.inactive { background: var(--bg); color: var(--ink-muted); }
+  .status-pill.inactive::before { background: var(--ink-muted); }
+  .status-pill.blocked { background: var(--danger-bg); color: var(--danger); }
+  .status-pill.blocked::before { background: var(--danger); }
+
+  td.actions { text-align: right; white-space: nowrap; }
+  .row-btn {
+    background: transparent; border: 1px solid var(--line);
+    width: 30px; height: 30px; border-radius: 7px;
+    color: var(--ink-soft); cursor: pointer;
+    display: inline-grid; place-items: center;
+    transition: all .15s;
+    margin-left: 4px;
+  }
+  .row-btn:hover { border-color: var(--navy-800); color: var(--navy-800); background: var(--cream-light); }
+  .row-btn svg { width: 13px; height: 13px; }
+  .row-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+
+  .last-seen { font-size: 11.5px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .last-seen strong { color: var(--ink); font-weight: 600; }
+
+  /* Pagination */
+  .table-footer {
+    padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--line-soft);
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+  .page-numbers { display: flex; gap: 4px; }
+  .page-numbers button {
+    min-width: 30px; height: 30px; padding: 0 10px;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 7px; cursor: pointer; font: inherit;
+    font-size: 12px; font-weight: 600; color: var(--ink-soft);
+  }
+  .page-numbers button.current { background: var(--navy-900); color: var(--white); border-color: var(--navy-900); }
+
+  /* Diff (template history preview) */
+  .diff-card {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px; overflow: hidden;
+  }
+  .diff-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .diff-title {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 15px; color: var(--navy-900);
+  }
+  .diff-meta { font-size: 11.5px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .diff-body {
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; line-height: 1.7;
+    background: var(--bg);
+  }
+  .diff-line { padding: 2px 10px; border-radius: 4px; }
+  .diff-line.add { background: #E0F1E8; color: #1F6B47; }
+  .diff-line.add::before { content: "+ "; font-weight: 700; }
+  .diff-line.rm { background: #FADFE5; color: #8E2238; }
+  .diff-line.rm::before { content: "- "; font-weight: 700; }
+  .diff-line.ctx::before { content: "  "; color: var(--ink-muted); }
+  .diff-line.ctx { color: var(--ink-soft); }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L 13 11"/><path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/><path d="M9 15 L 15 9"/></svg></div>
+      <div class="brand-name">PlumeNote<small>Base de connaissances</small></div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Accueil</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Recherche</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Gestion</div>
+        <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Administration</a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Subnav admin -->
+  <aside class="subnav">
+    <div class="subnav-brand">
+      <div class="subnav-brand-eyebrow">Administration</div>
+      <h2>Console DSI</h2>
+    </div>
+
+    <div class="subnav-group">
+      <div class="subnav-label">Contenus</div>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>Domaines <span class="subnav-badge">4</span></a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Types de document <span class="subnav-badge">12</span></a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4"/></svg>Templates <span class="subnav-badge pending">10</span></a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Seuils fraîcheur</a>
+    </div>
+
+    <div class="subnav-group">
+      <div class="subnav-label">Utilisateurs</div>
+      <a class="subnav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Comptes <span class="subnav-badge">38</span></a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Rôles &amp; permissions</a>
+    </div>
+
+    <div class="subnav-group">
+      <div class="subnav-label">Système</div>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Imports</a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Logs d'audit</a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Analytics</a>
+      <a class="subnav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09"/></svg>Configuration</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+
+    <div class="header">
+      <nav class="crumb">
+        <a href="#">Administration</a>
+        <span class="crumb-sep">›</span>
+        <strong>Comptes utilisateurs</strong>
+      </nav>
+      <div class="header-right">
+        <button class="user-chip"><span class="avatar-sm">AB</span></button>
+      </div>
+    </div>
+
+    <main class="content">
+
+      <!-- Version banner -->
+      <div class="version-banner">
+        <span class="vb-pill ok">PlumeNote opérationnel</span>
+        <span class="vb-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Version <strong>v0.1.0-mvp</strong></span>
+        <span class="vb-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>PostgreSQL <strong>18.2</strong></span>
+        <span class="vb-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Meilisearch <strong>v1.37</strong></span>
+        <span class="vb-pill" style="margin-left:auto;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Uptime <strong>11 j 04 h</strong></span>
+      </div>
+
+      <!-- Title -->
+      <section class="page-head-row">
+        <div class="title-block">
+          <h1>Comptes utilisateurs <em>DSI</em></h1>
+          <div class="subtitle">38 comptes actifs sur le périmètre DSI. Création manuelle par administrateur, assignation par domaine. Pas de SSO au MVP (LDAP prévu V2).</div>
+        </div>
+        <button class="btn-cta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7h14"/></svg>
+          Créer un compte
+        </button>
+      </section>
+
+      <!-- KPI row -->
+      <section class="kpi-row">
+        <div class="kpi-tile">
+          <div class="kpi-tile-left">
+            <div class="kpi-tile-label">Comptes actifs</div>
+            <div class="kpi-tile-value">38</div>
+            <div class="kpi-tile-sub">+3 cette semaine</div>
+          </div>
+          <div class="kpi-tile-ico success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-tile-left">
+            <div class="kpi-tile-label">Administrateurs</div>
+            <div class="kpi-tile-value">2</div>
+            <div class="kpi-tile-sub">Alexandre, Lilian</div>
+          </div>
+          <div class="kpi-tile-ico coral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-tile-left">
+            <div class="kpi-tile-label">Contributeurs</div>
+            <div class="kpi-tile-value">21</div>
+            <div class="kpi-tile-sub">Répartis sur 4 domaines</div>
+          </div>
+          <div class="kpi-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-tile-left">
+            <div class="kpi-tile-label">Inactifs 30j</div>
+            <div class="kpi-tile-value">3</div>
+            <div class="kpi-tile-sub">Relance automatique</div>
+          </div>
+          <div class="kpi-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        </div>
+      </section>
+
+      <!-- Toolbar -->
+      <div class="table-toolbar">
+        <div class="search-inline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" placeholder="Nom, login, email…">
+        </div>
+        <button class="filter-chip-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Rôle <span class="cnt">Tous</span></button>
+        <button class="filter-chip-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>Domaine <span class="cnt">Tous</span></button>
+        <button class="filter-chip-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>Statut <span class="cnt">Actifs</span></button>
+        <div class="toolbar-right">
+          <button class="filter-chip-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter CSV</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable sorted">Utilisateur <span class="sort-arrow">↑</span></th>
+              <th>Rôle</th>
+              <th>Domaine</th>
+              <th>Statut</th>
+              <th class="sortable">Dernière connexion</th>
+              <th>Contributions</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar a">AB</div>
+                <div>
+                  <div class="user-name">Alexandre Berge</div>
+                  <div class="user-login">alexandre.berge · ab@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill admin">Administrateur</span></td>
+              <td><span class="domain-pill infra">Tous</span></td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td class="last-seen">aujourd'hui<br><strong>il y a 3 min</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">47</td>
+              <td class="actions">
+                <button class="row-btn" title="Modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn" title="Réinitialiser MDP"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger" title="Désactiver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar b">MZ</div>
+                <div>
+                  <div class="user-name">Mohamed Zemouche</div>
+                  <div class="user-login">mohamed.zemouche · mz@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill editor">Contributeur</span></td>
+              <td><span class="domain-pill infra">Infra</span></td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td class="last-seen">aujourd'hui<br><strong>il y a 14 min</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">42</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar c">DB</div>
+                <div>
+                  <div class="user-name">Didier Bottaz</div>
+                  <div class="user-login">didier.bottaz · db@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill editor">Contributeur</span></td>
+              <td><span class="domain-pill sci">SCI</span></td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td class="last-seen">hier<br><strong>17:11</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">38</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar d">LH</div>
+                <div>
+                  <div class="user-name">Lilian Hammache</div>
+                  <div class="user-login">lilian.hammache · lh@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill admin">Administrateur</span></td>
+              <td><span class="domain-pill etudes">Études</span></td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td class="last-seen">aujourd'hui<br><strong>il y a 1 h</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">29</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar e">MD</div>
+                <div>
+                  <div class="user-name">Mohammed Diagana</div>
+                  <div class="user-login">mohammed.diagana · md@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill editor">Contributeur</span></td>
+              <td><span class="domain-pill support">Support</span></td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td class="last-seen">hier<br><strong>09:32</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">24</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar a">MM</div>
+                <div>
+                  <div class="user-name">Mathieu Messe</div>
+                  <div class="user-login">mathieu.messe · mm@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill reader">Lecteur</span></td>
+              <td><span class="domain-pill etudes">Études</span></td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td class="last-seen">il y a 4 j<br><strong>20/04</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">12</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar b">AT</div>
+                <div>
+                  <div class="user-name">Angélique Thibeaudeau</div>
+                  <div class="user-login">angelique.thibeaudeau · at@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill reader">Lecteur</span></td>
+              <td><span class="domain-pill support">Support</span></td>
+              <td><span class="status-pill inactive">Inactif 32 j</span></td>
+              <td class="last-seen">23/03<br><strong>14:02</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">7</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar c">CR</div>
+                <div>
+                  <div class="user-name">Christophe Redjil</div>
+                  <div class="user-login">christophe.redjil · cr@cpam92.cramif.local</div>
+                </div>
+              </td>
+              <td><span class="role-pill editor">Contributeur</span></td>
+              <td><span class="domain-pill sci">SCI</span></td>
+              <td><span class="status-pill blocked">Bloqué</span></td>
+              <td class="last-seen">08/04<br><strong>11:47</strong></td>
+              <td style="font-variant-numeric:tabular-nums; color:var(--navy-900); font-weight:600;">18</td>
+              <td class="actions">
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button class="row-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="row-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+
+        <div class="table-footer">
+          <span>Affichage <strong style="color:var(--navy-900); font-variant-numeric:tabular-nums;">1 – 8</strong> sur <strong style="color:var(--navy-900); font-variant-numeric:tabular-nums;">38</strong> comptes</span>
+          <div class="page-numbers">
+            <button>‹</button>
+            <button class="current">1</button>
+            <button>2</button>
+            <button>3</button>
+            <button>4</button>
+            <button>5</button>
+            <button>›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diff example : template version comparison -->
+      <div class="diff-card">
+        <div class="diff-head">
+          <div class="diff-title">Historique template T-02 · Procédure DSI</div>
+          <span class="diff-meta">v4 → v5 · modifié par Alexandre Berge · hier à 16:42</span>
+        </div>
+        <div class="diff-body">
+          <div class="diff-line ctx"># Titre de la procédure</div>
+          <div class="diff-line ctx"></div>
+          <div class="diff-line ctx">## Objet</div>
+          <div class="diff-line rm">Cette procédure décrit [objectif].</div>
+          <div class="diff-line add">Cette procédure décrit [objectif] pour les agents [périmètre].</div>
+          <div class="diff-line ctx"></div>
+          <div class="diff-line ctx">## Pré-requis</div>
+          <div class="diff-line ctx">- [Pré-requis 1]</div>
+          <div class="diff-line add">- [Pré-requis 2]</div>
+          <div class="diff-line ctx"></div>
+          <div class="diff-line ctx">## Procédure</div>
+          <div class="diff-line rm">[Étapes numérotées]</div>
+          <div class="diff-line add">1. [Première action]</div>
+          <div class="diff-line add">2. [Deuxième action]</div>
+          <div class="diff-line add">3. [Troisième action]</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>
