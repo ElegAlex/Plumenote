@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, CornerDownLeft, Plus, Search as SearchIcon } from 'lucide-react'
-import { Dialog, DialogBody, DialogFoot, DialogHead, Kbd } from '@/components/ui'
+import { Dialog, DialogBody, DialogFoot, DialogHead, FreshBadge, Kbd } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { api } from '@/lib/api'
 import { domainIcon } from './SearchPage'
@@ -10,6 +10,7 @@ import {
   DOMAIN_LABEL,
   TYPE_LABEL,
   freshLabel,
+  freshStatus,
   normalizeDomain,
   normalizeType,
   sanitizeHighlight,
@@ -68,6 +69,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [processingTime, setProcessingTime] = useState<number | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [domains, setDomains] = useState<Domain[]>([])
   const [docTypes, setDocTypes] = useState<DocType[]>([])
 
@@ -96,6 +98,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       setTotal(0)
       setProcessingTime(null)
       setSelectedIndex(0)
+      setError(null)
     }
   }, [isOpen])
 
@@ -106,28 +109,39 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       setResults([])
       setTotal(0)
       setProcessingTime(null)
+      setError(null)
       return
     }
 
     setIsLoading(true)
+    const ctrl = new AbortController()
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ q: query, limit: '20', offset: '0' })
       api
-        .get<SearchResponse>(`/search?${params}`)
+        .get<SearchResponse>(`/search?${params}`, { signal: ctrl.signal })
         .then((data) => {
           setResults(data.results)
           setTotal(data.total)
           setProcessingTime(data.processing_time_ms)
           setSelectedIndex(0)
+          setError(null)
         })
-        .catch(() => {
+        .catch((err) => {
+          if (err?.name === 'AbortError') return
           setResults([])
           setTotal(0)
+          setError('Impossible de joindre le serveur de recherche.')
         })
-        .finally(() => setIsLoading(false))
+        .finally(() => {
+          if (ctrl.signal.aborted) return
+          setIsLoading(false)
+        })
     }, 150)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
+    }
   }, [query, isOpen])
 
   // Analytics à la fermeture (requête ≥ 2 caractères sans click).
@@ -275,6 +289,16 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           </div>
         )}
 
+        {error && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 bg-danger-bg px-[22px] py-2 border-b border-line-soft text-[12px] font-semibold text-danger"
+          >
+            <AlertTriangle className="w-[13px] h-[13px] shrink-0" aria-hidden />
+            <span>{error}</span>
+          </div>
+        )}
+
         <DialogBody
           className="px-0 py-0 max-h-[60vh]"
           role="listbox"
@@ -310,7 +334,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       ]}{' '}
                       · {TYPE_LABEL[typeIdToKey.get(result.type_id) ?? 'guide']}
                       {' · '}
-                      <FreshInline badge={result.freshness_badge} />
+                      <FreshBadge status={freshStatus(result.freshness_badge)} inline>
+                        {freshLabel(result.freshness_badge).toLowerCase()}
+                      </FreshBadge>
                       {result.view_count > 0 && <> · {result.view_count} vues</>}
                     </>
                   }
@@ -517,13 +543,3 @@ const PaletteActionCreate = forwardRef<HTMLAnchorElement, PaletteActionCreatePro
   },
 )
 
-function FreshInline({ badge }: { badge: 'green' | 'yellow' | 'red' }) {
-  const dotColor =
-    badge === 'green' ? 'bg-success' : badge === 'yellow' ? 'bg-warn' : 'bg-danger'
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className={cn('w-[7px] h-[7px] rounded-full', dotColor)} aria-hidden />
-      {freshLabel(badge).toLowerCase()}
-    </span>
-  )
-}

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import {
   Button,
+  Callout,
   Card,
   DomainChip,
   FilterChip,
@@ -77,6 +78,7 @@ export default function SearchPage() {
   const [total, setTotal] = useState(0)
   const [processingTime, setProcessingTime] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Typo-correction (stub — l'API ne renvoie pas encore ce champ).
   const [typoFrom] = useState<string | null>(null)
@@ -110,9 +112,11 @@ export default function SearchPage() {
       setResults([])
       setTotal(0)
       setProcessingTime(null)
+      setError(null)
       return
     }
     setIsLoading(true)
+    const ctrl = new AbortController()
     const timer = setTimeout(() => {
       const params = new URLSearchParams({
         q,
@@ -125,7 +129,7 @@ export default function SearchPage() {
       if (typeId) params.set('type', typeId)
 
       api
-        .get<SearchResponse>(`/search?${params}`)
+        .get<SearchResponse>(`/search?${params}`, { signal: ctrl.signal })
         .then((data) => {
           let list = data.results
           if (freshFilter === 'fresh') list = list.filter((r) => r.freshness_badge === 'green')
@@ -133,14 +137,23 @@ export default function SearchPage() {
           setResults(list)
           setTotal(freshFilter === 'all' ? data.total : list.length)
           setProcessingTime(data.processing_time_ms)
+          setError(null)
         })
-        .catch(() => {
+        .catch((err) => {
+          if (err?.name === 'AbortError') return
           setResults([])
           setTotal(0)
+          setError('Impossible de joindre le serveur de recherche.')
         })
-        .finally(() => setIsLoading(false))
+        .finally(() => {
+          if (ctrl.signal.aborted) return
+          setIsLoading(false)
+        })
     }, 150)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
+    }
   }, [q, domainFilter, typeFilter, freshFilter, page, domains, docTypes])
 
   const updateQuery = useCallback(
@@ -309,6 +322,13 @@ export default function SearchPage() {
           Faute de frappe corrigée : recherche étendue sur{' '}
           <strong className="text-warn">« {q} »</strong> (saisi : « {typoFrom} »)
         </div>
+      )}
+
+      {/* ============ Error banner ============ */}
+      {error && (
+        <Callout variant="danger" title="Erreur de recherche">
+          {error}
+        </Callout>
       )}
 
       {/* ============ Results list ============ */}
