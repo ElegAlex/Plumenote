@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowRight,
@@ -22,6 +22,7 @@ import { useFeed, useReviews, useStatsHealth } from '@/lib/hooks'
 import type { DocumentSummary, ReviewItem, Stats } from '@/lib/types'
 import {
   Button,
+  Callout,
   Card,
   CardBody,
   CardHead,
@@ -31,6 +32,7 @@ import {
   Timeline,
   TimelineEvent,
 } from '@/components/ui'
+import type { ShellOutletContext } from '@/components/layout/Shell'
 import { cn } from '@/lib/cn'
 
 /**
@@ -100,7 +102,7 @@ const DOC_ICON_VARIANTS: Record<string, string> = {
   infrastructure: 'bg-coral-bg text-coral',
   infra: 'bg-coral-bg text-coral',
   support: 'bg-success-bg text-success',
-  sci: 'bg-[#E9EAF7] text-navy-700',
+  sci: 'bg-navy-50 text-navy-700',
   etudes: 'bg-plum-bg text-plum',
   'etudes-dev': 'bg-plum-bg text-plum',
   data: 'bg-cream-light text-navy-700',
@@ -159,6 +161,7 @@ function timeAgoShort(iso: string): string {
 // Domain fresh split (ok/warn/danger). L'endpoint actuel n'expose pas le
 // split par domaine ; on fallback sur une répartition indicative tant que
 // la Vague 3 n'ajoute pas /api/domains/health.
+// TODO(V3) : brancher /api/domains/health pour le split réel ; aujourd'hui 82/12/6% forfaitaire.
 function domainFreshSplit(docCount: number): { ok: number; warn: number; danger: number } {
   if (docCount === 0) return { ok: 0, warn: 0, danger: 0 }
   const ok = Math.round(docCount * 0.82)
@@ -171,30 +174,29 @@ function domainFreshSplit(docCount: number): { ok: number; warn: number; danger:
 // Component
 // =========================================================================
 
-/**
- * Déclenche l'ouverture de la palette Ctrl+K (montée dans Shell).
- * La Shell écoute l'événement clavier natif via `useSearchModal` ; on
- * synthétise donc un Ctrl+K pour éviter le prop-drilling cross-Outlet.
- */
-function triggerSearchOpen() {
-  const evt = new KeyboardEvent('keydown', {
-    key: 'k',
-    ctrlKey: true,
-    bubbles: true,
-  })
-  document.dispatchEvent(evt)
-}
-
 export default function HomePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  // Ouverture de la palette Ctrl+K : le Shell expose son `search.open` via
+  // le contexte Outlet de react-router. Évite le KeyboardEvent synthétique
+  // (isTrusted = false, double-trigger potentiel) et ne duplique pas
+  // l'instance de `useSearchModal` (hook à état local, non global).
+  const { onSearchOpen } = useOutletContext<ShellOutletContext>()
 
   // === Data ===
   const [stats, setStats] = useState<Stats | null>(null)
   const [domains, setDomains] = useState<DomainLite[]>([])
   const { data: statsHealth } = useStatsHealth()
-  const { data: recentFeed } = useFeed({ limit: 5 })
-  const { data: reviewItems } = useReviews({ limit: 4 })
+  const {
+    data: recentFeed,
+    isLoading: recentLoading,
+    isError: recentError,
+  } = useFeed({ limit: 5 })
+  const {
+    data: reviewItems,
+    isLoading: reviewsLoading,
+    isError: reviewsError,
+  } = useReviews({ limit: 4 })
 
   useEffect(() => {
     api.get<Stats>('/stats').then(setStats).catch(() => {})
@@ -299,15 +301,24 @@ export default function HomePage() {
       <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)] gap-[22px]">
         {/* LEFT */}
         <div className="flex flex-col gap-[22px] min-w-0">
-          <RecentDocsPanel docs={recentDocs} />
+          <RecentDocsPanel
+            docs={recentDocs}
+            isLoading={recentLoading}
+            isError={recentError}
+          />
           <ActivityPanel />
         </div>
 
         {/* RIGHT */}
         <aside className="flex flex-col gap-4 min-w-0">
           <DomainsMiniGrid domains={domains} />
-          <UrgentDocsPanel docs={urgentDocs} totalRed={redCount} />
-          <CtrlKHint onOpen={triggerSearchOpen} />
+          <UrgentDocsPanel
+            docs={urgentDocs}
+            totalRed={redCount}
+            isLoading={reviewsLoading}
+            isError={reviewsError}
+          />
+          <CtrlKHint onOpen={onSearchOpen} />
         </aside>
       </section>
     </main>
@@ -359,10 +370,10 @@ function GreetingBanner({
       <div className="relative z-[1] flex flex-wrap items-center justify-between gap-6">
         <div className="min-w-0">
           <h1 className="font-serif text-[28px] font-medium leading-[1.15] tracking-[-0.01em] text-white mb-1.5">
-            Bonjour {firstName || 'Alexandre'},<br />
+            Bonjour{firstName ? ` ${firstName}` : ''},<br />
             {totalDocs} documents <em className="italic font-medium text-coral-soft">sont consultables</em>.
           </h1>
-          <p className="text-[13.5px] leading-[1.5] max-w-[620px] text-[#C9CFE4]">
+          <p className="text-[13.5px] leading-[1.5] max-w-[620px] text-navy-fg-soft">
             {redCount > 0
               ? `${redCount} fiches sont signalées périmées et attendent une vérification.`
               : 'Aucune fiche en alerte de fraîcheur.'}{' '}
@@ -380,6 +391,12 @@ function GreetingBanner({
           <Button variant="cta" leftIcon={<Plus />} onClick={onCreate}>
             Nouveau document
           </Button>
+          {/*
+            Bouton "Importer" sur fond navy : la primitive Button n'expose pas
+            de variant `onDark` (styles destinés à un fond clair). On conserve
+            un <button> custom pour préserver le contraste sur le gradient g2.
+            TODO(V3) : extraire variant="onDark" sur Button si le pattern se répète.
+          */}
           <button
             type="button"
             onClick={onImport}
@@ -480,8 +497,18 @@ function KpiTile({
   )
 }
 
-function RecentDocsPanel({ docs }: { docs: DocRowData[] }) {
+function RecentDocsPanel({
+  docs,
+  isLoading,
+  isError,
+}: {
+  docs: DocRowData[]
+  isLoading?: boolean
+  isError?: boolean
+}) {
   const navigate = useNavigate()
+  const showLoading = !!isLoading && docs.length === 0
+  const showError = !!isError && !isLoading
   return (
     <Card>
       <CardHead>
@@ -502,7 +529,17 @@ function RecentDocsPanel({ docs }: { docs: DocRowData[] }) {
         </Link>
       </CardHead>
       <CardBody padded={false}>
-        {docs.length === 0 ? (
+        {showLoading ? (
+          <div className="px-[22px] py-8 text-center text-[12px] font-mono text-ink-muted">
+            Chargement…
+          </div>
+        ) : showError ? (
+          <div className="px-[22px] py-4">
+            <Callout variant="danger" title="Impossible de charger.">
+              Les documents récents n'ont pas pu être récupérés. Réessayez dans un instant.
+            </Callout>
+          </div>
+        ) : docs.length === 0 ? (
           <div className="px-[22px] py-8 text-center text-[12px] font-mono text-ink-muted">
             Aucun document récent
           </div>
@@ -571,10 +608,14 @@ function ActivityPanel() {
     <Card>
       <CardHead>
         <CardTitle>Activité récente</CardTitle>
+        {/* TODO Vague 3+ : route /journal (vue journal complet des activités). */}
         <a
           href="#"
-          className="group inline-flex items-center gap-1 text-[13px] font-semibold text-navy-700 transition-colors hover:text-coral"
+          onClick={(e) => e.preventDefault()}
+          aria-disabled="true"
+          className="group inline-flex items-center gap-1 text-[13px] font-semibold text-navy-700 transition-colors hover:text-coral cursor-not-allowed opacity-60"
           aria-label="Voir le journal complet (bientôt)"
+          title="Journal complet — bientôt disponible"
         >
           Journal complet
           <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-[3px]" strokeWidth={2.5} />
@@ -625,9 +666,9 @@ function DomainsMiniGrid({ domains }: { domains: DomainLite[] }) {
         </Link>
       </CardHead>
       <CardBody className="px-[18px] py-[14px]">
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {shown.length === 0 ? (
-            <div className="col-span-2 text-center text-[12px] font-mono text-ink-muted py-6">
+            <div className="sm:col-span-2 text-center text-[12px] font-mono text-ink-muted py-6">
               Chargement des domaines…
             </div>
           ) : (
@@ -699,11 +740,17 @@ function DomainsMiniGrid({ domains }: { domains: DomainLite[] }) {
 function UrgentDocsPanel({
   docs,
   totalRed,
+  isLoading,
+  isError,
 }: {
   docs: Array<{ id: string; slug: string; title: string; domain_name: string; updated_at: string }>
   totalRed: number
+  isLoading?: boolean
+  isError?: boolean
 }) {
   const navigate = useNavigate()
+  const showLoading = !!isLoading && docs.length === 0
+  const showError = !!isError && !isLoading
   return (
     <Card>
       <CardHead>
@@ -723,7 +770,17 @@ function UrgentDocsPanel({
         </Link>
       </CardHead>
       <CardBody padded={false}>
-        {docs.length === 0 ? (
+        {showLoading ? (
+          <div className="px-5 py-6 text-center text-[12px] font-mono text-ink-muted">
+            Chargement…
+          </div>
+        ) : showError ? (
+          <div className="px-5 py-4">
+            <Callout variant="danger" title="Impossible de charger.">
+              Les documents à vérifier n'ont pas pu être récupérés. Réessayez dans un instant.
+            </Callout>
+          </div>
+        ) : docs.length === 0 ? (
           <div className="px-5 py-6 text-center text-[12px] font-mono text-ink-muted">
             Aucun document périmé
           </div>
@@ -801,19 +858,15 @@ function CtrlKHint({ onOpen }: { onOpen: () => void }) {
           <span className="mx-0.5">+</span>
           <Kbd>K</Kbd>. Fautes de frappe tolérées, filtres par domaine et par type, navigation clavier intégrale.
         </p>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onOpen}
-          className={cn(
-            'mt-3.5 inline-flex items-center gap-2 px-4 py-2 rounded-lg',
-            'bg-navy-900 text-white text-[12.5px] font-bold font-sans cursor-pointer',
-            'hover:bg-navy-800 transition-colors',
-            '[&_svg]:w-[13px] [&_svg]:h-[13px]',
-          )}
+          rightIcon={<ArrowRight strokeWidth={2.5} />}
+          className="mt-3.5"
         >
           Essayer la recherche
-          <ArrowRight strokeWidth={2.5} />
-        </button>
+        </Button>
       </div>
     </div>
   )

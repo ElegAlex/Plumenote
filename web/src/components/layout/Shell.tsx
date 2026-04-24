@@ -55,10 +55,19 @@ export default function Shell() {
 
       <div className="flex flex-col min-w-0">
         <Topbar onSearchOpen={search.open} domainsBySlug={domainsBySlug} />
-        <Outlet />
+        <Outlet context={{ onSearchOpen: search.open } satisfies ShellOutletContext} />
       </div>
 
       <SearchModal isOpen={search.isOpen} onClose={search.close} />
     </div>
   )
+}
+
+/**
+ * Contexte exposé aux routes enfants du Shell via `useOutletContext`.
+ * Permet aux pages rendues dans l'Outlet d'ouvrir la palette de recherche
+ * sans recourir à un KeyboardEvent synthétique ou à un store global.
+ */
+export interface ShellOutletContext {
+  onSearchOpen: () => void
 }
