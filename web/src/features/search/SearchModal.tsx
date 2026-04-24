@@ -1,51 +1,29 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../lib/api'
+import { AlertTriangle, CornerDownLeft, Plus, Search as SearchIcon } from 'lucide-react'
+import { Dialog, DialogBody, DialogFoot, DialogHead, Kbd } from '@/components/ui'
+import { cn } from '@/lib/cn'
+import { api } from '@/lib/api'
+import { domainIcon } from './SearchPage'
+import {
+  DOMAIN_ICON_BG,
+  DOMAIN_LABEL,
+  TYPE_LABEL,
+  freshLabel,
+  normalizeDomain,
+  normalizeType,
+  sanitizeHighlight,
+  type DocType,
+  type Domain,
+  type DomainKey,
+  type DocTypeKey,
+  type SearchResponse,
+  type SearchResult,
+} from './shared'
 
-// --- Types ---
-
-interface SearchResult {
-  id: string
-  title: string
-  body_text_highlight: string
-  domain_id: string
-  type_id: string
-  visibility: string
-  tags: string[]
-  author_name: string
-  view_count: number
-  freshness_badge: 'green' | 'yellow' | 'red'
-  created_at: string
-  slug?: string
-  attachment_count?: number
-  object_type?: 'document' | 'bookmark' | 'entity'
-  url?: string
-  domain_name?: string
-  domain_color?: string
-  entity_type_name?: string
-  entity_type_icon?: string
-}
-
-interface SearchResponse {
-  results: SearchResult[]
-  total: number
-  query: string
-  processing_time_ms: number
-}
-
-interface Domain {
-  id: string
-  name: string
-  slug: string
-  color: string
-}
-
-interface DocType {
-  id: string
-  name: string
-}
-
-// --- Hook ---
+/* ==========================================================================
+   Hook Ctrl+K — ouvre la palette globalement.
+   ========================================================================== */
 
 export function useSearchModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -67,77 +45,63 @@ export function useSearchModal() {
   return { isOpen, open, close }
 }
 
-// --- HTML sanitizer for Meilisearch highlights (only allow <mark> tags) ---
+/* ==========================================================================
+   SearchModal — palette Ctrl+K (gabarit g4).
+   Debounce 150 ms sur /api/search?q=..., navigation clavier ↑/↓/↵,
+   affichage optionnel d'une bannière typo-tolérance (désactivée tant que
+   l'API ne renvoie pas le champ `typo_corrected_from`).
+   ========================================================================== */
 
-function sanitizeHighlight(html: string): string {
-  // Replace all tags except <mark> and </mark> with escaped versions
-  return html.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/gi, (match, tag) => {
-    if (tag.toLowerCase() === 'mark') return match
-    return match.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  })
-}
-
-// --- Freshness badge ---
-
-const FRESHNESS: Record<string, { icon: string; label: string; className: string }> = {
-  green: { icon: '\u{1F7E2}', label: 'A jour', className: 'text-[#2D8B4E]' },
-  yellow: { icon: '\u{1F7E1}', label: 'A verifier', className: 'text-orange-500' },
-  red: { icon: '\u{1F534}', label: 'Obsolete', className: 'text-red' },
-}
-
-// --- Component ---
-
-export default function SearchModal({
-  isOpen,
-  onClose,
-}: {
+interface SearchModalProps {
   isOpen: boolean
   onClose: () => void
-}) {
+}
+
+export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
+  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([])
+
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [total, setTotal] = useState(0)
   const [processingTime, setProcessingTime] = useState<number | null>(null)
-  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  const [domainFilter, setDomainFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
   const [domains, setDomains] = useState<Domain[]>([])
   const [docTypes, setDocTypes] = useState<DocType[]>([])
-  const resultRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Réservé : bannière typo-tolérance dès que l'API enverra le champ.
+  const [typoFrom] = useState<string | null>(null)
+
   const queryRef = useRef(query)
   queryRef.current = query
   const totalRef = useRef(total)
   totalRef.current = total
 
-  // Load domains and document types on open
+  // Chargement des domaines / types à l'ouverture.
   useEffect(() => {
-    if (isOpen) {
-      api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
-      api.get<DocType[]>('/document-types').then(setDocTypes).catch(() => {})
-    }
+    if (!isOpen) return
+    api.get<Domain[]>('/domains').then(setDomains).catch(() => {})
+    api.get<DocType[]>('/document-types').then(setDocTypes).catch(() => {})
   }, [isOpen])
 
-  // Focus input on open
+  // Reset à la fermeture + focus input à l'ouverture.
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 0)
     } else {
-      // Reset state on close
       setQuery('')
       setResults([])
       setTotal(0)
       setProcessingTime(null)
-      setSelectedIndex(-1)
-      setDomainFilter('')
-      setTypeFilter('')
+      setSelectedIndex(0)
     }
   }, [isOpen])
 
-  // Search with debounce
+  // Debounce 150 ms.
   useEffect(() => {
+    if (!isOpen) return
     if (query.length < 2) {
       setResults([])
       setTotal(0)
@@ -148,28 +112,25 @@ export default function SearchModal({
     setIsLoading(true)
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ q: query, limit: '20', offset: '0' })
-      if (domainFilter) params.set('domain', domainFilter)
-      if (typeFilter) params.set('type', typeFilter)
-
       api
         .get<SearchResponse>(`/search?${params}`)
         .then((data) => {
           setResults(data.results)
           setTotal(data.total)
           setProcessingTime(data.processing_time_ms)
-          setSelectedIndex(-1)
+          setSelectedIndex(0)
         })
         .catch(() => {
           setResults([])
           setTotal(0)
         })
         .finally(() => setIsLoading(false))
-    }, 200)
+    }, 150)
 
     return () => clearTimeout(timer)
-  }, [query, domainFilter, typeFilter])
+  }, [query, isOpen])
 
-  // Log analytics on close (without click)
+  // Analytics à la fermeture (requête ≥ 2 caractères sans click).
   const handleClose = useCallback(() => {
     if (queryRef.current.length >= 2) {
       api
@@ -182,7 +143,20 @@ export default function SearchModal({
     onClose()
   }, [onClose])
 
-  // Navigate to result
+  // Lookup id → clé normalisée.
+  const domainIdToKey = useMemo(() => {
+    const m = new Map<string, DomainKey>()
+    for (const d of domains) m.set(d.id, normalizeDomain(d.name || d.slug))
+    return m
+  }, [domains])
+
+  const typeIdToKey = useMemo(() => {
+    const m = new Map<string, DocTypeKey>()
+    for (const t of docTypes) m.set(t.id, normalizeType(t.name))
+    return m
+  }, [docTypes])
+
+  // Navigation vers un résultat + analytics + close.
   const openResult = useCallback(
     (result: SearchResult) => {
       api
@@ -195,277 +169,361 @@ export default function SearchModal({
 
       if (result.object_type === 'bookmark' && result.url) {
         window.open(result.url, '_blank')
-        onClose()
       } else if (result.object_type === 'entity') {
         navigate(`/entities/${result.id}`)
-        onClose()
       } else {
         const target = result.slug ? `/documents/${result.slug}` : `/documents/${result.id}`
         navigate(target)
-        onClose()
       }
+      onClose()
     },
     [navigate, onClose],
   )
 
-  // Keyboard navigation
+  // Action "Créer la page" : toujours présente si une requête est saisie.
+  const canCreate = query.trim().length >= 2
+  const createAction = useCallback(() => {
+    navigate(`/documents/new?title=${encodeURIComponent(query.trim())}`)
+    onClose()
+  }, [navigate, onClose, query])
+
+  // Total virtuel (résultats + action de création si disponible).
+  const virtualCount = results.length + (canCreate ? 1 : 0)
+
+  // Navigation clavier. On ne passe plus par Escape (géré par Dialog).
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose()
-        return
-      }
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setSelectedIndex((prev) => {
-          const next = prev >= results.length - 1 ? 0 : prev + 1
-          resultRefs.current[next]?.scrollIntoView({ block: 'nearest' })
+          const next = prev >= virtualCount - 1 ? 0 : prev + 1
+          requestAnimationFrame(() => {
+            itemRefs.current[next]?.scrollIntoView({ block: 'nearest' })
+          })
           return next
         })
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         setSelectedIndex((prev) => {
-          if (prev <= 0) {
-            inputRef.current?.focus()
-            return -1
-          }
-          const next = prev - 1
-          resultRefs.current[next]?.scrollIntoView({ block: 'nearest' })
+          const next = prev <= 0 ? Math.max(0, virtualCount - 1) : prev - 1
+          requestAnimationFrame(() => {
+            itemRefs.current[next]?.scrollIntoView({ block: 'nearest' })
+          })
           return next
         })
-      } else if (e.key === 'Enter' && selectedIndex >= 0 && results[selectedIndex]) {
-        e.preventDefault()
-        openResult(results[selectedIndex])
+      } else if (e.key === 'Enter') {
+        if (selectedIndex < results.length && results[selectedIndex]) {
+          e.preventDefault()
+          openResult(results[selectedIndex])
+        } else if (canCreate && selectedIndex === results.length) {
+          e.preventDefault()
+          createAction()
+        }
       }
     },
-    [results, selectedIndex, handleClose, openResult],
+    [virtualCount, selectedIndex, results, canCreate, openResult, createAction],
   )
-
-  // Backdrop click
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) handleClose()
-    },
-    [handleClose],
-  )
-
-  const hasActiveFilter = domainFilter || typeFilter
-  const hasResults = query.length >= 2
-
-  if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-ink/50 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-      onKeyDown={handleKeyDown}
+    <Dialog
+      open={isOpen}
+      onClose={handleClose}
+      aria-label="Recherche globale"
+      className="max-h-[calc(100vh-160px)]"
     >
-      <div className="w-full max-w-[600px] bg-bg rounded-xl shadow-2xl flex flex-col max-h-[70vh]">
-        {/* Search input */}
-        <div className="flex items-center border-b px-4">
-          <svg
-            className="w-5 h-5 text-ink-45 shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+      {/* onKeyDown au niveau du modal pour capter ↑/↓/Entrée */}
+      <div onKeyDown={handleKeyDown} className="flex flex-col min-h-0">
+        <DialogHead className="gap-3.5 px-[22px] py-[18px]">
+          <SearchIcon className="w-[22px] h-[22px] text-navy-700 shrink-0" aria-hidden />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher dans la base de connaissances..."
-            className="flex-1 text-lg py-3 px-3 outline-none bg-transparent"
+            placeholder="Rechercher dans la base de connaissances…"
+            className="flex-1 border-none outline-none bg-transparent text-[17px] text-ink placeholder:text-ink-muted"
+            aria-label="Requête de recherche"
           />
           {isLoading && (
-            <div className="w-4 h-4 border-2 border-blue border-t-transparent rounded-full animate-spin shrink-0 mr-2" />
+            <span
+              aria-hidden
+              className="w-4 h-4 border-2 border-navy-700 border-t-transparent rounded-full animate-spin shrink-0"
+            />
           )}
           <button
+            type="button"
             onClick={handleClose}
-            className="text-ink-45 hover:text-ink-70 shrink-0 p-1"
             aria-label="Fermer"
+            className={cn(
+              'inline-flex items-center gap-1 px-2.5 py-1.5',
+              'border border-line bg-bg rounded-md',
+              'text-[11px] font-bold text-ink-soft',
+              'hover:border-navy-600 transition-colors',
+            )}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            esc
           </button>
-        </div>
+        </DialogHead>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 px-4 py-2 border-b text-sm">
-          <select
-            value={domainFilter}
-            onChange={(e) => setDomainFilter(e.target.value)}
-            className="border rounded px-2 py-1 text-sm bg-bg"
-          >
-            <option value="">Tous les domaines</option>
-            {domains.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="border rounded px-2 py-1 text-sm bg-bg"
-          >
-            <option value="">Tous les types</option>
-            {docTypes.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-          {hasActiveFilter && (
-            <button
-              onClick={() => {
-                setDomainFilter('')
-                setTypeFilter('')
-              }}
-              className="text-blue hover:text-blue/80 text-sm"
-            >
-              Reinitialiser
-            </button>
-          )}
-        </div>
-
-        {/* Results info */}
-        {hasResults && processingTime !== null && (
-          <div className="px-4 py-1.5 text-xs text-ink-45">
-            {total} resultat{total !== 1 ? 's' : ''} en {(processingTime / 1000).toFixed(1)}s
+        {typoFrom && (
+          <div className="flex items-center gap-2 bg-warn-bg px-[22px] py-2 border-b border-line-soft text-[12px] font-semibold text-warn">
+            <AlertTriangle className="w-[13px] h-[13px] shrink-0" aria-hidden />
+            <span>
+              Faute de frappe corrigée : recherche étendue sur{' '}
+              <strong className="text-warn">« {query} »</strong>
+            </span>
           </div>
         )}
 
-        {/* Results list */}
-        <div className="overflow-y-auto flex-1">
-          {hasResults && results.length === 0 && !isLoading && (
-            <div className="px-4 py-8 text-center text-ink-45">
-              <p>
-                Aucun resultat pour &laquo;&nbsp;{query}&nbsp;&raquo;. Essayez avec d&apos;autres
-                mots-cles ou creez une page.
-              </p>
-              <button
-                onClick={() => {
-                  navigate(`/documents/new?title=${encodeURIComponent(query)}`)
-                  onClose()
+        <DialogBody
+          className="px-0 py-0 max-h-[60vh]"
+          role="listbox"
+          aria-label="Résultats de recherche"
+        >
+          {results.length > 0 && (
+            <>
+              <GroupLabel>
+                Documents · {total} résultat{total !== 1 ? 's' : ''}
+              </GroupLabel>
+              {results.map((result, i) => (
+                <PaletteItem
+                  key={result.id}
+                  ref={(el) => {
+                    itemRefs.current[i] = el
+                  }}
+                  focused={i === selectedIndex}
+                  onMouseEnter={() => setSelectedIndex(i)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    openResult(result)
+                  }}
+                  domainKey={
+                    domainIdToKey.get(result.domain_id) ??
+                    normalizeDomain(result.domain_name || undefined)
+                  }
+                  title={result.title}
+                  meta={
+                    <>
+                      {DOMAIN_LABEL[
+                        domainIdToKey.get(result.domain_id) ??
+                          normalizeDomain(result.domain_name || undefined)
+                      ]}{' '}
+                      · {TYPE_LABEL[typeIdToKey.get(result.type_id) ?? 'guide']}
+                      {' · '}
+                      <FreshInline badge={result.freshness_badge} />
+                      {result.view_count > 0 && <> · {result.view_count} vues</>}
+                    </>
+                  }
+                />
+              ))}
+            </>
+          )}
+
+          {canCreate && (
+            <>
+              <GroupLabel>Actions · 1</GroupLabel>
+              <PaletteActionCreate
+                ref={(el) => {
+                  itemRefs.current[results.length] = el
                 }}
-                className="mt-3 inline-flex items-center gap-1 text-blue hover:text-blue/80 font-medium"
-              >
-                + Creer cette page
-              </button>
+                focused={selectedIndex === results.length}
+                onMouseEnter={() => setSelectedIndex(results.length)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  createAction()
+                }}
+                query={query.trim()}
+              />
+            </>
+          )}
+
+          {query.length >= 2 && results.length === 0 && !isLoading && (
+            <div className="px-[22px] py-10 text-center text-[13px] text-ink-soft">
+              Aucun résultat pour <strong className="text-navy-900">« {query} »</strong>.
+              <br />
+              Essayez d'autres mots-clés ou créez la page.
             </div>
           )}
 
-          {results.map((result, i) => {
-            const isBookmark = result.object_type === 'bookmark'
-            const isEntity = result.object_type === 'entity'
-            const fresh = FRESHNESS[result.freshness_badge] || FRESHNESS.green
-            const domainFromApi = result.domain_name
-              ? { name: result.domain_name, color: result.domain_color || '#888' }
-              : null
-            const domainFromList = domains.find((d) => d.id === result.domain_id)
-            const domain = domainFromApi || domainFromList
-            const isSelected = i === selectedIndex
+          {query.length < 2 && (
+            <div className="px-[22px] py-10 text-center text-[13px] text-ink-muted">
+              Commencez à taper pour rechercher…
+            </div>
+          )}
+        </DialogBody>
 
-            return (
-              <div
-                key={result.id}
-                ref={(el) => {
-                  resultRefs.current[i] = el
-                }}
-                onClick={() => openResult(result)}
-                className={`py-3 px-4 cursor-pointer transition ${
-                  isSelected ? 'bg-blue/10 ring-1 ring-blue/30' : 'hover:bg-ink-05'
-                }`}
-                role="option"
-                aria-selected={isSelected}
-              >
-                {/* Title + freshness / link icon */}
-                <div className="flex items-center gap-2">
-                  {isBookmark && (
-                    <svg className="w-4 h-4 text-ink-45 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
-                    </svg>
-                  )}
-                  {isEntity && result.entity_type_icon && (
-                    <span className="text-sm shrink-0">{result.entity_type_icon}</span>
-                  )}
-                  <span
-                    className="font-semibold text-ink"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHighlight(result.title) }}
-                  />
-                  {isEntity && result.entity_type_name && (
-                    <span className="text-xs px-1.5 py-0.5 bg-ink-05 rounded text-ink-45">{result.entity_type_name}</span>
-                  )}
-                  {!isBookmark && !isEntity && (
-                    <span className={`text-xs ${fresh.className}`}>{fresh.icon}</span>
-                  )}
-                </div>
-
-                {/* Bookmark URL */}
-                {isBookmark && result.url && (
-                  <p className="text-xs text-ink-45 mt-0.5 truncate max-w-md">{result.url}</p>
-                )}
-
-                {/* Meta line */}
-                <div className="flex items-center gap-3 mt-1 text-xs text-ink-45">
-                  {domain && (
-                    <span className="flex items-center gap-1">
-                      <span
-                        className="inline-block w-2 h-2 rounded-full"
-                        style={{ backgroundColor: domain.color }}
-                      />
-                      {domain.name}
-                    </span>
-                  )}
-                  {result.author_name && <span>par {result.author_name}</span>}
-                  {!isBookmark && result.view_count > 0 && <span>* {result.view_count} vues</span>}
-                  {!isBookmark && result.attachment_count && result.attachment_count > 0 && (
-                    <span>
-                      {'\u{1F4CE}'} {result.attachment_count} fichier
-                      {result.attachment_count > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-
-                {/* Highlight excerpt */}
-                {result.body_text_highlight && (
-                  <p
-                    className="mt-1 text-sm text-ink-70 line-clamp-2"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHighlight(result.body_text_highlight) }}
-                  />
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Footer hint */}
-        <div className="px-4 py-2 border-t text-xs text-ink-45 flex items-center gap-4">
+        <DialogFoot
+          className={cn(
+            'justify-between px-[22px] py-3',
+            'bg-bg border-t border-line-soft',
+            'text-[11.5px] text-ink-muted',
+          )}
+        >
+          <div className="flex items-center gap-[18px]">
+            <span className="inline-flex items-center gap-1.5">
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd> Naviguer
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Kbd>↵</Kbd> Ouvrir
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Kbd>esc</Kbd> Fermer
+            </span>
+          </div>
           <span>
-            <kbd className="px-1 py-0.5 bg-ink-05 rounded text-[10px]">{'\u2191\u2193'}</kbd>{' '}
-            naviguer
+            Meilisearch · typo-tolérant
+            {processingTime !== null && <> · {processingTime} ms</>}
           </span>
-          <span>
-            <kbd className="px-1 py-0.5 bg-ink-05 rounded text-[10px]">{'\u23CE'}</kbd> ouvrir
-          </span>
-          <span>
-            <kbd className="px-1 py-0.5 bg-ink-05 rounded text-[10px]">esc</kbd> fermer
-          </span>
-        </div>
+        </DialogFoot>
       </div>
+    </Dialog>
+  )
+}
+
+/* ==========================================================================
+   Sub-components
+   ========================================================================== */
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-[22px] pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+      {children}
     </div>
+  )
+}
+
+interface PaletteItemProps {
+  focused: boolean
+  onMouseEnter?: () => void
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void
+  domainKey: DomainKey
+  title: string
+  meta: React.ReactNode
+}
+
+const PaletteItem = forwardRef<HTMLAnchorElement, PaletteItemProps>(function PaletteItem(
+  { focused, onMouseEnter, onClick, domainKey, title, meta },
+  ref,
+) {
+  return (
+    <a
+      ref={ref}
+      href="#"
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      role="option"
+      aria-selected={focused}
+      className={cn(
+        'relative grid grid-cols-[auto_1fr_auto] gap-3 items-center',
+        'px-[22px] py-2.5 no-underline text-inherit',
+        'transition-colors duration-100',
+        focused ? 'bg-cream-light' : 'hover:bg-cream-light',
+      )}
+    >
+      {focused && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-2 bottom-2 w-[3px] bg-coral rounded-r-[3px]"
+        />
+      )}
+      <span
+        className={cn(
+          'w-8 h-8 rounded-lg grid place-items-center [&_svg]:w-[15px] [&_svg]:h-[15px]',
+          DOMAIN_ICON_BG[domainKey],
+        )}
+        aria-hidden
+      >
+        {domainIcon(domainKey)}
+      </span>
+      <span className="min-w-0">
+        <span
+          className={cn(
+            'block text-[13.5px] font-semibold leading-[1.3] text-ink truncate',
+            '[&_mark]:bg-warn-bg [&_mark]:text-warn [&_mark]:rounded-[3px] [&_mark]:px-0.5',
+            '[&_mark]:font-bold',
+          )}
+          dangerouslySetInnerHTML={{ __html: sanitizeHighlight(title) }}
+        />
+        <span className="block mt-0.5 text-[11.5px] text-ink-soft">{meta}</span>
+      </span>
+      {focused && (
+        <span
+          className="inline-flex items-center gap-1 text-[11px] text-ink-muted"
+          aria-hidden
+        >
+          <Kbd>
+            <CornerDownLeft className="w-3 h-3" />
+          </Kbd>
+        </span>
+      )}
+    </a>
+  )
+})
+
+interface PaletteActionCreateProps {
+  focused: boolean
+  onMouseEnter?: () => void
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void
+  query: string
+}
+
+const PaletteActionCreate = forwardRef<HTMLAnchorElement, PaletteActionCreateProps>(
+  function PaletteActionCreate({ focused, onMouseEnter, onClick, query }, ref) {
+    return (
+      <a
+        ref={ref}
+        href="#"
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        role="option"
+        aria-selected={focused}
+        className={cn(
+          'relative grid grid-cols-[auto_1fr_auto] gap-3 items-center',
+          'px-[22px] py-2.5 no-underline text-inherit',
+          'transition-colors duration-100',
+          focused ? 'bg-cream-light' : 'hover:bg-cream-light',
+        )}
+      >
+        {focused && (
+          <span
+            aria-hidden
+            className="absolute left-0 top-2 bottom-2 w-[3px] bg-coral rounded-r-[3px]"
+          />
+        )}
+        <span className="w-8 h-8 rounded-lg grid place-items-center bg-coral-bg text-coral [&_svg]:w-[15px] [&_svg]:h-[15px]">
+          <Plus />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[13.5px] font-semibold leading-[1.3] text-ink truncate">
+            Créer la page « {query} »
+          </span>
+          <span className="block mt-0.5 text-[11.5px] text-ink-soft">
+            Démarrer un nouveau document vierge
+          </span>
+        </span>
+        {focused && (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] text-ink-muted"
+            aria-hidden
+          >
+            <Kbd>
+              <CornerDownLeft className="w-3 h-3" />
+            </Kbd>
+          </span>
+        )}
+      </a>
+    )
+  },
+)
+
+function FreshInline({ badge }: { badge: 'green' | 'yellow' | 'red' }) {
+  const dotColor =
+    badge === 'green' ? 'bg-success' : badge === 'yellow' ? 'bg-warn' : 'bg-danger'
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={cn('w-[7px] h-[7px] rounded-full', dotColor)} aria-hidden />
+      {freshLabel(badge).toLowerCase()}
+    </span>
   )
 }
