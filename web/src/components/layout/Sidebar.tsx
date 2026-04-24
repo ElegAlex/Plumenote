@@ -1,3 +1,7 @@
+// navy sidebar palette, non tokenisée : 5 teintes différentes
+// (#C9CFE4, #9299BD, #8A93B8, #7A83A8, #F3B6BE). À propager dans
+// les tokens Tailwind @theme une fois la palette navy étendue
+// (--color-navy-50, --color-navy-fg-soft, etc.) validée côté DS.
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -83,17 +87,26 @@ export default function Sidebar({ onSearchOpen, onDomainsLoaded }: SidebarProps)
 
   const [domains, setDomains] = useState<Domain[]>([])
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
+  const [domainsError, setDomainsError] = useState<boolean>(false)
 
   const toggleDomainExpand = useCallback((domainId: string) => {
     setExpandedDomains((prev) => ({ ...prev, [domainId]: !prev[domainId] }))
   }, [])
 
-  useEffect(() => {
+  const loadDomains = useCallback(() => {
+    setDomainsError(false)
     api.get<Domain[]>('/domains').then((data) => {
       setDomains(data)
       onDomainsLoaded?.(data)
-    }).catch(() => {})
+    }).catch((err) => {
+      console.warn('Failed to fetch /domains', err)
+      setDomainsError(true)
+    })
   }, [onDomainsLoaded])
+
+  useEffect(() => {
+    loadDomains()
+  }, [loadDomains])
 
   const isAdmin = user?.role === 'admin'
   const isDsiOrAdmin = isAuthenticated && (user?.role === 'admin' || user?.role === 'dsi')
@@ -182,7 +195,7 @@ export default function Sidebar({ onSearchOpen, onDomainsLoaded }: SidebarProps)
         </NavSection>
 
         {/* Domaines (dynamique) */}
-        {domains.length > 0 && (
+        {(domains.length > 0 || domainsError) && (
           <NavSection label="Domaines">
             {domains.map((d) => {
               const Icon = iconForDomain(d.slug)
@@ -217,6 +230,30 @@ export default function Sidebar({ onSearchOpen, onDomainsLoaded }: SidebarProps)
                 </div>
               )
             })}
+            {domainsError && (
+              <div
+                className={cn(
+                  'mt-1 mx-1 px-2.5 py-1.5 rounded-md',
+                  'bg-danger/20 text-[#F3B6BE] text-[11.5px] leading-snug',
+                  'flex items-center gap-2',
+                )}
+                role="alert"
+              >
+                <AlertTriangle size={12} className="shrink-0" />
+                <span className="flex-1">Domaines indisponibles</span>
+                <button
+                  type="button"
+                  onClick={loadDomains}
+                  className={cn(
+                    'px-1.5 py-0.5 rounded',
+                    'text-[10.5px] font-semibold uppercase tracking-wide',
+                    'bg-white/10 hover:bg-white/20 text-white transition-colors',
+                  )}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </NavSection>
         )}
 

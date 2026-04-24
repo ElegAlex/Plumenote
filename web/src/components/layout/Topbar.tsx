@@ -38,6 +38,8 @@ export default function Topbar({ onSearchOpen, domainsBySlug = {} }: TopbarProps
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const createMenuRef = useRef<HTMLDivElement>(null)
+  const userButtonRef = useRef<HTMLButtonElement>(null)
+  const createButtonRef = useRef<HTMLButtonElement>(null)
 
   // Fermeture des dropdowns au click extérieur (logique préservée de l'ex-Shell).
   useEffect(() => {
@@ -48,6 +50,28 @@ export default function Topbar({ onSearchOpen, domainsBySlug = {} }: TopbarProps
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Fermeture des dropdowns à Escape + retour de focus au trigger.
+  // Ne traite Escape que si l'un des dropdowns est ouvert, pour ne pas
+  // interférer avec la SearchModal (qui a son propre handler Escape).
+  useEffect(() => {
+    if (!userMenuOpen && !createMenuOpen) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (createMenuOpen) {
+        e.stopPropagation()
+        setCreateMenuOpen(false)
+        createButtonRef.current?.focus()
+      }
+      if (userMenuOpen) {
+        e.stopPropagation()
+        setUserMenuOpen(false)
+        userButtonRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [userMenuOpen, createMenuOpen])
 
   // Note : le raccourci Ctrl+K global est déjà géré par `useSearchModal`
   // (features/search/SearchModal.tsx). Ne pas le dupliquer ici.
@@ -107,6 +131,7 @@ export default function Topbar({ onSearchOpen, domainsBySlug = {} }: TopbarProps
             {/* Créer */}
             <div ref={createMenuRef} className="relative">
               <IconButton
+                ref={createButtonRef}
                 aria-label="Créer"
                 icon={<Plus />}
                 onClick={() => { setCreateMenuOpen((v) => !v); setUserMenuOpen(false) }}
@@ -156,6 +181,7 @@ export default function Topbar({ onSearchOpen, domainsBySlug = {} }: TopbarProps
             {/* User chip + dropdown */}
             <div ref={userMenuRef} className="relative">
               <button
+                ref={userButtonRef}
                 type="button"
                 onClick={() => { setUserMenuOpen((v) => !v); setCreateMenuOpen(false) }}
                 className={cn(

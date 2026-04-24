@@ -1,3 +1,6 @@
+// navy sidebar palette, non tokenisée : 2 teintes différentes
+// (#9299BD, #F3B6BE). Alignées sur Sidebar.tsx, à propager dans
+// les tokens Tailwind @theme une fois la palette navy étendue.
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation, NavLink } from 'react-router-dom'
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText } from 'lucide-react'
@@ -36,9 +39,16 @@ function setExpandedState(state: Record<string, boolean>) {
 export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
   const [folders, setFolders] = useState<FolderNode[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>(getExpandedState)
+  const [error, setError] = useState<boolean>(false)
 
   useEffect(() => {
-    api.get<FolderNode[]>(`/domains/${domainId}/folders`).then(setFolders).catch(() => {})
+    setError(false)
+    api.get<FolderNode[]>(`/domains/${domainId}/folders`)
+      .then(setFolders)
+      .catch((err) => {
+        console.warn(`Failed to fetch /domains/${domainId}/folders`, err)
+        setError(true)
+      })
   }, [domainId])
 
   const toggleExpand = useCallback((folderId: string) => {
@@ -59,6 +69,14 @@ export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
 
   return (
     <div className="ml-8 mt-1 flex flex-col gap-[2px]">
+      {error && (
+        <div
+          className="pl-[26px] pr-2.5 py-[5px] text-[12px] font-medium text-[#F3B6BE]"
+          role="alert"
+        >
+          Erreur de chargement
+        </div>
+      )}
       {folders.map((f) => (
         <FolderTreeItem
           key={f.id}
