@@ -220,7 +220,11 @@ export default function Sidebar({ onSearchOpen, onDomainsLoaded }: SidebarProps)
           </NavSection>
         )}
 
-        {/* Gestion (dsi / admin) */}
+        {/* Section "Gestion" : ouverte aux rôles `dsi` et `admin` parce que
+            Cartographie et Mind Map sont des vues de consultation légitimes
+            pour tout contributeur DSI, pas réservées aux administrateurs.
+            Les items sensibles (Templates, Administration) sont eux-mêmes
+            gardés par `isAdmin` à l'intérieur de la section. */}
         {isDsiOrAdmin && (
           <NavSection label="Gestion">
             <NavItem
