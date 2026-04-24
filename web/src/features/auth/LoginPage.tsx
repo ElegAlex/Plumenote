@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -9,7 +9,7 @@ import {
   User,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { ApiError } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
   Button,
@@ -42,12 +42,26 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
+  const [ticketUrl, setTicketUrl] = useState<string | null>(null)
 
-  async function handleSubmit(e: FormEvent) {
+  // Récupère l'URL du ticket GLPI exposée par l'API (même pattern que
+  // PublicHomePage). Si absente, on retombe sur un lien aria-disabled.
+  useEffect(() => {
+    api
+      .get<{ url: string }>('/config/ticket-url')
+      .then((res) => {
+        if (res.url) setTicketUrl(res.url)
+      })
+      .catch(() => {})
+  }, [])
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     setSubmitting(true)
     try {
+      // TODO(V3) : brancher remember-me côté API quand useAuth().login
+      // acceptera un 3e argument (actuellement signature (username, password)).
       await login(username, password)
       navigate('/', { replace: true })
     } catch (err) {
@@ -204,9 +218,13 @@ export default function LoginPage() {
                 htmlFor="password"
                 required
                 hintInline={
+                  // TODO(V2+) : brancher la route interne `/password-reset`
+                  // quand le flow de réinitialisation sera implémenté.
                   <a
                     href="#"
-                    className="text-[12px] font-semibold text-navy-700 transition-colors hover:text-coral"
+                    aria-disabled="true"
+                    onClick={(e) => e.preventDefault()}
+                    className="cursor-not-allowed text-[12px] font-semibold text-navy-700 transition-colors hover:text-coral"
                   >
                     Mot de passe oublié
                   </a>
@@ -248,7 +266,7 @@ export default function LoginPage() {
               <label className="inline-flex cursor-pointer select-none items-center gap-2">
                 <input
                   type="checkbox"
-                  className="sr-only"
+                  className="peer sr-only"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
@@ -256,6 +274,7 @@ export default function LoginPage() {
                   aria-hidden
                   className={cn(
                     'inline-grid h-4 w-4 place-items-center rounded-[4px] border-[1.5px] bg-white transition-colors',
+                    'peer-focus-visible:ring-2 peer-focus-visible:ring-navy-700 peer-focus-visible:ring-offset-2',
                     rememberMe
                       ? 'border-navy-800 bg-navy-800'
                       : 'border-line',
@@ -307,9 +326,19 @@ export default function LoginPage() {
                   Pas de compte ?
                 </strong>
                 Les comptes PlumeNote sont créés par l'administrateur DSI.{' '}
+                {/* TODO(V2+) : `/api/config/ticket-url` doit être exposée par
+                    le backend pour rendre ce lien cliquable. À défaut, lien
+                    passif (aria-disabled) pour éviter une navigation vers #. */}
                 <a
-                  href="#"
-                  className="font-semibold text-navy-700 transition-colors hover:text-coral"
+                  href={ticketUrl || '#'}
+                  target={ticketUrl ? '_blank' : undefined}
+                  rel={ticketUrl ? 'noopener noreferrer' : undefined}
+                  aria-disabled={ticketUrl ? undefined : 'true'}
+                  onClick={ticketUrl ? undefined : (e) => e.preventDefault()}
+                  className={cn(
+                    'font-semibold text-navy-700 transition-colors hover:text-coral',
+                    !ticketUrl && 'cursor-not-allowed',
+                  )}
                 >
                   Ouvrir un ticket GLPI
                 </a>{' '}
