@@ -188,18 +188,22 @@ export default function DomainPage() {
     return sorted
   }, [enrichedDocs, type, fresh, sort])
 
-  // --- Récemment modifiés : 7 derniers jours, max 12, sans filtre type/fresh,
-  //     toujours triés par updated_at DESC (comportement g7). ---
+  // --- Récemment modifiés : 7 derniers jours, max 12, triés par updated_at DESC.
+  //     Les filtres type/fresh sont appliqués sur place pour rester cohérent avec
+  //     la seconde section (décision spec review : les 2 sections du gabarit g7
+  //     restent visibles quand un filtre est actif, mais sur la même liste filtrée). ---
   const recentDocs = useMemo(() => {
     const cutoff = Date.now() - RECENT_DAYS * 86_400_000
-    return enrichedDocs
-      .filter((e) => new Date(e.raw.updated_at).getTime() >= cutoff)
+    let list = enrichedDocs.filter((e) => new Date(e.raw.updated_at).getTime() >= cutoff)
+    if (type !== 'all') list = list.filter((e) => e.typeKey === type)
+    if (fresh.length > 0) list = list.filter((e) => fresh.includes(e.status))
+    return list
       .sort(
         (a, b) =>
           new Date(b.raw.updated_at).getTime() - new Date(a.raw.updated_at).getTime(),
       )
       .slice(0, 12)
-  }, [enrichedDocs])
+  }, [enrichedDocs, type, fresh])
 
   // --- Pagination client-side sur la liste filtrée ---
   const totalFiltered = filteredSorted.length
@@ -255,8 +259,11 @@ export default function DomainPage() {
         onViewChange={setView}
       />
 
-      {/* === Section : Récemment modifiés === */}
-      {recentDocs.length > 0 && type === 'all' && fresh.length === 0 ? (
+      {/* === Section : Récemment modifiés ===
+          Affichée systématiquement quand non vide, filtres appliqués en amont
+          (cf. recentDocs useMemo). Cohérent avec le gabarit g7 qui montre les
+          2 sections en permanence. */}
+      {recentDocs.length > 0 ? (
         <>
           <SectionHead
             title="Récemment modifiés"
@@ -273,6 +280,11 @@ export default function DomainPage() {
                 freshStatus={e.status}
                 freshLabel={e.freshLabel}
                 title={e.raw.title}
+                // TODO: brancher ref/desc/tags dès que le backend expose
+                // reference_code / excerpt / tags sur /api/documents.
+                ref={undefined}
+                desc={undefined}
+                tags={undefined}
                 authorName={e.raw.author_name}
                 authorInitials={initialsOf(e.raw.author_name)}
                 views={e.raw.view_count}
@@ -304,6 +316,11 @@ export default function DomainPage() {
               freshStatus={e.status}
               freshLabel={e.freshLabel}
               title={e.raw.title}
+              // TODO: brancher ref/desc/tags dès que le backend expose
+              // reference_code / excerpt / tags sur /api/documents.
+              ref={undefined}
+              desc={undefined}
+              tags={undefined}
               authorName={e.raw.author_name}
               authorInitials={initialsOf(e.raw.author_name)}
               views={e.raw.view_count}

@@ -29,12 +29,17 @@ export default function DomainHero({
     <section
       className={cn(
         'relative overflow-hidden rounded-[22px] p-8 px-9',
-        // Gradient g7: navy-900 0% → navy-700 55% → coral 100% (direction 120deg → bg-gradient-to-br acceptable).
-        'bg-gradient-to-br from-navy-900 from-0% via-navy-700 via-55% to-coral to-100%',
         'text-cream',
         'grid gap-7 items-center',
         'grid-cols-1 min-[1200px]:grid-cols-[1fr_auto]',
       )}
+      // Gradient g7 : navy-900 0% → navy-700 55% → coral 100% à 120°.
+      // Inline car Tailwind 4 ne permet pas d'angle arbitraire via utilitaire
+      // (bg-gradient-to-br = 135° et déporte la transition coral vers le coin).
+      style={{
+        background:
+          'linear-gradient(120deg, var(--color-navy-900) 0%, var(--color-navy-700) 55%, var(--color-coral) 100%)',
+      }}
     >
       {/* Halo radial cream décoratif (top-right). rgba(244,233,216,0.15) non tokenisable. */}
       <span
