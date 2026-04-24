@@ -198,13 +198,22 @@ export default function DesignSystemPage() {
         </DemoCard>
 
         <DemoCard>
-          <Label>FreshBadge — indicateur de fraîcheur</Label>
+          <Label>FreshBadge — indicateur de fraîcheur (pilule, g5)</Label>
           <div className="flex gap-2 mt-2 flex-wrap">
             <FreshBadge status="ok">À jour</FreshBadge>
             <FreshBadge status="ok">2 h</FreshBadge>
             <FreshBadge status="warn">6 mois</FreshBadge>
             <FreshBadge status="danger">14 mois</FreshBadge>
             <FreshBadge status="danger">Périmé</FreshBadge>
+          </div>
+          <div className="mt-4">
+            <Label>FreshBadge inline — dot + texte coloré (doc-card g7)</Label>
+          </div>
+          <div className="flex gap-4 mt-2 flex-wrap">
+            <FreshBadge status="ok" inline>2 h</FreshBadge>
+            <FreshBadge status="ok" inline>3 sem</FreshBadge>
+            <FreshBadge status="warn" inline>3 mois</FreshBadge>
+            <FreshBadge status="danger" inline>14 mois</FreshBadge>
           </div>
         </DemoCard>
 
@@ -703,6 +712,16 @@ export default function DesignSystemPage() {
                 status="refused"
                 label="Demande de suppression refusée"
                 meta="4 liens entrants · conservation forcée"
+              />
+              <TimelineEvent
+                status="coral"
+                label="Variante coral (événement de publication)"
+                meta="statique, sans pulse"
+              />
+              <TimelineEvent
+                status="navy"
+                label="Variante navy (événement d'import / système)"
+                meta="statique"
               />
             </Timeline>
           </CardBody>
