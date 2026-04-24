@@ -147,7 +147,7 @@ export function freshLabel(badge: FreshnessBadge): string {
 export const DOMAIN_ICON_BG: Record<DomainKey, string> = {
   infra: 'bg-coral-bg text-coral',
   support: 'bg-success-bg text-success',
-  sci: 'bg-[#E9EAF7] text-navy-700',
+  sci: 'bg-navy-50 text-navy-700',
   etudes: 'bg-plum-bg text-plum',
   data: 'bg-warn-bg text-warn',
   neutral: 'bg-cream text-navy-800',

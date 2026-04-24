@@ -11,7 +11,7 @@ const dotStyles: Record<TimelineDotStatus, string> = {
   upcoming: 'bg-white border-line text-ink-muted',
   refused: 'bg-danger-bg border-danger text-danger',
   coral: 'bg-coral-bg border-coral text-coral',
-  navy: 'bg-[#E9EAF7] border-navy-700 text-navy-700',
+  navy: 'bg-navy-50 border-navy-700 text-navy-700',
 }
 
 export interface TimelineProps {

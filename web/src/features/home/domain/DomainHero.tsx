@@ -64,8 +64,8 @@ export default function DomainHero({
           {name}
         </h1>
         {description ? (
-          // #C9CFE4 = bleu clair lisible sur fond navy, non tokenisé (one-off dark)
-          <p className="text-[14.5px] leading-[1.6] max-w-[580px] text-[#C9CFE4]">
+          // navy-fg-soft : grey-blue lisible sur fond navy (texte one-off dark)
+          <p className="text-[14.5px] leading-[1.6] max-w-[580px] text-navy-fg-soft">
             {description}
           </p>
         ) : null}
@@ -119,8 +119,8 @@ function StatBox({
       >
         {value}
       </div>
-      {/* #C9CFE4 pour la même raison que plus haut */}
-      <div className="text-[11.5px] text-[#C9CFE4] mt-0.5">{sub}</div>
+      {/* navy-fg-soft : même token que le paragraphe du hero */}
+      <div className="text-[11.5px] text-navy-fg-soft mt-0.5">{sub}</div>
     </div>
   )
 }

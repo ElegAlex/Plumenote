@@ -10,7 +10,7 @@ type DomainKey = 'infra' | 'support' | 'sci' | 'etudes' | 'data' | 'neutral'
 const domainStyles: Record<DomainKey, string> = {
   infra: 'bg-coral-bg text-coral',
   support: 'bg-success-bg text-success',
-  sci: 'bg-[#E9EAF7] text-navy-700',
+  sci: 'bg-navy-50 text-navy-700',
   etudes: 'bg-plum-bg text-plum',
   data: 'bg-warn-bg text-warn',
   neutral: 'bg-cream text-navy-800',
@@ -49,7 +49,7 @@ export function DomainChip({ domain, children, className }: DomainChipProps) {
 type DocTypeKey = 'proc' | 'mo' | 'faq' | 'arch' | 'ref' | 'guide'
 
 const typeStyles: Record<DocTypeKey, string> = {
-  proc: 'bg-[#E9EAF7] text-navy-700',
+  proc: 'bg-navy-50 text-navy-700',
   mo: 'bg-coral-bg text-coral',
   faq: 'bg-success-bg text-success',
   arch: 'bg-plum-bg text-plum',

@@ -1,7 +1,6 @@
-// navy sidebar palette, non tokenisée : 5 teintes différentes
-// (#C9CFE4, #9299BD, #8A93B8, #7A83A8, #F3B6BE). À propager dans
-// les tokens Tailwind @theme une fois la palette navy étendue
-// (--color-navy-50, --color-navy-fg-soft, etc.) validée côté DS.
+// navy sidebar palette : #C9CFE4 tokenisé en --color-navy-fg-soft
+// (text-navy-fg-soft). Les autres teintes (#9299BD, #8A93B8, #7A83A8,
+// #F3B6BE) restent one-off ponctuels en attente d'usage stabilisé.
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -125,7 +124,7 @@ export default function Sidebar({ onSearchOpen, onDomainsLoaded }: SidebarProps)
       className={cn(
         'sticky top-0 h-screen overflow-y-auto',
         'w-[248px] shrink-0',
-        'bg-navy-900 text-[#C9CFE4]',
+        'bg-navy-900 text-navy-fg-soft',
         'flex flex-col gap-6',
         'py-6 px-4',
       )}
@@ -391,7 +390,7 @@ function NavItem({
               'text-white',
               'bg-gradient-to-b from-coral/20 to-coral/10',
             )
-          : 'text-[#C9CFE4] hover:bg-white/5 hover:text-white',
+          : 'text-navy-fg-soft hover:bg-white/5 hover:text-white',
       )}
     >
       {active && (

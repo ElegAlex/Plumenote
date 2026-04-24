@@ -29,6 +29,7 @@ import {
   Kbd,
   Switch,
   Tab,
+  TabPanel,
   Tabs,
   Textarea,
 } from '@/components/ui'
@@ -100,63 +101,42 @@ export default function ProfilePage() {
       />
 
       {/* ============ TABS BAR ============ */}
-      <Tabs aria-label="Sections du compte" className="flex">
-        <Tab
-          id="tab-profile"
-          aria-controls="tabpanel-profile"
-          active={activeTab === 'profile'}
-          onClick={() => setActiveTab('profile')}
-          icon={<User />}
-        >
+      {/* Pattern WAI-ARIA complet : <Tabs activeKey onChange> + <Tab tabKey> +
+          <TabPanel tabKey>. aria-controls / aria-labelledby / navigation
+          clavier Arrow/Home/End générés automatiquement par la primitive. */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={(k) => setActiveTab(k as TabKey)}
+        aria-label="Sections du compte"
+        className="flex"
+      >
+        <Tab tabKey="profile" icon={<User />}>
           Profil
         </Tab>
-        <Tab
-          id="tab-security"
-          aria-controls="tabpanel-security"
-          active={activeTab === 'security'}
-          onClick={() => setActiveTab('security')}
-          icon={<Shield />}
-        >
+        <Tab tabKey="security" icon={<Shield />}>
           Sécurité
         </Tab>
-        <Tab
-          id="tab-preferences"
-          aria-controls="tabpanel-preferences"
-          active={activeTab === 'preferences'}
-          onClick={() => setActiveTab('preferences')}
-          icon={<Settings />}
-        >
+        <Tab tabKey="preferences" icon={<Settings />}>
           Préférences
         </Tab>
-        <Tab
-          id="tab-activity"
-          aria-controls="tabpanel-activity"
-          active={activeTab === 'activity'}
-          onClick={() => setActiveTab('activity')}
-          icon={<Activity />}
-          badge={activityCount}
-        >
+        <Tab tabKey="activity" icon={<Activity />} badge={activityCount}>
           Activité
         </Tab>
       </Tabs>
 
-      {/* ============ TAB CONTENT ============ */}
-      {/* Pattern WAI-ARIA tabpanel en fallback : tant que la primitive
-          <TabPanel> n'est pas livrée par l'agent primitives, on applique
-          role/id/aria-labelledby/tabIndex directement sur le conteneur
-          rendu pour le tab actif. À remplacer par <TabPanel key="...">
-          dès que la primitive existe dans @/components/ui. */}
-      <div
-        role="tabpanel"
-        id={`tabpanel-${activeTab}`}
-        aria-labelledby={`tab-${activeTab}`}
-        tabIndex={0}
-      >
-        {activeTab === 'profile' && <ProfileTab initials={initials} />}
-        {activeTab === 'security' && <SecurityTab />}
-        {activeTab === 'preferences' && <PlaceholderTab label="Préférences" />}
-        {activeTab === 'activity' && <PlaceholderTab label="Activité" />}
-      </div>
+      {/* ============ TAB PANELS ============ */}
+      <TabPanel tabKey="profile" active={activeTab}>
+        <ProfileTab initials={initials} />
+      </TabPanel>
+      <TabPanel tabKey="security" active={activeTab}>
+        <SecurityTab />
+      </TabPanel>
+      <TabPanel tabKey="preferences" active={activeTab}>
+        <PlaceholderTab label="Préférences" />
+      </TabPanel>
+      <TabPanel tabKey="activity" active={activeTab}>
+        <PlaceholderTab label="Activité" />
+      </TabPanel>
     </main>
   )
 }
@@ -247,17 +227,17 @@ function IdentityHero({
           'lg:flex-col lg:flex-nowrap lg:gap-y-1.5 lg:text-right lg:justify-start',
         )}
       >
-        <span className="text-[11.5px] text-[#C9CFE4]">Dernière connexion</span>
-        <span className="text-[11.5px] text-[#C9CFE4]">
+        <span className="text-[11.5px] text-navy-fg-soft">Dernière connexion</span>
+        <span className="text-[11.5px] text-navy-fg-soft">
           <strong className="font-serif font-semibold text-[13px] text-white tabular-nums">
             aujourd'hui · 08:14
           </strong>
         </span>
         <span className="hidden lg:block h-1" aria-hidden />
-        <span className="text-[11.5px] text-[#C9CFE4]">
+        <span className="text-[11.5px] text-navy-fg-soft">
           Contributions · <strong className="font-serif font-semibold text-[13px] text-white tabular-nums">47</strong>
         </span>
-        <span className="text-[11.5px] text-[#C9CFE4]">
+        <span className="text-[11.5px] text-navy-fg-soft">
           Documents consultés · <strong className="font-serif font-semibold text-[13px] text-white tabular-nums">312</strong>
         </span>
       </div>
@@ -622,7 +602,7 @@ type StatIcoVariant = 'coral' | 'success' | 'navy' | 'plum'
 const statIcoStyles: Record<StatIcoVariant, string> = {
   coral: 'bg-coral-bg text-coral',
   success: 'bg-success-bg text-success',
-  navy: 'bg-[#E9EAF7] text-navy-700',
+  navy: 'bg-navy-50 text-navy-700',
   plum: 'bg-plum-bg text-plum',
 }
 

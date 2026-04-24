@@ -44,8 +44,8 @@ const ACCENT_STYLES: Record<
   },
   navy: {
     iconColor: 'text-navy-700',
-    // bg custom verbatim du gabarit (#E9EAF7) — non tokenisé, ton navy très pâle
-    iconBg: 'bg-[#E9EAF7]',
+    // bg navy-50 (token navy très pâle, ex #E9EAF7)
+    iconBg: 'bg-navy-50',
     // rgba(38,54,136,0.1) — navy-700 10 %
     haloRgba: 'rgba(38,54,136,0.1)',
   },

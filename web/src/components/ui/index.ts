@@ -81,8 +81,8 @@ export type {
   TdProps,
 } from './Table'
 
-export { Tabs, Tab } from './Tabs'
-export type { TabsProps, TabProps } from './Tabs'
+export { Tabs, Tab, TabPanel } from './Tabs'
+export type { TabsProps, TabProps, TabPanelProps } from './Tabs'
 
 export { Textarea } from './Textarea'
 export type { TextareaProps } from './Textarea'

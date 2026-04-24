@@ -148,8 +148,8 @@ export default function LoginPage() {
             Un seul endroit pour <em>tout ce que sait la DSI</em>.
           </h2>
 
-          {/* Couleur texte #C9CFE4 : grey-blue desc du gabarit g1, pas dans la palette tokens. */}
-          <p className="mt-[22px] max-w-[460px] text-[15px] leading-[1.6] text-[#C9CFE4]">
+          {/* Texte grey-blue lisible sur fond navy : token --color-navy-fg-soft. */}
+          <p className="mt-[22px] max-w-[460px] text-[15px] leading-[1.6] text-navy-fg-soft">
             Procédures, cartographies, modes opératoires, architecture.
             Recherche transversale, contenu versionné, graphe de liens entre
             documents. Hébergé sur notre infrastructure, accessible sans

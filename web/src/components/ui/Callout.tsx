@@ -12,7 +12,7 @@ const variantStyles: Record<CalloutVariant, { container: string; iconBg: string;
     Default: Zap,
   },
   info: {
-    container: 'bg-[#E9EAF7] border-navy-700',
+    container: 'bg-navy-50 border-navy-700',
     iconBg: 'bg-white',
     iconColor: 'text-navy-700',
     Default: Info,

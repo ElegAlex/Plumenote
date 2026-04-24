@@ -40,14 +40,30 @@ export default function PublicHeader() {
 
       <nav className="flex items-center gap-5.5 max-[640px]:hidden">
         {/* TODO: câbler vers /domains (index), /recent, /help quand routes créées.
-            Liens passifs pour le moment : ne pas rediriger vers /search (trompeur). */}
-        <a href="#" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
+            Liens passifs pour le moment : ne pas rediriger vers /search (trompeur).
+            aria-disabled + preventDefault pour signaler l'inactivité (AT + pointer). */}
+        <a
+          href="#"
+          aria-disabled="true"
+          onClick={(e) => e.preventDefault()}
+          className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors cursor-not-allowed opacity-70"
+        >
           Domaines
         </a>
-        <a href="#" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
+        <a
+          href="#"
+          aria-disabled="true"
+          onClick={(e) => e.preventDefault()}
+          className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors cursor-not-allowed opacity-70"
+        >
           Fiches récentes
         </a>
-        <a href="#" className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors">
+        <a
+          href="#"
+          aria-disabled="true"
+          onClick={(e) => e.preventDefault()}
+          className="text-ink-soft no-underline text-[13px] font-semibold hover:text-navy-900 transition-colors cursor-not-allowed opacity-70"
+        >
           Aide
         </a>
       </nav>
@@ -58,11 +74,11 @@ export default function PublicHeader() {
         >
           Accès public
         </span>
-        <Link to="/login" className="no-underline">
-          <Button variant="secondary" size="sm" leftIcon={<LogIn />}>
-            Se connecter
-          </Button>
-        </Link>
+        {/* asChild : fusionne le style Button sur le <Link> (pattern Slot),
+            évite le HTML invalide <a><button/></a>. */}
+        <Button asChild variant="secondary" size="sm" leftIcon={<LogIn />}>
+          <Link to="/login" className="no-underline">Se connecter</Link>
+        </Button>
       </div>
     </header>
   )
