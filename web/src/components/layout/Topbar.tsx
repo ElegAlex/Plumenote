@@ -84,6 +84,7 @@ export default function Topbar({ onSearchOpen, domainsBySlug = {} }: TopbarProps
       <div className="flex-1 max-w-[420px] mx-auto">
         <Input
           readOnly
+          tone="muted"
           placeholder="Rechercher un document, un tag, une procédure…"
           leftIcon={<Search />}
           rightSlot={

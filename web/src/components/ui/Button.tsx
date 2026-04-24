@@ -23,9 +23,9 @@ const sizeStyles: Record<ButtonSize, string> = {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: [
-    'bg-navy-900 text-white border-transparent',
+    'bg-navy-800 text-white border-transparent',
     'shadow-[0_6px_18px_rgba(20,35,92,0.22)]',
-    'hover:-translate-y-px hover:shadow-[0_10px_28px_rgba(20,35,92,0.28)] active:translate-y-0',
+    'hover:bg-navy-900 hover:-translate-y-px hover:shadow-[0_10px_28px_rgba(20,35,92,0.28)] active:translate-y-0',
   ].join(' '),
   secondary: [
     'bg-white text-navy-800 border-line',
@@ -73,7 +73,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       className={cn(
         'inline-flex items-center justify-center gap-2',
-        'rounded-lg border-[1.5px] font-semibold font-sans cursor-pointer',
+        'rounded-xl border-[1.5px] font-semibold font-sans cursor-pointer',
         'transition-[transform,box-shadow,background-color,border-color,color]',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0',
         '[&_svg]:w-[14px] [&_svg]:h-[14px] [&_svg]:shrink-0',
