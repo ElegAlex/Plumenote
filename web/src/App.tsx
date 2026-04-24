@@ -32,18 +32,16 @@ function Loading() {
   )
 }
 
-function HomeRoute() {
-  const { isAuthenticated } = useAuth()
-  return isAuthenticated ? <HomePage /> : <PublicHomePage />
-}
-
 export default function App() {
+  const { isAuthenticated } = useAuth()
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
         <Route path="/login" element={<AuthPage />} />
+        {/* Route publique standalone (gabarit g3) : rendue HORS du Shell quand non authentifiée */}
+        {!isAuthenticated && <Route path="/" element={<PublicHomePage />} />}
         <Route element={<Shell />}>
-          <Route path="/" element={<HomeRoute />} />
+          {isAuthenticated && <Route path="/" element={<HomePage />} />}
           <Route path="/search" element={<SearchPage />} />
           <Route path="/documents/:slug" element={<ReaderPage />} />
           <Route path="/documents/:slug/diff/:v1/:v2" element={<DiffPage />} />
