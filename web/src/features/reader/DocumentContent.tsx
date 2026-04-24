@@ -60,6 +60,7 @@ const SUPPORTED_LANGUAGES: Record<string, BundledLanguage> = {
 interface TocItem {
   id: string
   text: string
+  level: 2 | 3
 }
 
 interface DocumentContentProps {
@@ -123,25 +124,25 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
     },
   })
 
-  // Extract TOC from H2 headings
+  // Extract TOC from H2 + H3 headings (level preserved pour indentation gabarit g5)
   useEffect(() => {
     if (!editor || !onTocExtracted) return
 
     const items: TocItem[] = []
     editor.state.doc.descendants((node) => {
-      if (node.type.name === 'heading' && node.attrs.level === 2) {
+      if (node.type.name === 'heading' && (node.attrs.level === 2 || node.attrs.level === 3)) {
         const text = node.textContent
-        items.push({ id: generateHeadingId(text), text })
+        items.push({ id: generateHeadingId(text), text, level: node.attrs.level as 2 | 3 })
       }
     })
     onTocExtracted(items)
   }, [editor, onTocExtracted])
 
-  // Add IDs to H2 headings in the DOM
+  // Add IDs to H2 + H3 headings in the DOM (pour l'ancrage click-to-scroll)
   useEffect(() => {
     if (!contentRef.current) return
 
-    const headings = contentRef.current.querySelectorAll('h2')
+    const headings = contentRef.current.querySelectorAll('h2, h3')
     headings.forEach((h) => {
       if (!h.id) {
         h.id = generateHeadingId(h.textContent || '')
@@ -214,21 +215,21 @@ export default function DocumentContent({ content, onTocExtracted }: DocumentCon
           const html = await codeToHtml(normalizedCode, { lang: shikiLang, theme: SHIKI_THEME })
           const codeDiv = document.createElement('div')
           codeDiv.innerHTML = html
-          codeDiv.className = 'rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-[#1a1a2e]'
+          codeDiv.className = 'rounded-lg overflow-x-auto text-sm [&>pre]:p-4 [&>pre]:!bg-[#0F1838]'
           outerWrapper.appendChild(codeDiv)
         } catch {
           // Keep lowlight fallback with dark theme
           const clone = pre.cloneNode(true) as HTMLPreElement
           clone.className = 'rounded-lg p-4 overflow-x-auto text-sm'
-          clone.style.background = '#1a1a2e'
-          clone.style.color = '#e2e8f0'
+          clone.style.background = '#0F1838'
+          clone.style.color = '#E9ECF6'
           outerWrapper.appendChild(clone)
         }
       } else {
         const clone = pre.cloneNode(true) as HTMLPreElement
         clone.className = 'rounded-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre-wrap break-words'
-        clone.style.background = '#1a1a2e'
-        clone.style.color = '#e2e8f0'
+        clone.style.background = '#0F1838'
+        clone.style.color = '#E9ECF6'
         outerWrapper.appendChild(clone)
       }
 
