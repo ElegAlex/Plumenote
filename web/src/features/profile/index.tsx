@@ -32,7 +32,7 @@ import {
   Tabs,
   Textarea,
 } from '@/components/ui'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth, type User as AuthUser } from '@/lib/auth-context'
 import { api, ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
@@ -62,7 +62,7 @@ import { cn } from '@/lib/cn'
 
 type TabKey = 'profile' | 'security' | 'preferences' | 'activity'
 
-const roleLabel: Record<'public' | 'dsi' | 'admin', string> = {
+const roleLabel: Record<AuthUser['role'], string> = {
   admin: 'Administrateur DSI',
   dsi: 'Contributeur DSI',
   public: 'Public',
@@ -102,6 +102,8 @@ export default function ProfilePage() {
       {/* ============ TABS BAR ============ */}
       <Tabs aria-label="Sections du compte" className="flex">
         <Tab
+          id="tab-profile"
+          aria-controls="tabpanel-profile"
           active={activeTab === 'profile'}
           onClick={() => setActiveTab('profile')}
           icon={<User />}
@@ -109,6 +111,8 @@ export default function ProfilePage() {
           Profil
         </Tab>
         <Tab
+          id="tab-security"
+          aria-controls="tabpanel-security"
           active={activeTab === 'security'}
           onClick={() => setActiveTab('security')}
           icon={<Shield />}
@@ -116,6 +120,8 @@ export default function ProfilePage() {
           Sécurité
         </Tab>
         <Tab
+          id="tab-preferences"
+          aria-controls="tabpanel-preferences"
           active={activeTab === 'preferences'}
           onClick={() => setActiveTab('preferences')}
           icon={<Settings />}
@@ -123,6 +129,8 @@ export default function ProfilePage() {
           Préférences
         </Tab>
         <Tab
+          id="tab-activity"
+          aria-controls="tabpanel-activity"
           active={activeTab === 'activity'}
           onClick={() => setActiveTab('activity')}
           icon={<Activity />}
@@ -133,10 +141,22 @@ export default function ProfilePage() {
       </Tabs>
 
       {/* ============ TAB CONTENT ============ */}
-      {activeTab === 'profile' && <ProfileTab initials={initials} />}
-      {activeTab === 'security' && <SecurityTab />}
-      {activeTab === 'preferences' && <PlaceholderTab label="Préférences" />}
-      {activeTab === 'activity' && <PlaceholderTab label="Activité" />}
+      {/* Pattern WAI-ARIA tabpanel en fallback : tant que la primitive
+          <TabPanel> n'est pas livrée par l'agent primitives, on applique
+          role/id/aria-labelledby/tabIndex directement sur le conteneur
+          rendu pour le tab actif. À remplacer par <TabPanel key="...">
+          dès que la primitive existe dans @/components/ui. */}
+      <div
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+        tabIndex={0}
+      >
+        {activeTab === 'profile' && <ProfileTab initials={initials} />}
+        {activeTab === 'security' && <SecurityTab />}
+        {activeTab === 'preferences' && <PlaceholderTab label="Préférences" />}
+        {activeTab === 'activity' && <PlaceholderTab label="Activité" />}
+      </div>
     </main>
   )
 }
@@ -346,6 +366,9 @@ function PersonalInfoCard({ initials }: { initials: string }) {
             'bg-cream-light border border-line-soft',
           )}
         >
+          {/* Avatar 64×64 (entre md=44 et xl=72) : markup direct, pas de
+              taille intermédiaire dans la primitive Avatar. Factoriser si
+              besoin se répète. */}
           <span
             className={cn(
               'inline-grid place-items-center shrink-0',
@@ -476,7 +499,7 @@ function PersonalInfoCard({ initials }: { initials: string }) {
       </CardBody>
       <CardFoot>
         {dirty ? (
-          <InlineMsg variant="success">Modifications non publiées</InlineMsg>
+          <InlineMsg variant="info">Modifications non publiées</InlineMsg>
         ) : (
           <span className="text-[12px] text-ink-soft">Aucune modification en attente</span>
         )}
@@ -697,10 +720,11 @@ interface BadgeItem {
   earned: boolean
 }
 
+// TODO(V3) : brancher GET /api/users/me/badges ; aujourd'hui tous en false (pas de source de vérité).
 const BADGES: BadgeItem[] = [
-  { emoji: '🌱', name: 'Premier pas', descr: 'Première contribution publiée', earned: true },
-  { emoji: '🔍', name: 'Veilleur', descr: '10+ documents marqués vérifiés', earned: true },
-  { emoji: '✍️', name: 'Rédacteur', descr: '25+ documents publiés', earned: true },
+  { emoji: '🌱', name: 'Premier pas', descr: 'Première contribution publiée', earned: false },
+  { emoji: '🔍', name: 'Veilleur', descr: '10+ documents marqués vérifiés', earned: false },
+  { emoji: '✍️', name: 'Rédacteur', descr: '25+ documents publiés', earned: false },
   { emoji: '📚', name: 'Bibliothécaire', descr: '50+ documents publiés', earned: false },
   { emoji: '🔗', name: 'Tisseur', descr: '100+ liens internes créés', earned: false },
   { emoji: '🏆', name: 'Référent', descr: 'Document cité 20+ fois', earned: false },
