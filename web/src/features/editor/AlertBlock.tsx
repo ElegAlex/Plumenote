@@ -31,27 +31,36 @@ export const AlertBlock = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     const type = HTMLAttributes['data-alert-type'] || 'tip'
+    // Tokens PlumeNote (coral / warn / danger) alignes sur g6 .callout.
     const styles: Record<AlertType, string> = {
-      tip: 'bg-blue/10 border-blue/30',
-      warning: 'bg-amber-50 border-amber-200',
-      danger: 'bg-red/10 border-red/30',
+      tip: 'bg-coral-bg border-coral',
+      warning: 'bg-warn-bg border-warn',
+      danger: 'bg-danger-bg border-danger',
+    }
+    const iconColors: Record<AlertType, string> = {
+      tip: 'text-coral',
+      warning: 'text-warn',
+      danger: 'text-danger',
     }
     const icons: Record<AlertType, string> = {
       tip: '\u{1F4A1}',
-      warning: '\u26A0\uFE0F',
+      warning: '⚠️',
       danger: '\u{1F534}',
     }
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
-        class: `alert-block border-l-4 rounded-r p-4 my-3 ${styles[type as AlertType] || styles.tip}`,
+        class: `alert-block border-l-4 rounded-xl my-5 px-5 py-4 flex gap-3 ${styles[type as AlertType] || styles.tip}`,
       }),
       [
-        'div',
-        { class: 'flex gap-2' },
-        ['span', { class: 'select-none', contenteditable: 'false' }, icons[type as AlertType] || icons.tip],
-        ['div', { class: 'flex-1 min-w-0' }, 0],
+        'span',
+        {
+          class: `select-none grid place-items-center w-7 h-7 bg-white rounded-[7px] shrink-0 ${iconColors[type as AlertType] || iconColors.tip}`,
+          contenteditable: 'false',
+        },
+        icons[type as AlertType] || icons.tip,
       ],
+      ['div', { class: 'flex-1 min-w-0 text-[13.5px] leading-[1.55] text-ink' }, 0],
     ]
   },
 

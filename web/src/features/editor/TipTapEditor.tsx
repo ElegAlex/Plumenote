@@ -13,7 +13,7 @@ import Underline from '@tiptap/extension-underline'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import { common, createLowlight } from 'lowlight'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, type ReactNode } from 'react'
 
 import { AlertBlock } from './AlertBlock'
 import { ImageDrop } from './ImageUpload'
@@ -31,9 +31,25 @@ interface TipTapEditorProps {
   onChange?: (json: string) => void
   onFirstInput?: () => void
   onEditorReady?: (editor: ReturnType<typeof useEditor>) => void
+  /**
+   * Slot rendu en tête du corps de l'éditeur (titre + meta-row), à l'intérieur
+   * du bloc .editor-body pour rester en continuité visuelle avec le contenu
+   * TipTap (g6 : titre Fraunces + meta chips + prose).
+   */
+  headerSlot?: ReactNode
+  /** Offset sticky top de la toolbar (default 68 = header Shell). */
+  toolbarStickyTop?: number
 }
 
-export default function TipTapEditor({ content, documentId, onChange, onFirstInput, onEditorReady }: TipTapEditorProps) {
+export default function TipTapEditor({
+  content,
+  documentId,
+  onChange,
+  onFirstInput,
+  onEditorReady,
+  headerSlot,
+  toolbarStickyTop = 68,
+}: TipTapEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -70,7 +86,9 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
     content: content || '',
     editorProps: {
       attributes: {
-        class: 'prose prose-lg max-w-none focus:outline-none min-h-[400px] px-8 py-6',
+        // Corps du texte TipTap : prose PlumeNote (styles globaux),
+        // rendu 15.5 / 1.75 aligné sur g6 .editor-body.
+        class: 'prose prose-lg max-w-none focus:outline-none min-h-[400px] text-[15.5px] leading-[1.75]',
       },
     },
     onUpdate: ({ editor: e }) => {
@@ -126,9 +144,15 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
   )
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-bg" onContextMenu={handleContextMenu}>
-      <Toolbar editor={editor} documentId={documentId} />
-      <EditorContent editor={editor} />
+    <section
+      className="bg-white border border-line rounded-[18px] overflow-hidden min-h-[600px] flex flex-col"
+      onContextMenu={handleContextMenu}
+    >
+      <Toolbar editor={editor} documentId={documentId} stickyTop={toolbarStickyTop} />
+      <div className="flex-1 px-12 pt-9 pb-12 relative">
+        {headerSlot}
+        <EditorContent editor={editor} />
+      </div>
       {ctxMenu && editor && (
         <TableContextMenu
           editor={editor}
@@ -137,7 +161,7 @@ export default function TipTapEditor({ content, documentId, onChange, onFirstInp
           onClose={() => setCtxMenu(null)}
         />
       )}
-    </div>
+    </section>
   )
 }
 

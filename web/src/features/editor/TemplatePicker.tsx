@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import type { Editor } from '@tiptap/react'
+import { Field, FieldLabel, Select } from '@/components/ui'
 
-interface Template {
+export interface Template {
   id: string
   name: string
   description: string
@@ -12,13 +13,24 @@ interface Template {
 
 interface TemplatePickerProps {
   editor: Editor | null
+  /** Ne rend rien tant que l'éditeur n'est pas prêt. */
   visible: boolean
   onUsed: (template: Template) => void
 }
 
+/**
+ * TemplatePicker — sélecteur de modèle de document rendu comme champ
+ * "Template" dans la Card Classement (gabarit g6). Remplace l'ancienne grille
+ * de cartes qui occupait l'espace au-dessus de l'éditeur.
+ *
+ * Lorsqu'un template est choisi, son contenu est injecté dans l'éditeur via
+ * `editor.commands.setContent(parsed)` (logique TipTap inchangée) et le
+ * handler `onUsed` informe le parent (pour préselectionner le type de
+ * document associé, par exemple).
+ */
 export default function TemplatePicker({ editor, visible, onUsed }: TemplatePickerProps) {
   const [templates, setTemplates] = useState<Template[]>([])
-  const [showAll, setShowAll] = useState(false)
+  const [selected, setSelected] = useState<string>('')
 
   useEffect(() => {
     api.get<Template[]>('/admin/templates').then(setTemplates).catch(() => {})
@@ -26,9 +38,11 @@ export default function TemplatePicker({ editor, visible, onUsed }: TemplatePick
 
   if (!visible || !templates.length || !editor) return null
 
-  const displayed = showAll ? templates : templates.slice(0, 5)
-
-  const apply = (template: Template) => {
+  const apply = (templateId: string) => {
+    setSelected(templateId)
+    if (!templateId) return
+    const template = templates.find((t) => t.id === templateId)
+    if (!template) return
     try {
       const parsed = JSON.parse(template.content)
       editor.commands.setContent(parsed)
@@ -39,34 +53,16 @@ export default function TemplatePicker({ editor, visible, onUsed }: TemplatePick
   }
 
   return (
-    <div className="bg-bg border rounded-lg p-4 mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-ink-70">Demarrer avec un modele</h3>
-        {!showAll && templates.length > 5 && (
-          <button
-            type="button"
-            onClick={() => setShowAll(true)}
-            className="text-sm text-blue hover:text-blue"
-          >
-            + Voir tous
-          </button>
-        )}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-        {displayed.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => apply(t)}
-            className="text-left p-3 bg-bg border rounded-lg hover:border-blue/30 hover:shadow-sm transition-colors"
-          >
-            <div className="font-medium text-sm text-ink truncate">{t.name}</div>
-            {t.description && (
-              <div className="text-xs text-ink-45 mt-1 line-clamp-2">{t.description}</div>
-            )}
-          </button>
+    <Field>
+      <FieldLabel>Modèle</FieldLabel>
+      <Select value={selected} onChange={(e) => apply(e.target.value)}>
+        <option value="">Aucun</option>
+        {templates.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
         ))}
-      </div>
-    </div>
+      </Select>
+    </Field>
   )
 }

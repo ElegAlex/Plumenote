@@ -61,23 +61,39 @@ const LinkList = forwardRef<LinkListRef, LinkListProps>(({ items, command }, ref
 
   if (!items.length) {
     return (
-      <div className="bg-bg rounded-lg shadow-lg border p-2 text-sm text-ink-45">
-        Aucun document trouve
+      <div className="bg-white rounded-xl shadow-[0_18px_40px_rgba(20,35,92,0.15)] border border-line p-3 text-[13px] text-ink-muted min-w-[260px]">
+        Aucun document trouvé
       </div>
     )
   }
 
   return (
-    <div className="bg-bg rounded-lg shadow-lg border overflow-hidden min-w-[240px]">
-      {items.map((item, i) => (
-        <button
-          key={item.id}
-          className={`block w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue/10 text-blue' : 'hover:bg-ink-05'}`}
-          onClick={() => select(i)}
-        >
-          {item.title}
-        </button>
-      ))}
+    <div
+      className="bg-white rounded-xl shadow-[0_18px_40px_rgba(20,35,92,0.15)] border border-line overflow-hidden min-w-[260px]"
+      role="menu"
+    >
+      {items.map((item, i) => {
+        const focused = i === selected
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="menuitem"
+            className={`relative block w-full text-left px-3.5 py-2.5 text-[13px] font-medium transition-colors ${
+              focused ? 'bg-cream-light text-navy-800' : 'text-ink hover:bg-cream-light hover:text-navy-800'
+            }`}
+            onClick={() => select(i)}
+          >
+            {focused && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-2 bottom-2 w-[3px] bg-coral rounded-r"
+              />
+            )}
+            {item.title}
+          </button>
+        )
+      })}
     </div>
   )
 })

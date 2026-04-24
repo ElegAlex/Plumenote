@@ -69,7 +69,7 @@ export default function CodeBlockView({ node, updateAttributes }: NodeViewProps)
         onChange={(e) => updateAttributes({ language: e.target.value })}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        className={`absolute top-2 right-2 z-10 text-xs bg-[#1a1a2e] text-ink-45 border border-ink-45 rounded px-1.5 py-0.5 cursor-pointer transition-opacity focus:outline-none focus:ring-1 focus:ring-blue ${
+        className={`absolute top-2.5 right-2.5 z-10 text-[11px] font-sans font-semibold bg-navy-900 text-coral-soft border border-ink-25 rounded-md px-2 py-0.5 cursor-pointer transition-opacity focus:outline-none focus:ring-1 focus:ring-coral ${
           focused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}
       >
@@ -84,7 +84,7 @@ export default function CodeBlockView({ node, updateAttributes }: NodeViewProps)
       </pre>
       {isMermaid && debouncedCode.trim() && (
         <div contentEditable={false} className="mt-1">
-          <Suspense fallback={<div className="p-4 text-sm text-ink-45">Chargement du diagramme...</div>}>
+          <Suspense fallback={<div className="p-4 text-sm text-ink-muted">Chargement du diagramme...</div>}>
             <MermaidBlock code={debouncedCode} showToggle={false} />
           </Suspense>
         </div>
