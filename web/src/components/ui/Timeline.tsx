@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Check, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-type TimelineDotStatus = 'done' | 'current' | 'upcoming' | 'refused'
+type TimelineDotStatus = 'done' | 'current' | 'upcoming' | 'refused' | 'coral' | 'navy'
 
 const dotStyles: Record<TimelineDotStatus, string> = {
   done: 'bg-success-bg border-success text-success',
@@ -10,6 +10,8 @@ const dotStyles: Record<TimelineDotStatus, string> = {
     'bg-coral border-coral text-white shadow-[0_0_0_4px_rgba(232,132,92,.2)] animate-[dot-pulse_2.4s_infinite]',
   upcoming: 'bg-white border-line text-ink-muted',
   refused: 'bg-danger-bg border-danger text-danger',
+  coral: 'bg-coral-bg border-coral text-coral',
+  navy: 'bg-[#E9EAF7] border-navy-700 text-navy-700',
 }
 
 export interface TimelineProps {
