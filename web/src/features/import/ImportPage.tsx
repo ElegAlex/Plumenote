@@ -1,10 +1,30 @@
+// web/src/features/import/ImportPage.tsx
+// Page /import — gabarit g8 (flux 4 étapes : Source -> Aperçu -> Conversion -> Rapport).
+//
+// Data flow strictement préservé par rapport à l'ancienne version :
+//  - FormData upload via useStartFolderImport (POST /api/import/folder)
+//  - analyse ZIP via useAnalyzeZip (POST /api/import/analyze-zip)
+//  - SSE progress via EventSource (/api/import/folder/progress/:jobId), géré dans ImportProgress.
 import { useState, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { useImportFile, useImportBatch } from '@/lib/hooks'
-import { api } from '@/lib/api'
-import type { Domain, BatchImportResult } from '@/lib/types'
 import { useQuery } from '@tanstack/react-query'
-import FolderImportTab from './FolderImportTab'
+import { FolderUp, FileArchive } from 'lucide-react'
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHead,
+  CardTitle,
+  PageTitle,
+  Step,
+  Stepper,
+  TitleEyebrow,
+} from '@/components/ui'
+import { api } from '@/lib/api'
+import type { Domain } from '@/lib/types'
+import { useAnalyzeZip, useStartFolderImport, type TreeNode } from '@/lib/hooks/useFolderImport'
+import PreviewTree from './PreviewTree'
+import ImportProgress from './ImportProgress'
+import ImportResults from './ImportResults'
 
 interface DocumentType {
   id: string
@@ -12,19 +32,35 @@ interface DocumentType {
   slug: string
 }
 
-const ACCEPTED_EXTENSIONS = '.doc,.docx,.pptx,.pdf,.txt,.md'
-const MAX_SIZE_MB = 50
+const SUPPORTED_EXT = ['.doc', '.docx', '.pptx', '.pdf', '.txt', '.md']
+
+type Phase = 'select' | 'preview' | 'progress' | 'results'
+
+interface DoneEvent {
+  type: 'progress' | 'done'
+  total: number
+  success?: number
+  failed?: number
+  domains_created?: string[]
+  folders_created?: number
+}
 
 export default function ImportPage() {
-  const [activeTab, setActiveTab] = useState<'files' | 'folder'>('files')
-  const [dragActive, setDragActive] = useState(false)
+  const [phase, setPhase] = useState<Phase>('select')
+  const [mode, setMode] = useState<'root' | 'domain'>('domain')
   const [domainId, setDomainId] = useState('')
   const [typeId, setTypeId] = useState('')
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const importFile = useImportFile()
-  const importBatch = useImportBatch()
+  const [tree, setTree] = useState<TreeNode[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [files, setFiles] = useState<File[]>([])
+  const [zipFile, setZipFile] = useState<File | null>(null)
+  const [source, setSource] = useState<'directory' | 'zip'>('directory')
+  const [jobId, setJobId] = useState('')
+  const [result, setResult] = useState<DoneEvent | null>(null)
+  const [errors, setErrors] = useState<{ filename: string; error: string }[]>([])
+  const dirInputRef = useRef<HTMLInputElement>(null)
+  const zipInputRef = useRef<HTMLInputElement>(null)
+  const errorsRef = useRef<{ filename: string; error: string }[]>([])
 
   const { data: domains } = useQuery({
     queryKey: ['domains'],
@@ -36,325 +72,354 @@ export default function ImportPage() {
     queryFn: () => api.get<DocumentType[]>('/document-types'),
   })
 
-  const isUploading = importFile.isPending || importBatch.isPending
-  const hasResult = importFile.isSuccess || importFile.isError || importBatch.isSuccess || importBatch.isError
+  const analyzeZip = useAnalyzeZip()
+  const startImport = useStartFolderImport()
 
-  const reset = useCallback(() => {
-    setSelectedFiles([])
-    importFile.reset()
-    importBatch.reset()
-    if (inputRef.current) inputRef.current.value = ''
-  }, [importFile, importBatch])
-
-  const handleFiles = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files).filter(f => {
-      const ext = '.' + f.name.split('.').pop()?.toLowerCase()
-      return ACCEPTED_EXTENSIONS.split(',').includes(ext) && f.size <= MAX_SIZE_MB * 1024 * 1024
+  const handleDirectorySelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = Array.from(e.target.files || [])
+    const supported = fileList.filter(f => {
+      const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase()
+      return SUPPORTED_EXT.includes(ext) && !f.webkitRelativePath.split('/').some(p => p.startsWith('.'))
     })
-    if (arr.length === 0) return
-    setSelectedFiles(arr)
+
+    const entries = supported.map(f => ({
+      path: f.webkitRelativePath,
+      size: f.size,
+    }))
+
+    const treeNodes = buildClientTree(entries)
+    setTree(treeNodes)
+    setFiles(supported)
+    setSource('directory')
+    setSelected(new Set(entries.map(e => e.path)))
+    setPhase('preview')
   }, [])
 
-  const handleUpload = useCallback(() => {
-    if (!domainId || selectedFiles.length === 0) return
-    const opts = { domainId, typeId: typeId || undefined }
-
-    if (selectedFiles.length === 1) {
-      importFile.mutate({ file: selectedFiles[0], ...opts })
-    } else {
-      importBatch.mutate({ files: selectedFiles, ...opts })
+  const handleZipSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setZipFile(file)
+    setSource('zip')
+    try {
+      const resp = await analyzeZip.mutateAsync(file)
+      setTree(resp.tree)
+      const allPaths = getAllFilePaths(resp.tree)
+      setSelected(new Set(allPaths))
+      setPhase('preview')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors de l'analyse du ZIP"
+      alert(message)
     }
-  }, [domainId, typeId, selectedFiles, importFile, importBatch])
+  }, [analyzeZip])
 
-  const onDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(true)
-  }, [])
-
-  const onDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-  }, [])
-
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }, [])
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files)
+  const handleStartImport = useCallback(async () => {
+    const paths = Array.from(selected)
+    try {
+      const resp = await startImport.mutateAsync({
+        mode,
+        domainId: mode === 'domain' ? domainId : undefined,
+        typeId: typeId || undefined,
+        source,
+        paths,
+        files: source === 'directory' ? files.filter(f => selected.has(f.webkitRelativePath)) : undefined,
+        zipFile: source === 'zip' ? zipFile! : undefined,
+      })
+      setJobId(resp.job_id)
+      errorsRef.current = []
+      setPhase('progress')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors du lancement de l'import"
+      alert(message)
     }
-  }, [handleFiles])
+  }, [mode, domainId, typeId, source, files, zipFile, selected, startImport])
 
-  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(e.target.files)
-    }
-  }, [handleFiles])
+  const handleProgressError = useCallback((filename: string, error: string) => {
+    errorsRef.current.push({ filename, error })
+  }, [])
+
+  const handleDone = useCallback((doneEvt: DoneEvent) => {
+    setResult(doneEvt)
+    setErrors([...errorsRef.current])
+    setPhase('results')
+  }, [])
+
+  const handleReset = useCallback(() => {
+    setPhase('select')
+    setTree([])
+    setSelected(new Set())
+    setFiles([])
+    setZipFile(null)
+    setJobId('')
+    setResult(null)
+    setErrors([])
+    errorsRef.current = []
+  }, [])
+
+  // --- Statuts dynamiques du Stepper -----------------------------------------------------
+  const stepStatus = (target: Phase): 'done' | 'current' | 'todo' => {
+    const order: Phase[] = ['select', 'preview', 'progress', 'results']
+    const tIdx = order.indexOf(target)
+    const pIdx = order.indexOf(phase)
+    if (tIdx < pIdx) return 'done'
+    if (tIdx === pIdx) return 'current'
+    return 'todo'
+  }
 
   return (
-    <div className="max-w-2xl mx-auto py-16 px-6">
-      <h1
-        className="text-2xl font-bold tracking-tight mb-2"
-        style={{ fontFamily: "'Archivo Black', sans-serif", color: '#1C1C1C' }}
+    <main className="mx-auto w-full max-w-[1200px] px-8 py-7 flex flex-col gap-[22px]">
+      {/* ============ Title block ============ */}
+      <PageTitle
+        eyebrow={<TitleEyebrow>Import par lot · Pipeline Pandoc + pdftotext</TitleEyebrow>}
+        description="Convertissez en un clic un dossier complet de documentation (.docx, .pdf, .pptx, .txt, .md) vers PlumeNote. La structure de dossiers devient l'arborescence de domaines. Conversion 80/20 acceptée, validation manuelle possible après import."
       >
-        Importer des fichiers
-      </h1>
-      <p className="text-ink-45 text-sm mb-6">
-        Importez vos documents existants dans PlumeNote. Formats acceptés : .doc, .docx, .pptx, .pdf, .txt, .md
-      </p>
+        Importer un dossier <em>dans la base</em>
+      </PageTitle>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-ink-10 mb-8">
-        <button
-          onClick={() => setActiveTab('files')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-            activeTab === 'files'
-              ? 'border-blue text-blue'
-              : 'border-transparent text-ink-45 hover:text-ink'
-          }`}
-        >
-          Fichiers
-        </button>
-        <button
-          onClick={() => setActiveTab('folder')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-            activeTab === 'folder'
-              ? 'border-blue text-blue'
-              : 'border-transparent text-ink-45 hover:text-ink'
-          }`}
-        >
-          Dossier
-        </button>
-      </div>
+      {/* ============ Stepper 4 étapes ============ */}
+      <Stepper columns={4}>
+        <Step status={stepStatus('select')} index={1} label={`Étape 1 · ${statusLabel(stepStatus('select'))}`} title="Source" />
+        <Step status={stepStatus('preview')} index={2} label={`Étape 2 · ${statusLabel(stepStatus('preview'))}`} title="Aperçu" />
+        <Step status={stepStatus('progress')} index={3} label={`Étape 3 · ${statusLabel(stepStatus('progress'))}`} title="Conversion" />
+        <Step status={stepStatus('results')} index={4} label={`Étape 4 · ${statusLabel(stepStatus('results'))}`} title="Rapport" />
+      </Stepper>
 
-      {activeTab === 'folder' && <FolderImportTab />}
+      {/* ============ Phase Source ============ */}
+      {phase === 'select' && (
+        <Card>
+          <CardHead>
+            <CardTitle>Choisir la source</CardTitle>
+          </CardHead>
+          <CardBody>
+            <div className="flex flex-col gap-5">
+              {/* Mode d'import (radio) */}
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft mb-2">
+                  Mode d'import
+                </span>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer text-ink">
+                    <input
+                      type="radio"
+                      name="import-mode"
+                      value="root"
+                      checked={mode === 'root'}
+                      onChange={() => setMode('root')}
+                      className="accent-coral"
+                    />
+                    Importer des domaines (racine)
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer text-ink">
+                    <input
+                      type="radio"
+                      name="import-mode"
+                      value="domain"
+                      checked={mode === 'domain'}
+                      onChange={() => setMode('domain')}
+                      className="accent-coral"
+                    />
+                    Importer dans un domaine existant
+                  </label>
+                </div>
+                {mode === 'root' && (
+                  <p className="text-xs text-ink-muted mt-2">
+                    Les sous-dossiers de premier niveau deviendront des domaines.
+                  </p>
+                )}
+              </div>
 
-      {activeTab === 'files' && (<>
+              {/* Domaine (si mode domain) */}
+              {mode === 'domain' && (
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft mb-1.5">
+                    Domaine <span className="text-coral">*</span>
+                  </label>
+                  <select
+                    value={domainId}
+                    onChange={e => setDomainId(e.target.value)}
+                    className="w-full border border-line rounded-lg px-3 py-2 text-sm bg-white text-ink focus:outline-none focus:border-navy-700"
+                  >
+                    <option value="">Choisir un domaine...</option>
+                    {domains?.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-      {/* Domain selector */}
-      <div className="mb-4">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-ink-70 mb-1.5">
-          Domaine *
-        </label>
-        <select
-          value={domainId}
-          onChange={e => setDomainId(e.target.value)}
-          disabled={isUploading}
-          className="w-full border border-ink-10 rounded px-3 py-2 text-sm bg-bg text-ink focus:outline-none focus:border-blue"
-        >
-          <option value="">Choisir un domaine...</option>
-          {domains?.map(d => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
-        </select>
-      </div>
+              {/* Type optionnel */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft mb-1.5">
+                  Type de document
+                </label>
+                <select
+                  value={typeId}
+                  onChange={e => setTypeId(e.target.value)}
+                  className="w-full border border-line rounded-lg px-3 py-2 text-sm bg-white text-ink focus:outline-none focus:border-navy-700"
+                >
+                  <option value="">Aucun (optionnel)</option>
+                  {docTypes?.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Type selector (optional) */}
-      <div className="mb-8">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-ink-70 mb-1.5">
-          Type de document
-        </label>
-        <select
-          value={typeId}
-          onChange={e => setTypeId(e.target.value)}
-          disabled={isUploading}
-          className="w-full border border-ink-10 rounded px-3 py-2 text-sm bg-bg text-ink focus:outline-none focus:border-blue"
-        >
-          <option value="">Aucun (optionnel)</option>
-          {docTypes?.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-      </div>
+              {/* Boutons source : dossier local / ZIP */}
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft mb-2">
+                  Sélectionner la source
+                </span>
+                <div className="flex flex-wrap gap-3">
+                  <input
+                    ref={dirInputRef}
+                    type="file"
+                    {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+                    multiple
+                    className="hidden"
+                    onChange={handleDirectorySelect}
+                  />
+                  <Button
+                    variant="secondary"
+                    leftIcon={<FolderUp />}
+                    onClick={() => dirInputRef.current?.click()}
+                  >
+                    Dossier local
+                  </Button>
 
-      {/* Drop zone */}
-      {!hasResult && (
-        <div
-          onDragEnter={onDragEnter}
-          onDragLeave={onDragLeave}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          onClick={() => !isUploading && inputRef.current?.click()}
-          className={
-            dragActive
-              ? 'border-2 border-dashed border-blue bg-blue/5 rounded-lg p-12 text-center'
-              : 'border-2 border-dashed border-ink-10 rounded-lg p-12 text-center cursor-pointer hover:border-blue/50 transition'
-          }
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPTED_EXTENSIONS}
-            multiple
-            onChange={onFileChange}
-            className="hidden"
-          />
-
-          {isUploading ? (
-            <div className="flex flex-col items-center gap-3">
-              <svg className="animate-spin h-8 w-8 text-blue" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <p className="text-sm text-ink-45">Import en cours...</p>
+                  <input
+                    ref={zipInputRef}
+                    type="file"
+                    accept=".zip"
+                    className="hidden"
+                    onChange={handleZipSelect}
+                  />
+                  <Button
+                    variant="secondary"
+                    leftIcon={<FileArchive />}
+                    onClick={() => zipInputRef.current?.click()}
+                    disabled={analyzeZip.isPending}
+                  >
+                    {analyzeZip.isPending ? 'Analyse…' : 'Archive ZIP'}
+                  </Button>
+                </div>
+                <p className="text-xs text-ink-muted mt-2">
+                  Formats acceptés : .doc, .docx, .pptx, .pdf, .txt, .md. Les fichiers temporaires (~$, .DS_Store, Thumbs.db) sont ignorés automatiquement.
+                </p>
+              </div>
             </div>
-          ) : selectedFiles.length > 0 ? (
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-sm text-ink font-medium">
-                {selectedFiles.length === 1
-                  ? selectedFiles[0].name
-                  : `${selectedFiles.length} fichiers selectionnes`}
-              </p>
-              <button
-                onClick={e => {
-                  e.stopPropagation()
-                  handleUpload()
-                }}
-                disabled={!domainId}
-                className="px-5 py-2 bg-blue text-white text-sm font-semibold rounded hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          </CardBody>
+        </Card>
+      )}
+
+      {/* ============ Phase Aperçu ============ */}
+      {phase === 'preview' && (
+        <Card>
+          <CardHead>
+            <CardTitle>Aperçu de l'import</CardTitle>
+            <button
+              type="button"
+              onClick={() => setPhase('select')}
+              className="text-[11.5px] font-semibold text-navy-700 hover:text-coral transition"
+            >
+              Modifier la source
+            </button>
+          </CardHead>
+          <CardBody>
+            <PreviewTree
+              tree={tree}
+              mode={mode}
+              selected={selected}
+              onSelectionChange={setSelected}
+            />
+            <div className="flex flex-wrap gap-3 mt-5">
+              <Button
+                variant="cta"
+                onClick={handleStartImport}
+                disabled={selected.size === 0 || startImport.isPending || (mode === 'domain' && !domainId)}
               >
-                {!domainId ? 'Choisissez un domaine' : 'Lancer l\'import'}
-              </button>
-              <button
-                onClick={e => {
-                  e.stopPropagation()
-                  reset()
-                }}
-                className="text-xs text-ink-45 hover:text-ink transition"
+                {startImport.isPending
+                  ? 'Envoi…'
+                  : `Lancer l'import (${selected.size} fichier${selected.size > 1 ? 's' : ''})`}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setPhase('select')}
               >
-                Annuler
-              </button>
+                Retour
+              </Button>
             </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <svg className="w-10 h-10 text-ink-45" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5M7.5 12.75L12 8.25l4.5 4.5" />
-              </svg>
-              <p className="text-sm text-ink-70 font-medium">
-                Glissez vos fichiers ici ou cliquez pour parcourir
-              </p>
-              <p className="text-xs text-ink-45">
-                .doc, .docx, .pptx, .pdf, .txt, .md — max 50 Mo
-              </p>
-            </div>
-          )}
-        </div>
+          </CardBody>
+        </Card>
       )}
 
-      {/* Single file result */}
-      {importFile.isSuccess && importFile.data && (
-        <div className="border border-ink-10 rounded-lg p-8 text-center">
-          <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <p className="text-sm font-semibold text-ink mb-1">Import reussi</p>
-          {importFile.data.document && (
-            <Link
-              to={`/documents/${importFile.data.document.slug}`}
-              className="text-sm text-blue hover:underline"
-            >
-              {importFile.data.document.title}
-            </Link>
-          )}
-          <div className="mt-6">
-            <button
-              onClick={reset}
-              className="px-4 py-2 text-sm font-medium text-ink-70 border border-ink-10 rounded hover:bg-ink-05 transition"
-            >
-              Importer un autre fichier
-            </button>
-          </div>
-        </div>
+      {/* ============ Phase Conversion ============ */}
+      {phase === 'progress' && jobId && (
+        <ImportProgress
+          jobId={jobId}
+          onDone={handleDone}
+          onError={handleProgressError}
+        />
       )}
 
-      {/* Single file error */}
-      {importFile.isError && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-8 text-center">
-          <p className="text-sm font-semibold text-red-700 mb-1">Erreur d'import</p>
-          <p className="text-xs text-red-600">{(importFile.error as Error).message}</p>
-          <div className="mt-6">
-            <button
-              onClick={reset}
-              className="px-4 py-2 text-sm font-medium text-ink-70 border border-ink-10 rounded hover:bg-ink-05 transition"
-            >
-              Reessayer
-            </button>
-          </div>
-        </div>
+      {/* ============ Phase Rapport ============ */}
+      {phase === 'results' && result && (
+        <ImportResults
+          result={result}
+          errors={errors}
+          onReset={handleReset}
+        />
       )}
-
-      {/* Batch result */}
-      {importBatch.isSuccess && importBatch.data && (
-        <div className="border border-ink-10 rounded-lg overflow-hidden">
-          <div className="px-6 py-4 bg-ink-05 border-b border-ink-10">
-            <p className="text-sm font-semibold text-ink">
-              {importBatch.data.success} / {importBatch.data.total} fichiers importes
-            </p>
-            {importBatch.data.failed > 0 && (
-              <p className="text-xs text-red-600 mt-0.5">{importBatch.data.failed} erreur(s)</p>
-            )}
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-ink-10 text-left">
-                <th className="px-6 py-2 text-xs font-semibold uppercase tracking-wider text-ink-45">Fichier</th>
-                <th className="px-6 py-2 text-xs font-semibold uppercase tracking-wider text-ink-45">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {importBatch.data.results.map((r: BatchImportResult, i: number) => (
-                <tr key={i} className="border-b border-ink-10 last:border-0">
-                  <td className="px-6 py-2.5 text-ink">{r.filename}</td>
-                  <td className="px-6 py-2.5">
-                    {r.status === 'ok' && r.document ? (
-                      <Link to={`/documents/${r.document.slug}`} className="text-blue hover:underline">
-                        {r.document.title}
-                      </Link>
-                    ) : (
-                      <span className="text-red-600">{r.error || 'Erreur'}</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-6 py-4 border-t border-ink-10 text-center">
-            <button
-              onClick={reset}
-              className="px-4 py-2 text-sm font-medium text-ink-70 border border-ink-10 rounded hover:bg-ink-05 transition"
-            >
-              Importer un autre fichier
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Batch error */}
-      {importBatch.isError && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-8 text-center">
-          <p className="text-sm font-semibold text-red-700 mb-1">Erreur d'import</p>
-          <p className="text-xs text-red-600">{(importBatch.error as Error).message}</p>
-          <div className="mt-6">
-            <button
-              onClick={reset}
-              className="px-4 py-2 text-sm font-medium text-ink-70 border border-ink-10 rounded hover:bg-ink-05 transition"
-            >
-              Reessayer
-            </button>
-          </div>
-        </div>
-      )}
-
-      </>)}
-    </div>
+    </main>
   )
+}
+
+// --- Helpers ----------------------------------------------------------------------------
+
+function statusLabel(s: 'done' | 'current' | 'todo'): string {
+  if (s === 'done') return 'terminé'
+  if (s === 'current') return 'en cours'
+  return 'à venir'
+}
+
+// Build tree from flat file entries (client-side, for webkitdirectory)
+function buildClientTree(entries: { path: string; size: number }[]): TreeNode[] {
+  const root: TreeNode = { name: '', path: '', type: 'dir', children: [] }
+  for (const entry of entries) {
+    const parts = entry.path.split('/')
+    let current = root
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      const fullPath = parts.slice(0, i + 1).join('/')
+      if (i === parts.length - 1) {
+        current.children!.push({ name: part, path: fullPath, type: 'file', size: entry.size })
+      } else {
+        let dir = current.children!.find(c => c.type === 'dir' && c.name === part)
+        if (!dir) {
+          dir = { name: part, path: fullPath, type: 'dir', children: [] }
+          current.children!.push(dir)
+        }
+        current = dir
+      }
+    }
+  }
+  sortClientTree(root.children!)
+  return root.children!
+}
+
+function sortClientTree(nodes: TreeNode[]) {
+  nodes.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+  for (const n of nodes) {
+    if (n.children) sortClientTree(n.children)
+  }
+}
+
+function getAllFilePaths(nodes: TreeNode[]): string[] {
+  const paths: string[] = []
+  for (const n of nodes) {
+    if (n.type === 'file') paths.push(n.path)
+    if (n.children) paths.push(...getAllFilePaths(n.children))
+  }
+  return paths
 }
