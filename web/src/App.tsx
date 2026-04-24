@@ -22,6 +22,7 @@ const CartographyPage = lazy(() => import('@/features/entity/CartographyPage'))
 const MindMapPage = lazy(() => import('@/features/mindmap/MindMapPage'))
 const NotFoundPage = lazy(() => import('@/features/home/NotFoundPage'))
 const FolderPage = lazy(() => import('@/features/folder/FolderPage'))
+const DesignSystemPage = lazy(() => import('@/features/design-system/DesignSystemPage'))
 
 function Loading() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/documents/:slug" element={<ReaderPage />} />
           <Route path="/documents/:slug/diff/:v1/:v2" element={<DiffPage />} />
           <Route path="/domains/:slug" element={<DomainPage />} />
+          <Route path="/design-system" element={<DesignSystemPage />} />
           <Route path="/domains/:domainSlug/folders/:folderId" element={<FolderPage />} />
           <Route path="/entities/:id" element={<EntityPage />} />
           <Route element={<RouteGuard />}>
