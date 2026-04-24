@@ -213,8 +213,40 @@ export default function DomainPage() {
   const pageEnd = Math.min(pageStart + PAGE_SIZE, totalFiltered)
   const pageDocs = filteredSorted.slice(pageStart, pageEnd)
 
+  // Guard : si la liste change hors du trio {type,fresh,sort,slug} (ex. refresh
+  // des docs) et que `page` dépasse le nouveau totalPages, on aligne le state.
+  // Math.min au render corrige l'affichage mais laisse `page` désynchronisé.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [totalPages, page])
+
   function toggleFresh(f: FreshFilter) {
     setFresh((curr) => (curr.includes(f) ? curr.filter((x) => x !== f) : [...curr, f]))
+  }
+
+  // Helper partagé entre "Récemment modifiés" et "Tous les documents" : les 2
+  // sections rendent la même DocCard avec les mêmes props. Un seul point TODO
+  // ref/desc/tags à maintenir, pas 2.
+  function renderDocCard(e: (typeof enrichedDocs)[number]) {
+    return (
+      <DocCard
+        key={e.raw.id}
+        href={`/documents/${e.raw.slug}`}
+        typeKey={e.typeKey}
+        typeLabel={e.raw.type_name ?? 'Document'}
+        freshStatus={e.status}
+        freshLabel={e.freshLabel}
+        title={e.raw.title}
+        // TODO: brancher ref/desc/tags dès que le backend expose
+        // reference_code / excerpt / tags sur /api/documents.
+        ref={undefined}
+        desc={undefined}
+        tags={undefined}
+        authorName={e.raw.author_name}
+        authorInitials={initialsOf(e.raw.author_name)}
+        views={e.raw.view_count}
+      />
+    )
   }
 
   // --- Rendus partiels communs ---
@@ -270,27 +302,7 @@ export default function DomainPage() {
             count={recentDocs.length}
             hint="7 derniers jours"
           />
-          <div className={cn(gridClass(view))}>
-            {recentDocs.map((e) => (
-              <DocCard
-                key={e.raw.id}
-                href={`/documents/${e.raw.slug}`}
-                typeKey={e.typeKey}
-                typeLabel={e.raw.type_name ?? 'Document'}
-                freshStatus={e.status}
-                freshLabel={e.freshLabel}
-                title={e.raw.title}
-                // TODO: brancher ref/desc/tags dès que le backend expose
-                // reference_code / excerpt / tags sur /api/documents.
-                ref={undefined}
-                desc={undefined}
-                tags={undefined}
-                authorName={e.raw.author_name}
-                authorInitials={initialsOf(e.raw.author_name)}
-                views={e.raw.view_count}
-              />
-            ))}
-          </div>
+          <div className={cn(gridClass(view))}>{recentDocs.map(renderDocCard)}</div>
         </>
       ) : null}
 
@@ -307,25 +319,7 @@ export default function DomainPage() {
         </Card>
       ) : (
         <div className={cn(gridClass(view))}>
-          {pageDocs.map((e) => (
-            <DocCard
-              key={e.raw.id}
-              href={`/documents/${e.raw.slug}`}
-              typeKey={e.typeKey}
-              typeLabel={e.raw.type_name ?? 'Document'}
-              freshStatus={e.status}
-              freshLabel={e.freshLabel}
-              title={e.raw.title}
-              // TODO: brancher ref/desc/tags dès que le backend expose
-              // reference_code / excerpt / tags sur /api/documents.
-              ref={undefined}
-              desc={undefined}
-              tags={undefined}
-              authorName={e.raw.author_name}
-              authorInitials={initialsOf(e.raw.author_name)}
-              views={e.raw.view_count}
-            />
-          ))}
+          {pageDocs.map(renderDocCard)}
           {/* "Nouveau document" en dernière case de la dernière page quand aucun filtre type. */}
           {currentPage === totalPages && type === 'all' ? (
             <NewDocCard href={`/documents/new?domain=${domain.slug}`} />
@@ -428,6 +422,7 @@ function Pagination({
         p === '…' ? (
           <span
             key={`e-${i}`}
+            aria-hidden="true"
             className="min-w-[32px] h-8 grid place-items-center text-ink-muted text-xs font-semibold"
           >
             …
@@ -438,6 +433,7 @@ function Pagination({
             current={p === current}
             onClick={() => onChange(p)}
             aria-label={`Page ${p}`}
+            aria-current={p === current ? 'page' : undefined}
           >
             {p}
           </PageBtn>

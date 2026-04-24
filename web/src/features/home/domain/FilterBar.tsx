@@ -95,66 +95,81 @@ export default function FilterBar({
 
   return (
     <Card className="flex items-center gap-4 flex-wrap px-4.5 py-3.5">
-      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+      <span id="filter-type-label" className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">
         Type
       </span>
 
-      {typeKeys.map((key) => {
-        const active = type === key
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onTypeChange(key)}
-            aria-pressed={active}
-            className={cn(
-              'inline-flex items-center gap-1.5',
-              'px-3 py-1.5 rounded-full',
-              'text-[12px] font-semibold',
-              'border-[1.5px] border-transparent transition-colors cursor-pointer',
-              'before:content-[""] before:w-[7px] before:h-[7px] before:bg-current before:rounded-full',
-              active
-                ? TYPE_ACTIVE[key]
-                : 'bg-bg text-ink-soft hover:border-line',
-            )}
-          >
-            {TYPE_LABELS[key]}
-            <span className="font-bold ml-0.5 tabular-nums">{typeCounts[key]}</span>
-          </button>
-        )
-      })}
+      <div
+        role="group"
+        aria-label="Type de document"
+        aria-labelledby="filter-type-label"
+        className="inline-flex items-center gap-4 flex-wrap"
+      >
+        {typeKeys.map((key) => {
+          const active = type === key
+          return (
+            // Chip filter local (divergent de TypeChip du DS) : variante g7 "active" avec bordure 1.5px coloré, taille filter-bar. Ne pas remplacer par TypeChip.
+            <button
+              key={key}
+              type="button"
+              onClick={() => onTypeChange(key)}
+              aria-pressed={active}
+              className={cn(
+                'inline-flex items-center gap-1.5',
+                'px-3 py-1.5 rounded-full',
+                'text-[12px] font-semibold',
+                'border-[1.5px] border-transparent transition-colors cursor-pointer',
+                'before:content-[""] before:w-[7px] before:h-[7px] before:bg-current before:rounded-full',
+                active
+                  ? TYPE_ACTIVE[key]
+                  : 'bg-bg text-ink-soft hover:border-line',
+              )}
+            >
+              {TYPE_LABELS[key]}
+              <span className="font-bold ml-0.5 tabular-nums">{typeCounts[key]}</span>
+            </button>
+          )
+        })}
+      </div>
 
       <span className="w-px h-6 bg-line" aria-hidden="true" />
 
-      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+      <span id="filter-fresh-label" className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">
         Fraîcheur
       </span>
 
-      {freshKeys.map((key) => {
-        const active = fresh.includes(key)
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onFreshToggle(key)}
-            aria-pressed={active}
-            className={cn(
-              'inline-flex items-center gap-1.5',
-              'px-2.5 py-1.5 rounded-lg',
-              'border text-[12px] font-semibold text-ink transition-colors cursor-pointer',
-              active
-                ? 'border-navy-600 bg-cream-light'
-                : 'border-line bg-bg hover:border-navy-600',
-            )}
-          >
-            <span className={cn('w-2.5 h-2.5 rounded-full', FRESH_BULLET[key])} />
-            {FRESH_LABELS[key]}
-            <span className="font-serif font-semibold text-navy-900 tabular-nums">
-              {freshCounts[key]}
-            </span>
-          </button>
-        )
-      })}
+      <div
+        role="group"
+        aria-label="Filtre de fraîcheur"
+        aria-labelledby="filter-fresh-label"
+        className="inline-flex items-center gap-4 flex-wrap"
+      >
+        {freshKeys.map((key) => {
+          const active = fresh.includes(key)
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onFreshToggle(key)}
+              aria-pressed={active}
+              className={cn(
+                'inline-flex items-center gap-1.5',
+                'px-2.5 py-1.5 rounded-lg',
+                'border text-[12px] font-semibold text-ink transition-colors cursor-pointer',
+                active
+                  ? 'border-navy-600 bg-cream-light'
+                  : 'border-line bg-bg hover:border-navy-600',
+              )}
+            >
+              <span className={cn('w-2.5 h-2.5 rounded-full', FRESH_BULLET[key])} />
+              {FRESH_LABELS[key]}
+              <span className="font-serif font-semibold text-navy-900 tabular-nums">
+                {freshCounts[key]}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
       <Select
         value={sort}

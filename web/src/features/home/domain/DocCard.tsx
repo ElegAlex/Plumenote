@@ -25,13 +25,21 @@ export function typeSlugToKey(slug: string | null | undefined): DocTypeKey {
 
 /**
  * Mapping freshness_badge API ('green' | 'yellow' | 'red') → FreshBadge status.
+ * Fallback non alarmiste : toute valeur inconnue retombe sur 'warn' (pas 'danger'),
+ * pour ne pas présenter à tort un document comme périmé si le backend introduit
+ * une nouvelle valeur. Un console.warn en dev signale les valeurs non reconnues.
  */
 export function freshnessToStatus(
   badge: 'green' | 'yellow' | 'red' | string | null | undefined,
 ): FreshStatus {
   if (badge === 'green') return 'ok'
   if (badge === 'yellow') return 'warn'
-  return 'danger'
+  if (badge === 'red') return 'danger'
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn('unknown freshness_badge:', badge)
+  }
+  return 'warn'
 }
 
 /**

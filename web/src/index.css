@@ -18,10 +18,13 @@
   --color-navy-700: #263688;
   --color-navy-600: #2E42A0;
   --color-navy-500: #4A5AB8;
+  --color-navy-50: #E9EAF7;    /* navy très pâle : fond SCI / stat-ico navy / hero badge */
+  --color-navy-fg-soft: #C9CFE4; /* texte navy-grey sur fond sombre (hero, sidebar, auth) */
 
   --color-coral: #E8845C;
   --color-coral-soft: #F3B69A;
   --color-coral-bg: #FCEEE4;
+  --color-coral-hover: #E0734A; /* coral assombri (hover bouton CTA) */
 
   --color-cream: #F4E9D8;
   --color-cream-light: #FAF3E6;
