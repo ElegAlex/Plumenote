@@ -60,9 +60,13 @@
   --color-plum: #7A3E8C;
   --color-plum-bg: #F0E5F3;
 
-  /* --- Alias de compatibilité (code existant) ---
+  /* --- Alias de compatibilité (code existant non encore migré) ---
      Mappent les anciens noms sémantiques vers la nouvelle palette.
-     À supprimer au fil des PR de migration des features. */
+     Consumers résiduels (à migrer dans une PR future) :
+     - features/reader/DiffTextView.tsx, DiffVisualView.tsx, DiffPage.tsx
+     - features/bookmark/BookmarkList.tsx, BookmarkForm.tsx
+     - features/entity/EntityFormPage.tsx, EntityPage.tsx, CartographyView.tsx
+     Une fois ces fichiers migrés, supprimer les 5 aliases ci-dessous. */
   --color-blue: #1E2D6B;      /* navy-800 — action primaire */
   --color-red: #B1304A;       /* danger */
   --color-amber: #C97B1A;     /* warn */
