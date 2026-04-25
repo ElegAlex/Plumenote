@@ -273,14 +273,14 @@ export default function HomePage() {
         />
         <KpiTile
           label="Recherches (mois)"
-          value={searchesMonth.toLocaleString('fr-FR')}
+          value={(searchesMonth ?? 0).toLocaleString('fr-FR')}
           trend={{ direction: 'up', label: 'Palette Ctrl+K active' }}
           icon={<Search />}
           iconVariant="coral"
         />
         <KpiTile
           label="À vérifier"
-          value={redCount.toLocaleString('fr-FR')}
+          value={(redCount ?? 0).toLocaleString('fr-FR')}
           trend={{
             direction: redCount > 0 ? 'down' : 'neutral',
             label: redCount > 0 ? 'Fiches périmées à revoir' : 'Aucun document périmé',
@@ -290,7 +290,7 @@ export default function HomePage() {
         />
         <KpiTile
           label="Contributions (mois)"
-          value={updatesMonth.toLocaleString('fr-FR')}
+          value={(updatesMonth ?? 0).toLocaleString('fr-FR')}
           trend={{ direction: 'neutral', label: `${contributors} contributeurs actifs` }}
           icon={<Edit3 />}
           iconVariant="plum"
@@ -427,7 +427,7 @@ function GreetingChip({ strong, label, coral }: { strong: number; label: string;
           : 'bg-white/10 border border-white/15',
       )}
     >
-      <strong className="font-bold tabular-nums text-white">{strong.toLocaleString('fr-FR')}</strong>
+      <strong className="font-bold tabular-nums text-white">{(strong ?? 0).toLocaleString('fr-FR')}</strong>
       {label}
     </span>
   )
@@ -590,7 +590,7 @@ function RecentDocsPanel({
                 <FreshBadge status={status}>{label}</FreshBadge>
                 <span className="text-[11.5px] text-ink-muted tabular-nums inline-flex items-center gap-1.5">
                   <Eye className="w-[13px] h-[13px]" />
-                  {doc.view_count.toLocaleString('fr-FR')}
+                  {(doc.view_count ?? 0).toLocaleString('fr-FR')}
                 </span>
               </button>
             )
