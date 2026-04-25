@@ -222,6 +222,9 @@ export default function SearchPage() {
   }, [navigate, q])
 
   const hasQuery = q.length > 0
+  // Active dès qu'au moins une dimension fonctionne : query texte OU filtre (domaine/type/fraîcheur).
+  // Conditionne l'affichage des résultats : sans aucun critère, on rend le placeholder.
+  const hasActiveSearch = hasQuery || Boolean(domainFilter) || Boolean(typeFilter) || freshFilter !== 'all'
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const lastShown = Math.min(page * PAGE_SIZE, total)
@@ -246,6 +249,14 @@ export default function SearchPage() {
               {q}
             </em>
           </h1>
+        ) : freshFilter === 'stale' ? (
+          <h1 className="font-serif font-semibold text-[32px] leading-[1.1] tracking-[-0.02em] text-navy-900">
+            Documents <em className="not-italic text-coral">à vérifier</em>
+          </h1>
+        ) : hasActiveSearch ? (
+          <h1 className="font-serif font-semibold text-[32px] leading-[1.1] tracking-[-0.02em] text-navy-900">
+            Documents filtrés
+          </h1>
         ) : (
           <h1 className="font-serif font-semibold text-[32px] leading-[1.1] tracking-[-0.02em] text-navy-900">
             Rechercher dans la base
@@ -256,6 +267,13 @@ export default function SearchPage() {
             <>
               <strong className="text-navy-900">{total} document{total !== 1 ? 's' : ''}</strong>{' '}
               correspondent à cette requête. Typo-tolérance activée, tri par pertinence.
+            </>
+          ) : hasActiveSearch ? (
+            <>
+              <strong className="text-navy-900">{total} document{total !== 1 ? 's' : ''}</strong>{' '}
+              {freshFilter === 'stale'
+                ? 'à vérifier — vérification trop ancienne ou jamais effectuée.'
+                : 'correspondent aux filtres actifs.'}
             </>
           ) : (
             <>Saisissez une requête pour lancer la recherche full-text. Typo-tolérance activée.</>
@@ -383,7 +401,7 @@ export default function SearchPage() {
       )}
 
       {/* ============ Results list ============ */}
-      {hasQuery && results.length > 0 && (
+      {hasActiveSearch && results.length > 0 && (
         <div className="flex flex-col gap-2.5">
           {results.map((r) => (
             <ResultCard
@@ -399,12 +417,12 @@ export default function SearchPage() {
       )}
 
       {/* ============ Empty state ============ */}
-      {hasQuery && !isLoading && results.length === 0 && (
+      {hasActiveSearch && !isLoading && results.length === 0 && (
         <EmptyState query={q} onCreate={handleCreate} />
       )}
 
       {/* ============ Pagination ============ */}
-      {hasQuery && total > PAGE_SIZE && (
+      {hasActiveSearch && total > PAGE_SIZE && (
         <Card className="flex items-center justify-between px-[22px] py-[14px] text-[12.5px] text-ink-soft">
           <span>
             Affichage{' '}
