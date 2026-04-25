@@ -133,6 +133,11 @@ export default function SearchPage() {
         api
           .get<ReviewItem[]>(`/reviews/pending?${reviewParams}`, { signal: ctrl.signal })
           .then((items) => {
+            // Note : le backend ComputeFreshness peut retourner 'green' si le doc a été
+            // créé/maj récemment, même sans vérification. Mais l'endpoint /reviews/pending
+            // ne renvoie par définition que les docs "à vérifier" (jamais vérifiés ou
+            // vérification trop ancienne). On force 'red' pour aligner l'UI avec la
+            // sémantique de l'endpoint et avec le compteur stats/health affiché en sidebar.
             let mapped: SearchResult[] = items.map((it) => ({
               id: it.id,
               title: it.title,
@@ -143,7 +148,7 @@ export default function SearchPage() {
               tags: it.tags ?? null,
               author_name: it.author_name,
               view_count: it.view_count,
-              freshness_badge: it.freshness_badge,
+              freshness_badge: 'red' as const,
               created_at: it.created_at,
               slug: it.slug,
               object_type: 'document',
