@@ -183,9 +183,13 @@ func (h *handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		folderIDParam = *req.FolderID
 	}
 
+	// À la création, on considère le document comme "vérifié" implicitement :
+	// son auteur le publie en l'ayant relu. Empêche le doc d'apparaître en "périmé"
+	// dès la création (NULL last_verified_at), incohérent avec la sémantique KM
+	// "à vérifier = jamais validé OU validation trop ancienne".
 	err := h.deps.DB.QueryRow(r.Context(),
-		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, folder_id, author_id, visibility)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`INSERT INTO documents (title, slug, body, body_text, domain_id, type_id, folder_id, author_id, visibility, last_verified_at, last_verified_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $8)
 		 RETURNING id, title, slug, body, body_text, domain_id, type_id, folder_id, author_id, visibility, view_count, last_verified_at, last_verified_by, created_at, updated_at`,
 		req.Title, slug, req.Body, bodyText, req.DomainID, req.TypeID, folderIDParam, authorID, req.Visibility,
 	).Scan(&doc.ID, &doc.Title, &doc.Slug, &doc.Body, &doc.BodyText, &doc.DomainID, &doc.TypeID, &doc.FolderID, &doc.AuthorID, &doc.Visibility, &doc.ViewCount, &doc.LastVerifiedAt, &doc.LastVerifiedBy, &doc.CreatedAt, &doc.UpdatedAt)
