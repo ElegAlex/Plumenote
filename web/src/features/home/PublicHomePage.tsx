@@ -505,14 +505,16 @@ export default function PublicHomePage() {
             </a>
 
             {/* Secondaire outline-on-dark : one-off, pas de variante Button pour ce contexte dark */}
+            {/* TODO(V3) : route /astreinte non implémentée, lien rendu passif */}
             <a
               href="#"
+              aria-disabled="true"
+              onClick={(e) => e.preventDefault()}
               className={cn(
                 'inline-flex items-center gap-2',
-                // rgba(255,255,255,0.08) bg + rgba(255,255,255,0.2) border : contexte dark, non tokenisable
                 'bg-white/[0.08] border border-white/20 text-cream',
                 'py-3.5 px-5.5 rounded-xl',
-                'font-semibold text-[13px] no-underline',
+                'font-semibold text-[13px] no-underline cursor-not-allowed opacity-70',
                 'transition-colors hover:bg-white/[0.16]',
                 '[&_svg]:w-[15px] [&_svg]:h-[15px]',
               )}
@@ -528,13 +530,29 @@ export default function PublicHomePage() {
       <footer className="border-t border-line px-9 py-7.5 max-w-[1200px] mx-auto flex justify-between items-center text-xs text-ink-muted flex-wrap gap-3.5 max-[640px]:px-5">
         <div>PlumeNote · Base de connaissances DSI · CPAM des Hauts-de-Seine</div>
         <div className="flex items-center gap-5">
-          <a href="#" className="text-ink-soft no-underline hover:text-navy-800 transition-colors">
+          {/* TODO(V3) : routes /legal /accessibility /contact non implémentées, liens rendus passifs */}
+          <a
+            href="#"
+            aria-disabled="true"
+            onClick={(e) => e.preventDefault()}
+            className="text-ink-soft no-underline hover:text-navy-800 transition-colors cursor-not-allowed opacity-70"
+          >
             Mentions légales
           </a>
-          <a href="#" className="text-ink-soft no-underline hover:text-navy-800 transition-colors">
+          <a
+            href="#"
+            aria-disabled="true"
+            onClick={(e) => e.preventDefault()}
+            className="text-ink-soft no-underline hover:text-navy-800 transition-colors cursor-not-allowed opacity-70"
+          >
             Accessibilité
           </a>
-          <a href="#" className="text-ink-soft no-underline hover:text-navy-800 transition-colors">
+          <a
+            href="#"
+            aria-disabled="true"
+            onClick={(e) => e.preventDefault()}
+            className="text-ink-soft no-underline hover:text-navy-800 transition-colors cursor-not-allowed opacity-70"
+          >
             Contact DSI
           </a>
           <span className="text-ink-muted">v0.1 · 2026</span>

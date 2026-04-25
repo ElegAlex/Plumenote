@@ -650,9 +650,12 @@ function ActivityStatsCard() {
     <Card>
       <CardHead>
         <CardTitle className="!text-[15px]">Mon activité</CardTitle>
+        {/* TODO(V3) : route détail activité non implémentée, lien rendu passif */}
         <a
           href="#"
-          className="text-[12px] font-semibold text-navy-700 hover:text-coral transition-colors"
+          aria-disabled="true"
+          onClick={(e) => e.preventDefault()}
+          className="text-[12px] font-semibold text-navy-700 hover:text-coral transition-colors cursor-not-allowed opacity-70"
         >
           Voir le détail →
         </a>
