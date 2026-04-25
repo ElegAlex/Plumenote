@@ -107,8 +107,11 @@ export default function SearchPage() {
   }, [docTypes])
 
   // Recherche (debounce 150 ms).
+  // Lance le fetch dès qu'au moins une dimension est active : query texte
+  // ou filtre (domaine, type, fraîcheur). Sinon empty state.
+  const hasAnyCriterion = Boolean(q) || Boolean(domainFilter) || Boolean(typeFilter) || freshFilter !== 'all'
   useEffect(() => {
-    if (!q) {
+    if (!hasAnyCriterion) {
       setResults([])
       setTotal(0)
       setProcessingTime(null)
@@ -118,9 +121,11 @@ export default function SearchPage() {
     setIsLoading(true)
     const ctrl = new AbortController()
     const timer = setTimeout(() => {
+      // Pour Meilisearch q='' = browse (tous les docs) ; les filtres
+      // domain/type sont passés côté serveur, freshness est filtré client.
       const params = new URLSearchParams({
         q,
-        limit: String(PAGE_SIZE),
+        limit: String(freshFilter === 'stale' ? 200 : PAGE_SIZE),
         offset: String((page - 1) * PAGE_SIZE),
       })
       const domainId = domains.find((d) => normalizeDomain(d.name || d.slug) === domainFilter)?.id
