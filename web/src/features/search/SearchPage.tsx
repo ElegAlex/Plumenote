@@ -26,6 +26,7 @@ import {
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { api } from '@/lib/api'
+import type { ReviewItem } from '@/lib/types'
 import {
   DOMAIN_ICON_BG,
   DOMAIN_LABEL,
@@ -121,11 +122,56 @@ export default function SearchPage() {
     setIsLoading(true)
     const ctrl = new AbortController()
     const timer = setTimeout(() => {
-      // Pour Meilisearch q='' = browse (tous les docs) ; les filtres
-      // domain/type sont passés côté serveur, freshness est filtré client.
+      // Cas spécial : pas de query texte + filtre fraîcheur "périmés".
+      // Le backend Meilisearch refuse q='' (400). On hit l'endpoint dédié
+      // /api/reviews/pending qui retourne directement les docs périmés.
+      if (!q && freshFilter === 'stale') {
+        const reviewParams = new URLSearchParams()
+        const domainId = domains.find((d) => normalizeDomain(d.name || d.slug) === domainFilter)?.id
+        if (domainId) reviewParams.set('domain_id', domainId)
+        reviewParams.set('limit', '200')
+        api
+          .get<ReviewItem[]>(`/reviews/pending?${reviewParams}`, { signal: ctrl.signal })
+          .then((items) => {
+            let mapped: SearchResult[] = items.map((it) => ({
+              id: it.id,
+              title: it.title,
+              body_text_highlight: '',
+              domain_id: it.domain_id,
+              type_id: docTypes.find((t) => t.name === it.type_name)?.id ?? '',
+              visibility: it.visibility,
+              tags: it.tags ?? null,
+              author_name: it.author_name,
+              view_count: it.view_count,
+              freshness_badge: it.freshness_badge,
+              created_at: it.created_at,
+              slug: it.slug,
+              object_type: 'document',
+            }))
+            // Filtre type côté client (l'endpoint reviews/pending ne le gère pas)
+            if (typeFilter) {
+              mapped = mapped.filter((r) => normalizeType(docTypes.find((t) => t.id === r.type_id)?.name ?? '') === typeFilter)
+            }
+            setResults(mapped)
+            setTotal(mapped.length)
+            setProcessingTime(null)
+            setError(null)
+          })
+          .catch((err) => {
+            if (err?.name === 'AbortError') return
+            setResults([])
+            setTotal(0)
+            setError('Impossible de charger la liste des documents à vérifier.')
+          })
+          .finally(() => {
+            if (!ctrl.signal.aborted) setIsLoading(false)
+          })
+        return
+      }
+
       const params = new URLSearchParams({
         q,
-        limit: String(freshFilter === 'stale' ? 200 : PAGE_SIZE),
+        limit: String(PAGE_SIZE),
         offset: String((page - 1) * PAGE_SIZE),
       })
       const domainId = domains.find((d) => normalizeDomain(d.name || d.slug) === domainFilter)?.id
