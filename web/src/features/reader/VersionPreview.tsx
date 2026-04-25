@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
+import { Button } from '@/components/ui'
 import DocumentContent from './DocumentContent'
 
 interface VersionData {
@@ -17,12 +18,18 @@ interface Props {
   onRestore: () => void
 }
 
+/**
+ * VersionPreview — bandeau d'aperçu d'une version antérieure +
+ * rendu DocumentContent readonly de ladite version.
+ */
 export default function VersionPreview({ documentId, versionNumber, onClose, onRestore }: Props) {
   const [version, setVersion] = useState<VersionData | null>(null)
   const [restoring, setRestoring] = useState(false)
 
   useEffect(() => {
-    api.get<VersionData>(`/documents/${documentId}/versions/${versionNumber}`).then(setVersion).catch(() => {})
+    api.get<VersionData>(`/documents/${documentId}/versions/${versionNumber}`)
+      .then(setVersion)
+      .catch(() => {})
   }, [documentId, versionNumber])
 
   const handleRestore = async () => {
@@ -45,21 +52,17 @@ export default function VersionPreview({ documentId, versionNumber, onClose, onR
 
   return (
     <div>
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-center justify-between">
-        <span className="text-sm text-amber-800">
-          Version {version.version_number} du {date} par {version.author_name}
+      <div className="flex items-center justify-between gap-3 flex-wrap bg-warn-bg border border-warn/30 rounded-xl p-3 mb-4">
+        <span className="text-[13px] text-warn font-medium">
+          Version <strong className="font-bold">{version.version_number}</strong> du {date} par {version.author_name}
         </span>
         <div className="flex gap-2">
-          <button
-            onClick={handleRestore}
-            disabled={restoring}
-            className="px-3 py-1 text-xs bg-blue text-white rounded hover:bg-blue/90 disabled:opacity-50"
-          >
-            {restoring ? 'Restauration...' : 'Restaurer'}
-          </button>
-          <button onClick={onClose} className="px-3 py-1 text-xs border rounded hover:bg-ink-05">
+          <Button size="sm" variant="primary" onClick={handleRestore} disabled={restoring}>
+            {restoring ? 'Restauration…' : 'Restaurer cette version'}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={onClose}>
             Fermer
-          </button>
+          </Button>
         </div>
       </div>
       <DocumentContent content={version.body} />

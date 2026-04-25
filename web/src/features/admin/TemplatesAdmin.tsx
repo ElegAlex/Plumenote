@@ -1,6 +1,31 @@
+// web/src/features/admin/TemplatesAdmin.tsx
+// Vue "Templates" — alignement tokens + logique CRUD préservée.
+// L'éditeur TipTap est conservé dans la modale d'édition.
 import { useState, useEffect, useCallback } from 'react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { api, ApiError } from '@/lib/api'
 import TipTapEditor from '@/features/editor/TipTapEditor'
+import {
+  Button,
+  Card,
+  Dialog,
+  DialogBody,
+  DialogFoot,
+  DialogHead,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input,
+  Table,
+  TBody,
+  THead,
+  Td,
+  Th,
+  TitleEyebrow,
+  Tr,
+} from '@/components/ui'
+import { cn } from '@/lib/cn'
 
 interface Template {
   id: string
@@ -20,7 +45,11 @@ interface TemplateForm {
 
 const emptyForm: TemplateForm = { name: '', description: '', type: '', content: '{}' }
 
-export default function TemplatesAdmin() {
+interface TemplatesAdminProps {
+  onCountChange?: (count: number) => void
+}
+
+export default function TemplatesAdmin({ onCountChange }: TemplatesAdminProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<string | null>(null)
@@ -31,13 +60,19 @@ export default function TemplatesAdmin() {
 
   const load = useCallback(() => {
     setLoading(true)
-    api.get<Template[]>('/admin/templates')
-      .then(setTemplates)
+    api
+      .get<Template[]>('/admin/templates')
+      .then((t) => {
+        setTemplates(t)
+        onCountChange?.(t.length)
+      })
       .catch(() => setError('Erreur lors du chargement des templates'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [onCountChange])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   function openCreate() {
     setEditing(null)
@@ -67,9 +102,7 @@ export default function TemplatesAdmin() {
       setError('Le contenu JSON est invalide')
       return
     }
-
     const payload = { name: form.name, description: form.description, type: form.type, content: parsedContent }
-
     try {
       if (editing) {
         await api.put(`/admin/templates/${editing}`, payload)
@@ -94,128 +127,154 @@ export default function TemplatesAdmin() {
     }
   }
 
-  if (loading) return <p className="text-ink-45">Chargement...</p>
+  if (loading) return <p className="text-ink-muted">Chargement...</p>
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-ink">Templates</h2>
-        <button onClick={openCreate} className="px-4 py-2 bg-blue text-white text-sm font-medium rounded-md hover:bg-blue/90">
-          + Nouveau template
-        </button>
-      </div>
+    <div className="flex flex-col gap-[18px]">
+      <section className="flex items-center justify-between gap-5 flex-wrap">
+        <div>
+          <TitleEyebrow>Administration</TitleEyebrow>
+          <h1 className="font-serif font-semibold text-[28px] leading-[1.15] tracking-[-0.02em] text-navy-900">
+            Templates de documents
+          </h1>
+          <p className="mt-1.5 text-[13.5px] text-ink-soft leading-[1.55] max-w-[620px]">
+            Modèles réutilisables proposés à la création d'un document (procédures, modes opératoires, notes).
+          </p>
+        </div>
+        <Button variant="cta" leftIcon={<Plus size={14} strokeWidth={2.5} />} onClick={openCreate}>
+          Nouveau template
+        </Button>
+      </section>
 
-      {error && <p className="text-red text-sm mb-4">{error}</p>}
+      {error && <p className="text-danger text-sm">{error}</p>}
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-ink-10 text-left text-ink-45">
-            <th className="py-3 pr-4 font-medium">Nom</th>
-            <th className="py-3 pr-4 font-medium">Type</th>
-            <th className="py-3 pr-4 font-medium">Utilisations</th>
-            <th className="py-3 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((t) => (
-            <tr key={t.id} className="border-b border-ink-05 even:bg-bg hover:bg-ink-05">
-              <td className="py-3 pr-4">
-                <div className="font-medium text-ink">{t.name}</div>
-                {t.description && <div className="text-ink-45 text-xs mt-0.5">{t.description}</div>}
-              </td>
-              <td className="py-3 pr-4 text-ink-70">{t.type}</td>
-              <td className="py-3 pr-4 text-ink-70">{t.usage_count}</td>
-              <td className="py-3 text-right space-x-2">
-                <button onClick={() => openEdit(t)} className="text-blue hover:text-blue/80 text-sm">Modifier</button>
-                <button onClick={() => setDeleteConfirm(t.id)} className="text-red hover:text-red/80 text-sm">Supprimer</button>
-              </td>
-            </tr>
-          ))}
-          {templates.length === 0 && (
-            <tr><td colSpan={4} className="py-8 text-center text-ink-45">Aucun template</td></tr>
-          )}
-        </tbody>
-      </table>
+      <Card className="overflow-hidden">
+        <Table>
+          <THead>
+            <Tr className="!bg-cream-light hover:!bg-cream-light">
+              <Th>Nom</Th>
+              <Th>Type</Th>
+              <Th>Utilisations</Th>
+              <Th className="text-right !pr-4">
+                <span className="sr-only">Actions</span>
+              </Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {templates.map((t) => (
+              <Tr key={t.id}>
+                <Td>
+                  <div>
+                    <div className="font-semibold text-ink">{t.name}</div>
+                    {t.description && <div className="text-[11.5px] text-ink-muted mt-0.5">{t.description}</div>}
+                  </div>
+                </Td>
+                <Td>
+                  <span className="font-mono text-[11.5px] text-ink-soft">{t.type}</span>
+                </Td>
+                <Td>
+                  <span className="tabular-nums font-semibold text-navy-900">{t.usage_count}</span>
+                </Td>
+                <Td className="text-right whitespace-nowrap">
+                  <div className="inline-flex gap-1 justify-end">
+                    <IconButton
+                      aria-label="Modifier le template"
+                      icon={<Pencil size={13} />}
+                      className="!w-[30px] !h-[30px] !rounded-md"
+                      onClick={() => openEdit(t)}
+                    />
+                    <IconButton
+                      aria-label="Supprimer le template"
+                      icon={<Trash2 size={13} />}
+                      className={cn('!w-[30px] !h-[30px] !rounded-md', 'hover:!border-danger hover:!text-danger hover:!bg-danger-bg')}
+                      onClick={() => setDeleteConfirm(t.id)}
+                    />
+                  </div>
+                </Td>
+              </Tr>
+            ))}
+            {templates.length === 0 && (
+              <Tr>
+                <Td colSpan={4} className="py-8 text-center text-ink-muted">
+                  Aucun template défini.
+                </Td>
+              </Tr>
+            )}
+          </TBody>
+        </Table>
+      </Card>
 
       {/* Form modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setShowForm(false)}>
-          <div className="bg-bg rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-ink mb-4">
-              {editing ? 'Modifier le template' : 'Nouveau template'}
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-ink-70 mb-1">Nom</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-ink-70 mb-1">Description</label>
-                <input
-                  type="text"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-ink-70 mb-1">Type</label>
-                <input
-                  type="text"
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full border border-ink-10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue focus:border-blue"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-ink-70 mb-1">Contenu du template</label>
-                <TipTapEditor
-                  content={form.content}
-                  documentId={null}
-                  onChange={(json) => setForm({ ...form, content: json })}
-                />
-              </div>
-            </div>
-
-            {error && <p className="text-red text-sm mt-3">{error}</p>}
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
-                Annuler
-              </button>
-              <button onClick={save} className="px-4 py-2 text-sm text-white bg-blue rounded-md hover:bg-blue/90">
-                {editing ? 'Enregistrer' : 'Creer'}
-              </button>
-            </div>
+      <Dialog
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        aria-label={editing ? 'Modifier le template' : 'Nouveau template'}
+        maxWidth={960}
+      >
+        <DialogHead>
+          <h3 className="font-serif font-semibold text-[18px] text-navy-900">
+            {editing ? 'Modifier le template' : 'Nouveau template'}
+          </h3>
+        </DialogHead>
+        <DialogBody className="max-h-[calc(90vh-120px)]">
+          <div className="flex flex-col gap-4">
+            <Field>
+              <FieldLabel required>Nom</FieldLabel>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </Field>
+            <Field>
+              <FieldLabel>Description</FieldLabel>
+              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </Field>
+            <Field>
+              <FieldLabel>Type</FieldLabel>
+              <Input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} />
+            </Field>
+            <Field>
+              <FieldLabel>Contenu du template</FieldLabel>
+              <TipTapEditor
+                content={form.content}
+                documentId={null}
+                onChange={(json) => setForm({ ...form, content: json })}
+              />
+            </Field>
+            {error && <FieldError>{error}</FieldError>}
           </div>
-        </div>
-      )}
+        </DialogBody>
+        <DialogFoot>
+          <Button variant="secondary" onClick={() => setShowForm(false)}>
+            Annuler
+          </Button>
+          <Button variant="primary" onClick={save}>
+            {editing ? 'Enregistrer' : 'Créer'}
+          </Button>
+        </DialogFoot>
+      </Dialog>
 
-      {/* Delete confirmation modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-bg rounded-lg shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-ink mb-2">Confirmer la suppression</h3>
-            <p className="text-sm text-ink-70 mb-4">
-              Le template ne sera plus propose lors de la creation de pages. Les documents existants ne seront pas impactes.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-ink-70 border border-ink-10 rounded-md hover:bg-ink-05">
-                Annuler
-              </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm text-white bg-red rounded-md hover:bg-red/90">
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete confirmation */}
+      <Dialog
+        open={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        aria-label="Confirmer la suppression"
+        maxWidth={420}
+      >
+        <DialogHead>
+          <h3 className="font-serif font-semibold text-[18px] text-navy-900">Confirmer la suppression</h3>
+        </DialogHead>
+        <DialogBody>
+          <p className="text-[13.5px] text-ink-soft">
+            Le template ne sera plus proposé lors de la création de pages. Les documents existants ne seront pas impactés.
+          </p>
+        </DialogBody>
+        <DialogFoot>
+          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+            Annuler
+          </Button>
+          <Button variant="danger" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
+            Supprimer
+          </Button>
+        </DialogFoot>
+      </Dialog>
     </div>
   )
 }

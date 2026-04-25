@@ -46,17 +46,19 @@ export default function TableContextMenu({ editor, x, y, onClose }: TableContext
   return (
     <div
       ref={ref}
-      className="fixed z-50 bg-bg border rounded-lg shadow-lg py-1 min-w-[220px]"
+      className="fixed z-50 bg-white border border-line rounded-xl shadow-[0_18px_40px_rgba(20,35,92,0.15)] py-1.5 min-w-[220px]"
       style={{ left: posX, top: posY }}
+      role="menu"
     >
       {(ACTIONS as readonly ActionItem[]).map((item, i) =>
         'separator' in item ? (
-          <div key={i} className="border-t my-1" />
+          <div key={i} className="border-t border-line-soft my-1" aria-hidden />
         ) : (
           <button
             key={item.label}
             type="button"
-            className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ink-05 text-ink-70"
+            role="menuitem"
+            className="block w-full text-left px-3.5 py-2 text-[13px] font-medium text-ink hover:bg-cream-light hover:text-navy-800 transition-colors"
             onClick={() => {
               item.action(editor)
               onClose()

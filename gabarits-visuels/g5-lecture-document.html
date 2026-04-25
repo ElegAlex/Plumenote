@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurer le VPN Always-On — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688; --navy-600: #2E42A0;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+    --success: #2F7D5B; --success-bg: #E3F0E9;
+    --warn: #C97B1A; --warn-bg: #FBEBD0;
+    --danger: #B1304A; --danger-bg: #F9DFE4;
+    --plum: #7A3E8C; --plum-bg: #F0E5F3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: var(--ink); background: var(--bg);
+    font-size: 14px;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+
+  /* Sidebar condensée */
+  .sidebar { background: var(--navy-900); color: #C9CFE4; padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand-mark { width: 40px; height: 40px; background: var(--cream); color: var(--navy-900); border-radius: 10px; display: grid; place-items: center; }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'Fraunces', serif; color: var(--white); font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .brand-name small { display: block; font: 500 10px/1 'Manrope'; color: #8A93B8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+  .nav-section + .nav-section { margin-top: 18px; }
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7A83A8; padding: 0 12px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px; color: #C9CFE4; text-decoration: none; font-weight: 500; font-size: 13.5px; position: relative; transition: all .15s; }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: var(--white); }
+  .nav-item.active { background: linear-gradient(180deg, rgba(232,132,92,.18), rgba(232,132,92,.08)); color: var(--white); }
+  .nav-item.active::before { content:""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; background: var(--coral); border-radius: 0 3px 3px 0; }
+  .nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-item .count { margin-left: auto; background: rgba(232,132,92,.2); color: var(--coral-soft); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .header {
+    background: var(--white); border-bottom: 1px solid var(--line);
+    padding: 14px 32px; display: flex; align-items: center; gap: 20px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; }
+  .crumb a { color: var(--ink-soft); text-decoration: none; transition: color .15s; }
+  .crumb a:hover { color: var(--navy-800); }
+  .crumb strong { color: var(--navy-900); font-weight: 600; font-family: 'Fraunces', serif; font-size: 14px; }
+  .crumb-sep { color: var(--ink-muted); }
+  .search { flex: 1; max-width: 420px; margin: 0 auto; position: relative; }
+  .search input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; font: inherit; font-size: 13px; color: var(--ink); outline: none; }
+  .search > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); width: 16px; height: 16px; }
+  .search kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--white); border: 1px solid var(--line); font: inherit; font-size: 10.5px; font-weight: 600; color: var(--ink-soft); padding: 2px 6px; border-radius: 5px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--white); display: grid; place-items: center; cursor: pointer; color: var(--ink-soft); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .user-chip { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--coral)); color: var(--white); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+  .user-chip-text { line-height: 1.2; text-align: left; }
+  .user-chip-name { font-weight: 600; font-size: 12.5px; color: var(--ink); }
+  .user-chip-role { font-size: 10.5px; color: var(--ink-soft); }
+
+  /* Content layout 3-col (TOC + article + meta) */
+  .doc-layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr) 320px;
+    gap: 40px;
+    max-width: 1440px; width: 100%; margin: 0 auto;
+    padding: 36px 32px 60px;
+  }
+
+  /* ============ TOC ============ */
+  .toc {
+    position: sticky; top: 78px;
+    align-self: start;
+    padding: 4px 0 0 8px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+  }
+  .toc-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--coral);
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .toc-label::before { content: "◆"; color: var(--coral-soft); }
+  .toc ul { list-style: none; }
+  .toc li { position: relative; }
+  .toc a {
+    display: block; padding: 7px 14px 7px 18px;
+    border-left: 2px solid var(--line-soft);
+    color: var(--ink-soft); text-decoration: none;
+    font-size: 13px; line-height: 1.4;
+    transition: all .15s;
+  }
+  .toc a:hover { border-color: var(--navy-600); color: var(--navy-800); }
+  .toc a.active {
+    border-color: var(--coral);
+    color: var(--navy-900);
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--coral-bg), transparent);
+  }
+  .toc a.h3 { padding-left: 32px; font-size: 12.5px; }
+
+  .toc-actions {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .toc-action {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 7px;
+    background: transparent; border: none;
+    font: inherit; font-size: 12.5px; color: var(--ink-soft);
+    cursor: pointer; text-align: left;
+    transition: background .15s, color .15s;
+  }
+  .toc-action:hover { background: var(--cream-light); color: var(--navy-800); }
+  .toc-action svg { width: 13px; height: 13px; }
+
+  /* ============ ARTICLE ============ */
+  .article { min-width: 0; }
+  .article-head {
+    margin-bottom: 32px;
+  }
+  .article-breadcrumb {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--ink-muted);
+    margin-bottom: 14px;
+  }
+  .article-breadcrumb a { color: var(--navy-700); text-decoration: none; font-weight: 600; }
+  .domain-chip {
+    padding: 3px 10px; background: var(--coral-bg); color: var(--coral);
+    border-radius: 999px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .type-chip-sm {
+    padding: 3px 10px; background: var(--cream-light); color: var(--navy-800);
+    border-radius: 5px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    border: 1px solid var(--line);
+  }
+
+  .article-head h1 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 42px; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--navy-900);
+  }
+  .article-head h1 em { font-style: italic; color: var(--coral); font-weight: 500; }
+
+  .article-meta-row {
+    margin-top: 20px; padding: 14px 0;
+    border-top: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 22px;
+    flex-wrap: wrap;
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+  .author-mini { display: flex; align-items: center; gap: 8px; }
+  .author-mini .avatar-xs {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy-900), var(--coral));
+    color: var(--white); display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+  }
+  .author-mini strong { color: var(--ink); font-weight: 600; }
+  .meta-dot { width: 3px; height: 3px; background: var(--ink-muted); border-radius: 50%; }
+  .fresh-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border-radius: 999px;
+    font-size: 12px; font-weight: 700;
+  }
+  .fresh-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+  .fresh-pill.ok { background: var(--success-bg); color: var(--success); }
+  .fresh-pill.ok::before { background: var(--success); box-shadow: 0 0 0 4px rgba(47,125,91,.12); }
+  .fresh-pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .fresh-pill.warn::before { background: var(--warn); }
+  .fresh-pill.danger { background: var(--danger-bg); color: var(--danger); }
+
+  /* Prose TipTap-like rendering */
+  .prose { color: var(--ink); font-size: 15.5px; line-height: 1.75; }
+  .prose p { margin-bottom: 16px; }
+  .prose p + p { margin-top: 0; }
+  .prose h2 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 26px; line-height: 1.25; letter-spacing: -0.01em;
+    color: var(--navy-900);
+    margin-top: 44px; margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line-soft);
+    scroll-margin-top: 80px;
+  }
+  .prose h2::before { content: "§ "; color: var(--coral); font-weight: 500; }
+  .prose h3 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 19px; line-height: 1.3; letter-spacing: -0.01em;
+    color: var(--navy-800);
+    margin-top: 28px; margin-bottom: 10px;
+    scroll-margin-top: 80px;
+  }
+  .prose ul, .prose ol {
+    margin: 0 0 16px 24px;
+  }
+  .prose li { margin-bottom: 4px; }
+  .prose li::marker { color: var(--coral); font-weight: 700; }
+  .prose strong { color: var(--navy-900); font-weight: 700; }
+  .prose a {
+    color: var(--navy-700); text-decoration: underline;
+    text-decoration-color: rgba(38,54,136,.3);
+    text-underline-offset: 3px;
+    transition: color .15s, text-decoration-color .15s;
+  }
+  .prose a:hover { color: var(--coral); text-decoration-color: var(--coral); }
+  .prose a.internal {
+    background: var(--coral-bg); color: var(--coral);
+    padding: 1px 8px; border-radius: 5px;
+    text-decoration: none; font-weight: 600;
+    border-bottom: 1px solid rgba(232,132,92,.3);
+  }
+  .prose a.internal::before { content: "↗ "; font-weight: 700; }
+
+  /* Code block Shiki style */
+  .code-block {
+    background: #0F1838; color: #E9ECF6;
+    border-radius: 12px;
+    padding: 0;
+    margin: 22px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.65;
+    border: 1px solid var(--navy-700);
+    overflow: hidden;
+  }
+  .code-head {
+    padding: 10px 18px;
+    background: rgba(255,255,255,.04);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11.5px; font-weight: 600; color: #9299BD;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .code-head .lang { color: var(--coral-soft); font-weight: 700; }
+  .code-copy {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: #C9CFE4; border-radius: 6px;
+    font: inherit; font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+  }
+  .code-copy:hover { background: rgba(255,255,255,.12); }
+  .code-copy svg { width: 12px; height: 12px; }
+  .code-body { padding: 16px 18px; overflow-x: auto; }
+  .code-body .c-kw { color: #F3B69A; }
+  .code-body .c-str { color: #A8D8B9; }
+  .code-body .c-com { color: #8B93AE; font-style: italic; }
+  .code-body .c-fn { color: #C9A3E6; }
+  .code-body .c-num { color: #F3B69A; }
+
+  /* Callout */
+  .callout {
+    margin: 22px 0;
+    padding: 16px 18px 16px 22px;
+    border-radius: 12px;
+    border-left: 4px solid var(--coral);
+    background: var(--coral-bg);
+    display: flex; gap: 14px;
+  }
+  .callout-icon {
+    width: 32px; height: 32px;
+    background: var(--white); color: var(--coral);
+    border-radius: 8px; display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .callout-icon svg { width: 16px; height: 16px; }
+  .callout-text { font-size: 14px; line-height: 1.55; color: var(--ink); }
+  .callout-text strong { color: var(--navy-900); }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn); }
+  .callout.warn .callout-icon { color: var(--warn); }
+  .callout.danger { background: var(--danger-bg); border-color: var(--danger); }
+  .callout.danger .callout-icon { color: var(--danger); }
+  .callout.success { background: var(--success-bg); border-color: var(--success); }
+  .callout.success .callout-icon { color: var(--success); }
+
+  /* Tables */
+  .prose table {
+    width: 100%; margin: 22px 0;
+    border-collapse: collapse;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 13.5px;
+  }
+  .prose th {
+    background: var(--cream-light);
+    padding: 11px 14px; text-align: left;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-soft);
+    border-bottom: 1px solid var(--line);
+  }
+  .prose td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  .prose tr:last-child td { border-bottom: none; }
+
+  /* Figure */
+  .figure {
+    margin: 22px 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .figure-img {
+    height: 280px;
+    background: linear-gradient(135deg, #E9EAF7 0%, var(--cream-light) 100%);
+    display: grid; place-items: center;
+    color: var(--navy-700);
+    font-family: 'Fraunces', serif; font-size: 16px; font-weight: 500;
+  }
+  .figure-caption {
+    padding: 10px 16px; background: var(--cream-light);
+    font-size: 12px; color: var(--ink-soft);
+    border-top: 1px solid var(--line-soft);
+    text-align: center; font-style: italic;
+  }
+
+  /* Tags bar */
+  .tags-bar {
+    margin-top: 48px; padding-top: 22px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; flex-wrap: wrap; gap: 8px;
+    align-items: center;
+  }
+  .tags-bar-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-soft);
+    margin-right: 6px;
+  }
+  .tag-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--cream); color: var(--navy-900);
+    font-size: 12px; font-weight: 600;
+    border: 1px solid var(--line-soft);
+    text-decoration: none;
+    transition: border-color .15s, background .15s;
+  }
+  .tag-pill::before { content: "#"; color: var(--coral); font-weight: 700; }
+  .tag-pill:hover { background: var(--coral-bg); border-color: var(--coral-soft); }
+
+  /* Actions footer */
+  .article-footer {
+    margin-top: 36px; padding: 20px 22px;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+  }
+  .footer-help {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; color: var(--ink-soft);
+  }
+  .footer-help .help-icon {
+    width: 34px; height: 34px;
+    background: var(--cream); color: var(--navy-800);
+    border-radius: 9px; display: grid; place-items: center;
+  }
+  .footer-help .help-icon svg { width: 16px; height: 16px; }
+  .footer-help strong { display: block; color: var(--navy-900); font-weight: 700; font-size: 13px; }
+  .footer-actions { display: flex; gap: 8px; }
+  .btn-thumb {
+    padding: 9px 14px; background: var(--white); color: var(--navy-800);
+    border: 1px solid var(--line); border-radius: 10px;
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: all .15s;
+  }
+  .btn-thumb:hover { background: var(--cream-light); border-color: var(--navy-800); }
+  .btn-thumb svg { width: 14px; height: 14px; }
+
+  /* ============ SIDE META ============ */
+  .meta-panel {
+    position: sticky; top: 78px;
+    align-self: start;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .meta-card {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px; overflow: hidden;
+  }
+  .meta-card-head {
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .meta-card-title {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 13.5px; color: var(--navy-900);
+    letter-spacing: -0.01em;
+  }
+  .meta-card-body { padding: 12px 18px 14px; }
+
+  .def-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12.5px; }
+  .def-label { color: var(--ink-soft); font-weight: 600; }
+  .def-value { color: var(--ink); font-weight: 600; font-family: 'Fraunces', serif; font-size: 13px; }
+  .def-value.mono { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+  .def-value small { font-family: 'Manrope', sans-serif; font-weight: 500; color: var(--ink-muted); font-size: 11.5px; display: block; margin-top: 1px; }
+
+  .link-list { display: flex; flex-direction: column; gap: 2px; }
+  .link-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 7px;
+    text-decoration: none; color: var(--ink);
+    font-size: 12.5px; font-weight: 500;
+    transition: background .15s;
+  }
+  .link-row:hover { background: var(--cream-light); }
+  .link-row svg { width: 11px; height: 11px; color: var(--ink-muted); flex-shrink: 0; }
+  .link-row .domain-hint { color: var(--ink-muted); font-size: 10.5px; margin-left: auto; }
+
+  /* Actions meta */
+  .action-btn {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--white); color: var(--navy-900);
+    border: 1px solid var(--line);
+    border-radius: 10px; cursor: pointer;
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 10px;
+    transition: all .15s;
+    text-decoration: none;
+  }
+  .action-btn:hover { background: var(--cream-light); border-color: var(--navy-800); }
+  .action-btn svg { width: 14px; height: 14px; color: var(--navy-700); }
+  .action-btn.coral {
+    background: var(--coral); color: var(--white); border-color: var(--coral);
+    box-shadow: 0 6px 16px rgba(232,132,92,.3);
+  }
+  .action-btn.coral:hover { background: #E0734A; }
+  .action-btn.coral svg { color: var(--white); }
+
+  .meta-card-body.actions { display: flex; flex-direction: column; gap: 6px; }
+
+  @media (max-width: 1280px) {
+    .doc-layout { grid-template-columns: 1fr 300px; gap: 28px; }
+    .toc { display: none; }
+  }
+  @media (max-width: 1000px) {
+    .doc-layout { grid-template-columns: 1fr; }
+    .meta-panel { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L 13 11"/><path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/><path d="M9 15 L 15 9"/></svg>
+      </div>
+      <div class="brand-name">PlumeNote<small>Base de connaissances</small></div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Accueil</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Recherche</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Mes documents <span class="count">24</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Domaines</div>
+        <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>Infrastructure <span class="count">86</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>Support <span class="count">54</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>SCI <span class="count">42</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Études &amp; Dev <span class="count">31</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="header">
+      <nav class="crumb">
+        <a href="#">Accueil</a>
+        <span class="crumb-sep">›</span>
+        <a href="#">Infrastructure</a>
+        <span class="crumb-sep">›</span>
+        <a href="#">Procédures</a>
+        <span class="crumb-sep">›</span>
+        <strong>Configurer le VPN Always-On</strong>
+      </nav>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" placeholder="Rechercher…">
+        <kbd>⌘ K</kbd>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="user-chip">
+          <span class="avatar-sm">AB</span>
+          <span class="user-chip-text">
+            <span class="user-chip-name">Alexandre Berge</span>
+            <span class="user-chip-role">Admin · DSI</span>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <div class="doc-layout">
+
+      <!-- TOC -->
+      <aside class="toc">
+        <div class="toc-label">Sommaire</div>
+        <ul>
+          <li><a href="#contexte" class="active">Contexte et pré-requis</a></li>
+          <li><a href="#avant" class="h3">Avant de commencer</a></li>
+          <li><a href="#installation">Installation du client</a></li>
+          <li><a href="#config">Configuration Always-On</a></li>
+          <li><a href="#certif" class="h3">Certificat machine</a></li>
+          <li><a href="#profil" class="h3">Profil utilisateur</a></li>
+          <li><a href="#test">Vérification et tests</a></li>
+          <li><a href="#depannage">Dépannage courant</a></li>
+          <li><a href="#annexes">Annexes</a></li>
+        </ul>
+
+        <div class="toc-actions">
+          <button class="toc-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            Copier le lien
+          </button>
+          <button class="toc-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Imprimer
+          </button>
+          <button class="toc-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exporter PDF
+          </button>
+        </div>
+      </aside>
+
+      <!-- ARTICLE -->
+      <article class="article">
+        <header class="article-head">
+          <div class="article-breadcrumb">
+            <span class="domain-chip">Infrastructure</span>
+            <span class="type-chip-sm">Procédure</span>
+            <span style="color:var(--ink-muted);">·</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px;">INF-VPN-001</span>
+          </div>
+
+          <h1>Configurer le VPN <em>Always-On</em> sur poste Windows 11</h1>
+
+          <div class="article-meta-row">
+            <div class="author-mini">
+              <span class="avatar-xs">MZ</span>
+              <span>Rédigé par <strong>Mohamed Zemouche</strong></span>
+            </div>
+            <span class="meta-dot"></span>
+            <span>mis à jour <strong style="color:var(--ink); font-weight:600;">il y a 2 h</strong></span>
+            <span class="meta-dot"></span>
+            <span><strong style="color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums;">312</strong> consultations</span>
+            <span class="meta-dot"></span>
+            <span class="fresh-pill ok" style="margin-left:auto;">À jour · vérifié il y a 2 h</span>
+          </div>
+        </header>
+
+        <div class="prose">
+
+          <h2 id="contexte">Contexte et pré-requis</h2>
+          <p>Cette procédure décrit la configuration du <strong>VPN Always-On</strong> pour les postes utilisateurs DSI et des services de la CPAM 92, dans le cadre de la migration Windows 11 (MUDT). Elle remplace la note interne <a class="internal" href="#">VPN traditionnel — procédure historique</a> qui reste valable pour les postes non migrés.</p>
+          <p>L'objectif est d'obtenir une connexion VPN qui démarre automatiquement à l'ouverture de session utilisateur, sans intervention manuelle, et qui couvre tous les flux DSI quel que soit le réseau source (Wi-Fi domicile, partage de connexion, agence).</p>
+
+          <div class="callout">
+            <div class="callout-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="callout-text">
+              <strong>Astuce.</strong> Si votre poste a déjà été migré via l'outil MUDT, l'intégralité des pré-requis est déjà remplie. Seule la <em>configuration</em> du profil Always-On décrite ci-dessous reste à réaliser.
+            </div>
+          </div>
+
+          <h3 id="avant">Avant de commencer</h3>
+          <ul>
+            <li>Le poste doit être <strong>joint à l'annuaire national</strong> (CPAM*.CRAMIF.LOCAL).</li>
+            <li>Le <a class="internal" href="#">certificat machine AD-CS 2024</a> doit être présent dans le magasin local.</li>
+            <li>L'utilisateur doit disposer du rôle <code style="background:var(--cream-light); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px;">DSI-USER-VPN</code> dans l'annuaire (vérifier auprès de <a class="internal" href="#">Angélique Thibeaudeau</a>).</li>
+            <li>Windows 11 <strong>23H2 minimum</strong> (vérifier via <code style="background:var(--cream-light); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px;">winver</code>).</li>
+          </ul>
+
+          <h2 id="installation">Installation du client</h2>
+          <p>Le client VPN est distribué par <strong>l'outil de déploiement MUDT</strong> et s'installe automatiquement lors de la migration. Pour les postes n'ayant pas encore été migrés, suivre la procédure manuelle ci-dessous.</p>
+
+          <div class="code-block">
+            <div class="code-head">
+              <span class="lang">PowerShell</span>
+              <button class="code-copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copier
+              </button>
+            </div>
+            <pre class="code-body"><code><span class="c-com"># Installation silencieuse du client VPN CPAM</span>
+<span class="c-kw">$installer</span> = <span class="c-str">"\\srv-deploy\mudt$\vpn\CPAMVPNClient-2.4.1.msi"</span>
+<span class="c-fn">Start-Process</span> msiexec.exe <span class="c-str">"/i $installer /quiet /norestart"</span> -Wait
+
+<span class="c-com"># Vérification</span>
+<span class="c-fn">Get-WmiObject</span> -Class Win32_Product | <span class="c-fn">Where-Object</span> { <span class="c-kw">$_</span>.Name -like <span class="c-str">"*CPAM VPN*"</span> }</code></pre>
+          </div>
+
+          <h2 id="config">Configuration Always-On</h2>
+          <p>La configuration s'effectue en <strong>deux temps</strong> : installation du certificat machine (1) puis déploiement du profil VPN via GPO (2).</p>
+
+          <h3 id="certif">Certificat machine</h3>
+          <p>Le certificat est automatiquement poussé par la GPO <code style="background:var(--cream-light); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px;">GPO-CERT-VPN-ALWAYS-ON</code> au prochain démarrage. Pour forcer la mise à jour :</p>
+
+          <div class="code-block">
+            <div class="code-head">
+              <span class="lang">Terminal</span>
+              <button class="code-copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copier
+              </button>
+            </div>
+            <pre class="code-body"><code>gpupdate /force /target:computer
+certutil -pulse
+<span class="c-com">:: Redémarrer la session</span></code></pre>
+          </div>
+
+          <h3 id="profil">Profil utilisateur</h3>
+          <p>Les paramètres du tunnel sont consignés dans la table de référence ci-dessous. Ces valeurs sont portées par la GPO et ne doivent <strong>pas être modifiées manuellement</strong>.</p>
+
+          <table>
+            <thead>
+              <tr><th>Paramètre</th><th>Valeur</th><th>Remarque</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Nom du tunnel</td><td><code style="font-family:'JetBrains Mono',monospace; font-size:12.5px;">CPAM92-Always-On</code></td><td>Affiché à l'utilisateur</td></tr>
+              <tr><td>Passerelle</td><td><code style="font-family:'JetBrains Mono',monospace; font-size:12.5px;">vpn-ao.cpam92.cramif.local</code></td><td>Résolution DNS interne</td></tr>
+              <tr><td>Authentification</td><td>Certificat machine + SAML</td><td>MFA intégré</td></tr>
+              <tr><td>Split tunneling</td><td>Désactivé</td><td>Tout le trafic passe par le VPN</td></tr>
+              <tr><td>Reconnexion auto</td><td>Oui (3 tentatives, délai 15 s)</td><td>—</td></tr>
+            </tbody>
+          </table>
+
+          <div class="callout warn">
+            <div class="callout-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            </div>
+            <div class="callout-text">
+              <strong>Attention.</strong> En cas de déplacement à l'étranger, le profil Always-On peut interdire l'accès à l'internet local. Se reporter à la fiche <a class="internal" href="#">Déplacements hors métropole — procédure VPN</a>.
+            </div>
+          </div>
+
+          <h2 id="test">Vérification et tests</h2>
+          <p>Après redémarrage, le tunnel doit s'établir automatiquement avant même la saisie du mot de passe utilisateur. Pour vérifier :</p>
+          <ol>
+            <li>Observer l'icône VPN dans la barre système : état <strong>« Connecté »</strong> en vert.</li>
+            <li>Ouvrir un terminal et exécuter <code style="background:var(--cream-light); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px;">ping annu-dsi.cpam92.cramif.local</code>.</li>
+            <li>Vérifier l'accès au portail interne <a class="internal" href="#">Portail DSI — accueil</a>.</li>
+          </ol>
+
+          <div class="figure">
+            <div class="figure-img">📷 Capture — icône VPN dans la barre Windows 11</div>
+            <div class="figure-caption">Figure 1 · Indicateur de connexion VPN Always-On en barre système</div>
+          </div>
+
+          <div class="callout success">
+            <div class="callout-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="callout-text">
+              <strong>Validé.</strong> Si les trois vérifications passent, la configuration est effective. Remonter tout dysfonctionnement au <a class="internal" href="#">Support N2 Infrastructure</a>.
+            </div>
+          </div>
+
+          <h2 id="depannage">Dépannage courant</h2>
+          <p>Voir la fiche dédiée <a class="internal" href="#">VPN ne se connecte pas — dépannage utilisateur</a>. Les cas les plus fréquents sont traités ci-dessous.</p>
+
+          <h3>Icône VPN rouge au démarrage</h3>
+          <p>Vérifier que le certificat machine n'a pas expiré : <code style="background:var(--cream-light); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px;">certlm.msc</code>, dossier <em>Personnel &gt; Certificats</em>. Si expiré, forcer <code style="background:var(--cream-light); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px;">gpupdate /force</code>.</p>
+
+          <h3>Connexion instable en 4G / tethering</h3>
+          <p>Le client VPN échoue parfois sur certains opérateurs (NAT symétrique). Forcer le mode TCP en passant par le profil alternatif <strong>Always-On (fallback TCP)</strong> dans les options avancées.</p>
+
+          <h2 id="annexes">Annexes</h2>
+          <ul>
+            <li><a class="internal" href="#">Architecture VPN CPAM 92 — flux et autorisations</a></li>
+            <li><a class="internal" href="#">VPN macOS — configuration profil MDM Jamf</a></li>
+            <li><a class="internal" href="#">Certificat machine AD-CS 2024 — procédure renouvellement</a></li>
+            <li><a href="#">Documentation éditeur (externe)</a></li>
+          </ul>
+
+        </div>
+
+        <!-- Tags -->
+        <div class="tags-bar">
+          <span class="tags-bar-label">Tags</span>
+          <a class="tag-pill" href="#">vpn</a>
+          <a class="tag-pill" href="#">windows-11</a>
+          <a class="tag-pill" href="#">mudt</a>
+          <a class="tag-pill" href="#">always-on</a>
+          <a class="tag-pill" href="#">certificat</a>
+          <a class="tag-pill" href="#">annuaire-national</a>
+        </div>
+
+        <!-- Feedback footer -->
+        <div class="article-footer">
+          <div class="footer-help">
+            <div class="help-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div>
+              <strong>Cette fiche a été utile ?</strong>
+              Votre retour aide à maintenir la qualité du contenu.
+            </div>
+          </div>
+          <div class="footer-actions">
+            <button class="btn-thumb">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              Oui, utile
+            </button>
+            <button class="btn-thumb">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+              À améliorer
+            </button>
+          </div>
+        </div>
+
+      </article>
+
+      <!-- META PANEL DROIT -->
+      <aside class="meta-panel">
+
+        <div class="meta-card">
+          <div class="meta-card-head">
+            <span class="meta-card-title">Informations</span>
+          </div>
+          <div class="meta-card-body">
+            <div class="def-grid">
+              <span class="def-label">Domaine</span>
+              <span class="def-value"><span class="domain-chip">Infrastructure</span></span>
+
+              <span class="def-label">Type</span>
+              <span class="def-value">Procédure</span>
+
+              <span class="def-label">Référence</span>
+              <span class="def-value mono">INF-VPN-001</span>
+
+              <span class="def-label">Auteur</span>
+              <span class="def-value">Mohamed Zemouche <small>Responsable Infrastructure</small></span>
+
+              <span class="def-label">Créé le</span>
+              <span class="def-value">15 février 2026</span>
+
+              <span class="def-label">Mis à jour</span>
+              <span class="def-value">aujourd'hui <small>il y a 2 h</small></span>
+
+              <span class="def-label">Vérifié le</span>
+              <span class="def-value">aujourd'hui <small>🟢 validité 12 mois</small></span>
+
+              <span class="def-label">Visibilité</span>
+              <span class="def-value">DSI <small>interne uniquement</small></span>
+
+              <span class="def-label">Consultations</span>
+              <span class="def-value">312 <small>rolling 30j</small></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="meta-card">
+          <div class="meta-card-head">
+            <span class="meta-card-title">Liens entrants</span>
+            <span style="font-size:11px; color:var(--ink-muted); font-weight:600;">4</span>
+          </div>
+          <div class="meta-card-body" style="padding: 4px 10px 8px;">
+            <div class="link-list">
+              <a class="link-row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Guide accueil nouveau arrivant<span class="domain-hint">SCI</span></a>
+              <a class="link-row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Migration MUDT — plan de déploiement<span class="domain-hint">Infra</span></a>
+              <a class="link-row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Télétravail — kit de connexion<span class="domain-hint">Support</span></a>
+              <a class="link-row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>FAQ utilisateur VPN<span class="domain-hint">Support</span></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="meta-card">
+          <div class="meta-card-head">
+            <span class="meta-card-title">Actions</span>
+          </div>
+          <div class="meta-card-body actions">
+            <a class="action-btn coral" href="#">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Modifier
+            </a>
+            <button class="action-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Marquer vérifié
+            </button>
+            <button class="action-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Historique (7 versions)
+            </button>
+            <button class="action-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Partager / copier lien
+            </button>
+            <button class="action-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Archiver
+            </button>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

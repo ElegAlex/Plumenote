@@ -22,6 +22,7 @@ const CartographyPage = lazy(() => import('@/features/entity/CartographyPage'))
 const MindMapPage = lazy(() => import('@/features/mindmap/MindMapPage'))
 const NotFoundPage = lazy(() => import('@/features/home/NotFoundPage'))
 const FolderPage = lazy(() => import('@/features/folder/FolderPage'))
+const DesignSystemPage = lazy(() => import('@/features/design-system/DesignSystemPage'))
 
 function Loading() {
   return (
@@ -31,22 +32,21 @@ function Loading() {
   )
 }
 
-function HomeRoute() {
-  const { isAuthenticated } = useAuth()
-  return isAuthenticated ? <HomePage /> : <PublicHomePage />
-}
-
 export default function App() {
+  const { isAuthenticated } = useAuth()
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
         <Route path="/login" element={<AuthPage />} />
+        {/* Route publique standalone (gabarit g3) : rendue HORS du Shell quand non authentifiée */}
+        {!isAuthenticated && <Route path="/" element={<PublicHomePage />} />}
         <Route element={<Shell />}>
-          <Route path="/" element={<HomeRoute />} />
+          {isAuthenticated && <Route path="/" element={<HomePage />} />}
           <Route path="/search" element={<SearchPage />} />
           <Route path="/documents/:slug" element={<ReaderPage />} />
           <Route path="/documents/:slug/diff/:v1/:v2" element={<DiffPage />} />
           <Route path="/domains/:slug" element={<DomainPage />} />
+          <Route path="/design-system" element={<DesignSystemPage />} />
           <Route path="/domains/:domainSlug/folders/:folderId" element={<FolderPage />} />
           <Route path="/entities/:id" element={<EntityPage />} />
           <Route element={<RouteGuard />}>

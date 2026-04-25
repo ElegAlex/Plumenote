@@ -1,7 +1,16 @@
-import { useState } from 'react'
+// web/src/features/admin/AdminPage.tsx
+// Console DSI — gabarit g9 (layout 2-col SubnavAdmin 224px + contenu).
+// Le Shell primaire (sidebar 248px navy + topbar) est assuré par <Shell>.
+//
+// Architecture : state-based tabs (préservé de la V1), pas de URL routing.
+// Les sub-entrées de la SubnavAdmin pilotent `activeTab`. Les entrées sans
+// feature livrée restent inertes (href="#") et seront activées en V2/V3.
+import { useCallback, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
-import { useEntityLabel } from '@/lib/hooks'
+import { useEntityLabel, useEntityTypes } from '@/lib/hooks'
+import SubnavAdmin, { type AdminTabKey } from './SubnavAdmin'
+import VersionBanner from './VersionBanner'
 import TemplatesAdmin from './TemplatesAdmin'
 import DomainsAdmin from './DomainsAdmin'
 import UsersAdmin from './UsersAdmin'
@@ -10,28 +19,31 @@ import AnalyticsTab from './AnalyticsTab'
 import EntityTypesAdmin from './EntityTypesAdmin'
 import RelationTypesAdmin from './RelationTypesAdmin'
 
-type TabKey = 'templates' | 'domaines' | 'utilisateurs' | 'entity-types' | 'relation-types' | 'configuration' | 'analytique'
-
 export default function AdminPage() {
   const { user, loading } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabKey>('templates')
+  const [activeTab, setActiveTab] = useState<AdminTabKey>('utilisateurs')
   const { data: entityLabelConfig } = useEntityLabel()
+  const { data: entityTypes } = useEntityTypes()
   const entityLabel = entityLabelConfig?.label ?? 'Fiche'
 
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'templates', label: 'Templates' },
-    { key: 'domaines', label: 'Domaines' },
-    { key: 'utilisateurs', label: 'Utilisateurs' },
-    { key: 'entity-types', label: `Types de ${entityLabel.toLowerCase()}` },
-    { key: 'relation-types', label: 'Types de relations' },
-    { key: 'configuration', label: 'Configuration' },
-    { key: 'analytique', label: 'Analytique' },
-  ]
+  // Les counts users/domains/templates sont peuplés par les sous-vues lorsqu'elles
+  // se chargent. On les remonte via un état partagé simple (pas de store global).
+  const [counts, setCounts] = useState<{
+    users?: number
+    domains?: number
+    templates?: number
+  }>({})
+
+  // useCallback stabilise les refs → évite les re-fetches en boucle dans les
+  // sous-vues qui dépendent de `onCountChange` dans leur useCallback `load`.
+  const setUsersCount = useCallback((n: number) => setCounts((c) => ({ ...c, users: n })), [])
+  const setDomainsCount = useCallback((n: number) => setCounts((c) => ({ ...c, domains: n })), [])
+  const setTemplatesCount = useCallback((n: number) => setCounts((c) => ({ ...c, templates: n })), [])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-ink-45">Chargement...</p>
+        <p className="text-ink-muted">Chargement...</p>
       </div>
     )
   }
@@ -41,34 +53,32 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-ink mb-6">Administration</h1>
+    <div className="grid grid-cols-[224px_1fr] min-h-[calc(100vh-68px)]">
+      <SubnavAdmin
+        activeTab={activeTab}
+        onSelect={setActiveTab}
+        entityLabel={entityLabel}
+        counts={{
+          users: counts.users,
+          domains: counts.domains,
+          entityTypes: entityTypes?.length,
+          templates: counts.templates,
+        }}
+      />
 
-      <div className="border-b border-ink-10 mb-6">
-        <nav className="flex space-x-6 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.key
-                  ? 'border-blue text-blue'
-                  : 'border-transparent text-ink-45 hover:text-ink-70 hover:border-ink-10'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <main className="flex flex-col min-w-0 bg-bg">
+        <div className="w-full max-w-[1300px] mx-auto px-8 pt-[22px] pb-12 flex flex-col gap-[18px]">
+          <VersionBanner />
 
-      {activeTab === 'templates' && <TemplatesAdmin />}
-      {activeTab === 'domaines' && <DomainsAdmin />}
-      {activeTab === 'utilisateurs' && <UsersAdmin />}
-      {activeTab === 'entity-types' && <EntityTypesAdmin />}
-      {activeTab === 'relation-types' && <RelationTypesAdmin />}
-      {activeTab === 'configuration' && <ConfigAdmin />}
-      {activeTab === 'analytique' && <AnalyticsTab />}
+          {activeTab === 'utilisateurs' && <UsersAdmin onCountChange={setUsersCount} />}
+          {activeTab === 'domaines' && <DomainsAdmin onCountChange={setDomainsCount} />}
+          {activeTab === 'templates' && <TemplatesAdmin onCountChange={setTemplatesCount} />}
+          {activeTab === 'entity-types' && <EntityTypesAdmin />}
+          {activeTab === 'relation-types' && <RelationTypesAdmin />}
+          {activeTab === 'configuration' && <ConfigAdmin />}
+          {activeTab === 'analytique' && <AnalyticsTab />}
+        </div>
+      </main>
     </div>
   )
 }

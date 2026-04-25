@@ -1,8 +1,12 @@
+// navy sidebar palette, non tokenisée : 2 teintes différentes
+// (#9299BD, #F3B6BE). Alignées sur Sidebar.tsx, à propager dans
+// les tokens Tailwind @theme une fois la palette navy étendue.
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation, NavLink } from 'react-router-dom'
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { cn } from '@/lib/cn'
 
 interface FolderNode {
   id: string
@@ -35,9 +39,16 @@ function setExpandedState(state: Record<string, boolean>) {
 export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
   const [folders, setFolders] = useState<FolderNode[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>(getExpandedState)
+  const [error, setError] = useState<boolean>(false)
 
   useEffect(() => {
-    api.get<FolderNode[]>(`/domains/${domainId}/folders`).then(setFolders).catch(() => {})
+    setError(false)
+    api.get<FolderNode[]>(`/domains/${domainId}/folders`)
+      .then(setFolders)
+      .catch((err) => {
+        console.warn(`Failed to fetch /domains/${domainId}/folders`, err)
+        setError(true)
+      })
   }, [domainId])
 
   const toggleExpand = useCallback((folderId: string) => {
@@ -57,12 +68,20 @@ export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
   })
 
   return (
-    <div>
+    <div className="ml-8 mt-1 flex flex-col gap-[2px]">
+      {error && (
+        <div
+          className="pl-[26px] pr-2.5 py-[5px] text-[12px] font-medium text-[#F3B6BE]"
+          role="alert"
+        >
+          Erreur de chargement
+        </div>
+      )}
       {folders.map((f) => (
         <FolderTreeItem
           key={f.id}
           folder={f}
-          depth={1}
+          depth={0}
           domainSlug={domainSlug}
           expanded={expanded}
           onToggle={toggleExpand}
@@ -73,11 +92,16 @@ export default function FolderTree({ domainId, domainSlug }: FolderTreeProps) {
           key={doc.id}
           to={`/documents/${doc.slug}`}
           className={({ isActive }) =>
-            `flex items-center gap-2 px-2 py-1 text-sm rounded hover:bg-accent ${isActive ? 'bg-accent font-medium' : ''}`
+            cn(
+              'flex items-center gap-2 pl-[26px] pr-2.5 py-[5px] rounded-md',
+              'text-[12.5px] font-medium transition-colors',
+              isActive
+                ? 'bg-white/10 text-white'
+                : 'text-[#9299BD] hover:bg-white/5 hover:text-white',
+            )
           }
-          style={{ paddingLeft: '16px' }}
         >
-          <FileText className="h-4 w-4 shrink-0" />
+          <FileText className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{doc.title}</span>
         </NavLink>
       ))}
@@ -100,50 +124,43 @@ function FolderTreeItem({ folder, depth, domainSlug, expanded, onToggle }: Folde
   const hasChildren = folder.children.length > 0
   const isActive = location.pathname === `/domains/${domainSlug}/folders/${folder.id}`
 
+  // Indent manuel : 10 px par niveau, collé après le chevron.
+  const indent = { paddingLeft: 10 + depth * 14 }
+
   return (
     <>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: '5px 12px',
-          paddingLeft: 12 + depth * 16,
-          cursor: 'pointer',
-          fontSize: 12,
-          fontFamily: "'IBM Plex Sans', sans-serif",
-          fontWeight: isActive ? 600 : 400,
-          color: isActive ? '#1C1C1C' : 'rgba(28,28,28,0.65)',
-          background: isActive ? 'rgba(28,28,28,0.06)' : 'transparent',
-          borderRadius: 4,
-          transition: 'background 0.1s',
-          userSelect: 'none' as const,
-        }}
-        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(28,28,28,0.03)' }}
-        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+        className={cn(
+          'flex items-center gap-1 pr-2.5 py-[5px] rounded-md cursor-pointer select-none',
+          'text-[12.5px] font-medium transition-colors',
+          isActive
+            ? 'bg-white/10 text-white'
+            : 'text-[#9299BD] hover:bg-white/5 hover:text-white',
+        )}
+        style={indent}
       >
         {hasChildren ? (
           <span
             onClick={(e) => { e.stopPropagation(); onToggle(folder.id) }}
-            style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}
+            className="flex items-center shrink-0 opacity-70 hover:opacity-100"
           >
             {isExpanded
-              ? <ChevronDown size={14} color="rgba(28,28,28,0.4)" />
-              : <ChevronRight size={14} color="rgba(28,28,28,0.4)" />
+              ? <ChevronDown size={13} />
+              : <ChevronRight size={13} />
             }
           </span>
         ) : (
-          <span style={{ width: 14, flexShrink: 0 }} />
+          <span className="w-[13px] shrink-0" />
         )}
         <span
           onClick={() => navigate(`/domains/${domainSlug}/folders/${folder.id}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}
+          className="flex items-center gap-1.5 flex-1 min-w-0"
         >
           {isExpanded
-            ? <FolderOpen size={14} color="rgba(28,28,28,0.45)" />
-            : <Folder size={14} color="rgba(28,28,28,0.45)" />
+            ? <FolderOpen size={13} className="opacity-70" />
+            : <Folder size={13} className="opacity-70" />
           }
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="truncate">
             {folder.name}
           </span>
         </span>

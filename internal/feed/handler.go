@@ -140,13 +140,21 @@ func (h *handler) getPendingReviews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Lit les seuils de fraîcheur pour aligner la liste sur la même logique que
+	// /api/stats/health (compteur "red" affiché en sidebar). Sinon needs_review
+	// (booléen explicite, rarement positionné) et freshness_badge='red'
+	// (calculé) divergent et l'utilisateur clique "À vérifier 10" et voit 0.
+	_, yellowDays := h.freshnessThresholds(r)
+
 	// Build query
 	var conditions []string
-	args := []any{limit, offset}
-	paramIdx := 3
+	args := []any{limit, offset, yellowDays}
+	paramIdx := 4
 
-	// Always filter needs_review = true
-	conditions = append(conditions, "AND d.needs_review = true")
+	// Filtre "périmé" = même condition que le bucket "red" de stats/health :
+	// soit jamais vérifié (last_verified_at NULL), soit vérification trop ancienne.
+	// (Conserve aussi needs_review=true comme drapeau manuel optionnel.)
+	conditions = append(conditions, "AND (d.needs_review = true OR d.last_verified_at IS NULL OR d.last_verified_at <= now() - make_interval(days => $3))")
 
 	// Non-admin users can only see their domain's documents
 	if claims.Role != "admin" {

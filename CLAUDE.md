@@ -2,7 +2,7 @@
 
 ## Stack
 - **Backend**: Go 1.25, Chi v5, pgx v5, sqlc, bcrypt + JWT HS256
-- **Frontend**: React 19, Vite, Tailwind CSS 4, shadcn/ui, TipTap 3
+- **Frontend**: React 19, Vite, Tailwind CSS 4 (CSS-first `@theme`), TipTap 3
 - **Database**: PostgreSQL 18 (JSONB, UUIDv7)
 - **Search**: Meilisearch CE v1.37 (full-text, typo-tolerant)
 - **Proxy**: Caddy v2 (HTTPS auto, SPA fallback)
@@ -26,9 +26,12 @@ internal/
 web/src/
   features/{auth,home,search,editor,reader,admin,profile}/
   components/layout/{Shell,Sidebar,Topbar}.tsx
-  components/ui/               # shadcn/ui components
+  components/ui/               # Primitives PlumeNote (Button, Card, Dialog, ...)
   lib/api.ts                   # Fetch wrapper with JWT
   lib/auth-context.tsx         # AuthProvider
+  lib/cn.ts                    # Utilitaire de concaténation className
+  index.css                    # Tokens @theme + styles globaux (.prose / ProseMirror)
+gabarits-visuels/              # Gabarits HTML — source de vérité visuelle
 migrations/                    # SQL migrations (001_init, 002_seed)
 docker/                        # docker-compose.yml, Dockerfile, Caddyfile
 ```
@@ -49,6 +52,26 @@ docker/                        # docker-compose.yml, Dockerfile, Caddyfile
 - API: REST JSON, /api/* prefix, JWT Bearer auth
 - IDs: UUID (gen_random_uuid() in PG18)
 - Content: TipTap JSON stored as JSONB in PostgreSQL
+- Classes: utiliser `cn()` de `@/lib/cn` pour concaténer conditionnellement
+- Icônes: `lucide-react` uniquement (cohérence gabarits)
+- Imports UI: `import { Button, Card, ... } from '@/components/ui'` (barrel)
+
+## Design system
+- **Identité visuelle** : calquée sur l'outil RECRUT. Palette navy + coral + cream, 
+  typos Fraunces (titres), Manrope (UI), JetBrains Mono (code).
+- **Source visuelle** : `gabarits-visuels/*.html` (10 écrans standalone, voir
+  `gabarits-visuels/README.md`).
+- **Tokens** : définis dans `web/src/index.css` sous `@theme` 
+  (`--color-navy-*`, `--color-coral*`, `--color-cream*`, `--color-ink*`, 
+  `--color-success`, `--color-warn`, `--color-danger`, `--font-serif`, 
+  `--font-sans`, `--font-mono`). Chargement fontes via `web/index.html`.
+- **Primitives** : 24+ composants réutilisables dans `web/src/components/ui/` 
+  (Avatar, Breadcrumb, Button, Callout, Card, Chip, Dialog, Field, FreshBadge, 
+  IconButton, Input, Kbd, PageHeader, PageTitle, Select, SidePanel, Stepper, 
+  Switch, Table, Tabs, Textarea, Timeline, Toolbar, MermaidBlock). Barrel : 
+  `@/components/ui`.
+- **Spec détaillée** : `docs/DESIGN_SYSTEM.md`.
+- **Showcase live** : `/design-system` (route `features/design-system/`).
 
 ## Data Model
 11 tables: users, domains, document_types, templates, documents, tags,

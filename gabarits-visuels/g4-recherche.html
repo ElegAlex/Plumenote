@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recherche — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688; --navy-600: #2E42A0;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+    --success: #2F7D5B; --success-bg: #E3F0E9;
+    --warn: #C97B1A; --warn-bg: #FBEBD0;
+    --danger: #B1304A; --danger-bg: #F9DFE4;
+    --plum: #7A3E8C; --plum-bg: #F0E5F3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: var(--ink); background: var(--bg);
+    font-size: 14px;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+
+  /* Sidebar (condensée, copie g2) */
+  .sidebar {
+    background: var(--navy-900); color: #C9CFE4;
+    padding: 24px 16px;
+    display: flex; flex-direction: column; gap: 24px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand-mark { width: 40px; height: 40px; background: var(--cream); color: var(--navy-900); border-radius: 10px; display: grid; place-items: center; }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'Fraunces', serif; color: var(--white); font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .brand-name small { display: block; font-family: 'Manrope'; font-size: 10px; font-weight: 500; color: #8A93B8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7A83A8; padding: 0 12px 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 11px; padding: 10px 12px;
+    border-radius: 9px; color: #C9CFE4; text-decoration: none;
+    font-weight: 500; font-size: 13.5px;
+    position: relative; transition: background .15s, color .15s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: var(--white); }
+  .nav-item.active { background: linear-gradient(180deg, rgba(232,132,92,.18), rgba(232,132,92,.08)); color: var(--white); }
+  .nav-item.active::before { content:""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; background: var(--coral); border-radius: 0 3px 3px 0; }
+  .nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-item .count { margin-left: auto; background: rgba(232,132,92,.2); color: var(--coral-soft); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+  .nav-section + .nav-section { margin-top: 18px; }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; min-width: 0; position: relative; }
+  .header {
+    background: var(--white); border-bottom: 1px solid var(--line);
+    padding: 14px 32px; display: flex; align-items: center; gap: 20px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .crumb a { color: var(--ink-soft); text-decoration: none; }
+  .crumb strong { color: var(--navy-800); font-weight: 600; font-family: 'Fraunces', serif; }
+  .crumb-sep { color: var(--ink-muted); }
+  .search { flex: 1; max-width: 420px; margin: 0 auto; position: relative; }
+  .search input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; font: inherit; font-size: 13px; color: var(--ink); outline: none; }
+  .search input:focus { border-color: var(--navy-600); background: var(--white); }
+  .search > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); width: 16px; height: 16px; }
+  .search kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--white); border: 1px solid var(--line); font: inherit; font-size: 10.5px; font-weight: 600; color: var(--ink-soft); padding: 2px 6px; border-radius: 5px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--white); display: grid; place-items: center; cursor: pointer; color: var(--ink-soft); transition: all .15s; }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .user-chip { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); cursor: pointer; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--coral)); color: var(--white); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+  .user-chip-text { line-height: 1.2; text-align: left; }
+  .user-chip-name { font-weight: 600; font-size: 12.5px; color: var(--ink); }
+  .user-chip-role { font-size: 10.5px; color: var(--ink-soft); }
+
+  /* Content */
+  .content {
+    padding: 28px 32px 48px;
+    max-width: 1440px; width: 100%; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+
+  /* Title block */
+  .title-block { margin-bottom: 4px; }
+  .title-eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--coral); margin-bottom: 10px; }
+  .title-eyebrow::before { content: "◆"; color: var(--coral-soft); }
+  .title-block h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 32px; line-height: 1.1; letter-spacing: -0.02em; color: var(--navy-900); }
+  .title-block h1 em { font-style: italic; color: var(--coral); font-weight: 500; }
+  .title-block .query {
+    background: var(--coral-bg); color: var(--coral);
+    padding: 2px 10px; border-radius: 8px;
+    font-style: normal;
+    font-weight: 600;
+  }
+  .title-block p { margin-top: 8px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 20px;
+  }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filter-group-label { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+  .type-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; border-radius: 999px;
+    background: var(--bg); color: var(--ink-soft);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid transparent;
+    transition: all .15s;
+  }
+  .type-chip::before { content: ""; width: 7px; height: 7px; background: currentColor; border-radius: 50%; }
+  .type-chip:hover { border-color: var(--line); }
+  .type-chip.active { color: var(--white); background: var(--active-bg, var(--navy-800)); }
+  .type-chip[data-color="infra"].active { background: var(--coral); }
+  .type-chip[data-color="support"].active { background: var(--success); }
+  .type-chip[data-color="sci"].active { background: var(--navy-700); }
+  .type-chip[data-color="etudes"].active { background: var(--plum); }
+  .filter-sep { width: 1px; height: 24px; background: var(--line); }
+  .sort-select {
+    padding: 7px 12px 7px 12px;
+    border: 1px solid var(--line); background: var(--bg);
+    border-radius: 9px; font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--navy-900); outline: none; cursor: pointer;
+  }
+  .sort-select:focus { border-color: var(--navy-600); background: var(--white); }
+  .filter-bar .count-label { margin-left: auto; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
+  .filter-bar .count-label strong { color: var(--navy-900); font-variant-numeric: tabular-nums; font-family: 'Fraunces', serif; font-size: 14px; }
+
+  /* Active filters row */
+  .active-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filter-chip {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 6px 5px 11px; border-radius: 999px;
+    background: var(--cream); color: var(--navy-900);
+    font-size: 12px; font-weight: 500;
+    border: 1px solid var(--line-soft);
+  }
+  .filter-chip button {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--navy-900); color: var(--cream);
+    border: none; font-size: 11px; cursor: pointer;
+    display: grid; place-items: center;
+    transition: background .15s;
+  }
+  .filter-chip button:hover { background: var(--coral); }
+  .clear-all { font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer; background: none; border: none; padding: 4px 8px; border-radius: 6px; transition: color .15s, background .15s; }
+  .clear-all:hover { color: var(--coral); background: var(--coral-bg); }
+
+  /* Results list */
+  .results { display: flex; flex-direction: column; gap: 10px; }
+  .result {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px 22px;
+    display: grid; grid-template-columns: 48px 1fr auto;
+    gap: 16px; align-items: flex-start;
+    cursor: pointer;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+    text-decoration: none; color: inherit;
+  }
+  .result:hover { border-color: var(--navy-600); transform: translateY(-1px); box-shadow: 0 8px 22px rgba(20,35,92,.06); }
+  .result-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: grid; place-items: center;
+  }
+  .result-icon svg { width: 20px; height: 20px; }
+  .result-icon.infra { background: var(--coral-bg); color: var(--coral); }
+  .result-icon.support { background: var(--success-bg); color: var(--success); }
+  .result-icon.sci { background: #E9EAF7; color: var(--navy-700); }
+  .result-icon.etudes { background: var(--plum-bg); color: var(--plum); }
+  .result-body { min-width: 0; }
+  .result-breadcrumb { font-size: 11.5px; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .result-breadcrumb strong { color: var(--navy-800); font-weight: 700; }
+  .result-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; color: var(--navy-900); line-height: 1.25; letter-spacing: -0.01em; }
+  .result-title mark { background: var(--warn-bg); color: var(--warn); padding: 0 2px; border-radius: 3px; font-weight: 700; font-family: 'Manrope', sans-serif; font-size: 17px; }
+  .result-snippet { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin-top: 6px; }
+  .result-snippet mark { background: var(--warn-bg); color: var(--warn); padding: 0 2px; border-radius: 3px; font-weight: 600; }
+  .result-meta {
+    margin-top: 10px; display: flex; align-items: center; flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 11.5px; color: var(--ink-muted);
+  }
+  .result-meta .domain-chip {
+    padding: 2px 9px; background: var(--cream); color: var(--navy-800);
+    border-radius: 5px; font-weight: 700; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .result-meta .sep { color: var(--ink-muted); }
+  .result-meta .actor { color: var(--ink); font-weight: 600; }
+
+  .result-side { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .fresh {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .fresh::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .fresh.ok { background: var(--success-bg); color: var(--success); }
+  .fresh.ok::before { background: var(--success); }
+  .fresh.warn { background: var(--warn-bg); color: var(--warn); }
+  .fresh.warn::before { background: var(--warn); }
+  .fresh.danger { background: var(--danger-bg); color: var(--danger); }
+  .fresh.danger::before { background: var(--danger); }
+  .views { font-size: 11px; color: var(--ink-muted); font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 5px; }
+  .views svg { width: 11px; height: 11px; }
+
+  /* Empty state */
+  .empty-card {
+    background: var(--white); border: 1.5px dashed var(--line);
+    border-radius: 16px; padding: 28px;
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 20px; align-items: center;
+    margin-top: 8px;
+  }
+  .empty-icon {
+    width: 56px; height: 56px;
+    background: var(--cream); color: var(--navy-800);
+    border-radius: 14px; display: grid; place-items: center;
+  }
+  .empty-icon svg { width: 26px; height: 26px; }
+  .empty-text h4 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px; color: var(--navy-900); margin-bottom: 4px; }
+  .empty-text p { font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+  .btn-create {
+    background: var(--coral); color: var(--white); border: none;
+    padding: 12px 20px; border-radius: 12px; cursor: pointer; font: inherit;
+    font-size: 13px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 22px rgba(232,132,92,.35);
+    transition: transform .15s, box-shadow .15s, background .15s;
+    white-space: nowrap;
+  }
+  .btn-create:hover { background: #E0734A; transform: translateY(-1px); }
+  .btn-create svg { width: 15px; height: 15px; }
+
+  /* Pagination */
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px; padding: 14px 22px;
+    background: var(--white); border: 1px solid var(--line); border-radius: 14px;
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+  .page-numbers { display: flex; gap: 4px; }
+  .page-numbers button {
+    min-width: 32px; height: 32px; padding: 0 10px;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 8px; cursor: pointer; font: inherit;
+    font-size: 12px; font-weight: 600; color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    transition: all .15s;
+  }
+  .page-numbers button:hover { border-color: var(--navy-600); color: var(--navy-800); }
+  .page-numbers button.current { background: var(--navy-900); color: var(--white); border-color: var(--navy-900); }
+  .page-numbers button.dots { border: none; background: transparent; cursor: default; }
+
+  /* ============ CTRL+K MODAL OVERLAY ============ */
+  .ck-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,35,92,.5);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    display: flex; justify-content: center;
+    padding-top: 80px;
+  }
+  .ck-modal {
+    width: 100%; max-width: 640px; height: fit-content;
+    background: var(--white);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(20,35,92,.35);
+    display: flex; flex-direction: column;
+    border: 1px solid var(--line);
+  }
+  .ck-input-wrap {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .ck-input-wrap svg { color: var(--navy-700); width: 22px; height: 22px; }
+  .ck-input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font: inherit; font-size: 17px; color: var(--ink);
+  }
+  .ck-input::placeholder { color: var(--ink-muted); }
+  .ck-close {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border: 1px solid var(--line);
+    background: var(--bg);
+    border-radius: 6px; font-size: 11px; font-weight: 700;
+    color: var(--ink-soft);
+  }
+
+  .ck-typo {
+    padding: 8px 22px;
+    background: var(--warn-bg);
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--warn);
+    font-weight: 600;
+  }
+  .ck-typo svg { width: 13px; height: 13px; }
+  .ck-typo strong { color: var(--warn); font-weight: 700; }
+
+  .ck-group-label {
+    padding: 12px 22px 6px;
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-muted);
+  }
+  .ck-item {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 12px; padding: 10px 22px;
+    align-items: center;
+    cursor: pointer;
+    transition: background .1s;
+    text-decoration: none; color: inherit;
+  }
+  .ck-item:hover { background: var(--cream-light); }
+  .ck-item.focus {
+    background: var(--cream-light);
+    position: relative;
+  }
+  .ck-item.focus::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--coral); border-radius: 0 3px 3px 0;
+  }
+  .ck-ico {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .ck-ico svg { width: 15px; height: 15px; }
+  .ck-ico.infra { background: var(--coral-bg); color: var(--coral); }
+  .ck-ico.support { background: var(--success-bg); color: var(--success); }
+  .ck-ico.sci { background: #E9EAF7; color: var(--navy-700); }
+  .ck-text { min-width: 0; }
+  .ck-title { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  .ck-title mark { background: var(--warn-bg); color: var(--warn); padding: 0 2px; border-radius: 3px; font-weight: 700; }
+  .ck-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .ck-kbd {
+    display: inline-flex; gap: 4px;
+    color: var(--ink-muted); font-size: 11px; font-weight: 600;
+  }
+  .ck-kbd kbd {
+    background: var(--bg); border: 1px solid var(--line);
+    padding: 2px 6px; border-radius: 4px; font: inherit;
+    font-size: 10.5px; font-weight: 700; color: var(--ink);
+  }
+
+  .ck-footer {
+    padding: 12px 22px; border-top: 1px solid var(--line-soft);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11.5px; color: var(--ink-muted);
+    background: var(--bg);
+  }
+  .ck-footer-nav { display: flex; gap: 18px; }
+  .ck-footer-nav span { display: inline-flex; align-items: center; gap: 6px; }
+  .ck-footer-nav kbd {
+    background: var(--white); border: 1px solid var(--line);
+    padding: 2px 6px; border-radius: 4px; font: inherit;
+    font-size: 10.5px; font-weight: 700; color: var(--ink);
+  }
+
+  .indicator-demo {
+    position: fixed; bottom: 20px; right: 20px;
+    padding: 10px 16px; background: var(--navy-900); color: var(--cream);
+    border-radius: 10px; font-size: 11.5px; font-weight: 600;
+    box-shadow: 0 10px 24px rgba(20,35,92,.25);
+    display: flex; align-items: center; gap: 8px;
+    z-index: 200;
+  }
+  .indicator-demo .pulse {
+    width: 8px; height: 8px; background: var(--coral); border-radius: 50%;
+    animation: dot-pulse 1.8s infinite;
+  }
+  @keyframes dot-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(232,132,92,.3); }
+    50% { box-shadow: 0 0 0 8px rgba(232,132,92,.1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L 13 11"/><path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/><path d="M9 15 L 15 9"/></svg>
+      </div>
+      <div class="brand-name">PlumeNote<small>Base de connaissances</small></div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Accueil</a>
+        <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Recherche</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Mes documents <span class="count">24</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>À vérifier <span class="count" style="background: rgba(177,48,74,.28); color: #F3B6BE;">17</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Domaines</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>Infrastructure <span class="count">86</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>Support <span class="count">54</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>SCI <span class="count">42</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Études &amp; Dev <span class="count">31</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="header">
+      <nav class="crumb">
+        <a href="#">Accueil</a>
+        <span class="crumb-sep">›</span>
+        <strong>Résultats pour « config vpn »</strong>
+      </nav>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" value="config vpn">
+        <kbd>⌘ K</kbd>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="user-chip">
+          <span class="avatar">AB</span>
+          <span class="user-chip-text">
+            <span class="user-chip-name">Alexandre Berge</span>
+            <span class="user-chip-role">Admin · DSI</span>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <main class="content">
+
+      <div class="title-block">
+        <span class="title-eyebrow">Recherche · Meilisearch</span>
+        <h1>Résultats pour <em class="query">config vpn</em></h1>
+        <p><strong>12 documents</strong> correspondent à cette requête. Typo-tolérance activée, tri par pertinence.</p>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <span class="filter-group-label">Domaine</span>
+          <span class="type-chip active" data-color="infra">Infrastructure</span>
+          <span class="type-chip">Support</span>
+          <span class="type-chip">SCI</span>
+          <span class="type-chip">Études</span>
+        </div>
+        <div class="filter-sep"></div>
+        <div class="filter-group">
+          <span class="filter-group-label">Type</span>
+          <span class="type-chip active" style="color:var(--white); background:var(--navy-800);">Procédure</span>
+          <span class="type-chip">Mode opératoire</span>
+          <span class="type-chip">FAQ</span>
+          <span class="type-chip">Architecture</span>
+        </div>
+        <div class="filter-sep"></div>
+        <div class="filter-group">
+          <span class="filter-group-label">Fraîcheur</span>
+          <select class="sort-select">
+            <option>Toutes</option>
+            <option>À jour uniquement</option>
+            <option>Périmés uniquement</option>
+          </select>
+        </div>
+        <span class="count-label"><strong>12</strong> résultats · <strong>42 ms</strong></span>
+      </div>
+
+      <!-- Active filters -->
+      <div class="active-filters">
+        <span style="font-size:11.5px; color:var(--ink-soft); font-weight:600; letter-spacing:.1em; text-transform:uppercase;">Filtres actifs :</span>
+        <span class="filter-chip">Domaine : <strong style="color:var(--navy-900);margin-left:3px;">Infrastructure</strong><button>×</button></span>
+        <span class="filter-chip">Type : <strong style="color:var(--navy-900);margin-left:3px;">Procédure</strong><button>×</button></span>
+        <button class="clear-all">Tout retirer</button>
+      </div>
+
+      <!-- Results -->
+      <div class="results">
+
+        <a class="result" href="#">
+          <div class="result-icon infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></svg></div>
+          <div class="result-body">
+            <div class="result-breadcrumb"><strong>Infrastructure</strong> <span>›</span> <span>Procédure</span></div>
+            <h3 class="result-title">Configurer le <mark>VPN</mark> Always-On sur poste Windows 11</h3>
+            <p class="result-snippet">Cette procédure détaille les étapes pour activer la <mark>configuration</mark> <mark>VPN</mark> sur un poste Windows 11 fraîchement migré. Elle couvre la synchronisation avec l'annuaire national, la configuration du certificat machine et le test de connexion.</p>
+            <div class="result-meta">
+              <span class="domain-chip">Infra</span>
+              <span class="actor">Mohamed Zemouche</span>
+              <span class="sep">·</span>
+              <span>mis à jour il y a 2 h</span>
+              <span class="sep">·</span>
+              <span>Tags : vpn, windows-11, migration, annuaire</span>
+            </div>
+          </div>
+          <div class="result-side">
+            <span class="fresh ok">À jour</span>
+            <span class="views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>312 vues</span>
+          </div>
+        </a>
+
+        <a class="result" href="#">
+          <div class="result-icon infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+          <div class="result-body">
+            <div class="result-breadcrumb"><strong>Infrastructure</strong> <span>›</span> <span>Procédure</span></div>
+            <h3 class="result-title"><mark>VPN</mark> macOS — <mark>configuration</mark> profil MDM Jamf</h3>
+            <p class="result-snippet">Pour les postes macOS utilisés en DSI, le profil <mark>VPN</mark> est poussé via Jamf. La présente fiche décrit la <mark>configuration</mark> du profil, les étapes de vérification et les cas de retour en mode manuel.</p>
+            <div class="result-meta">
+              <span class="domain-chip">Infra</span>
+              <span class="actor">Mohamed Zemouche</span>
+              <span class="sep">·</span>
+              <span>mis à jour il y a 3 semaines</span>
+            </div>
+          </div>
+          <div class="result-side">
+            <span class="fresh ok">À jour</span>
+            <span class="views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>58 vues</span>
+          </div>
+        </a>
+
+        <a class="result" href="#">
+          <div class="result-icon infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+          <div class="result-body">
+            <div class="result-breadcrumb"><strong>Infrastructure</strong> <span>›</span> <span>Architecture</span></div>
+            <h3 class="result-title">Architecture <mark>VPN</mark> CPAM 92 — flux et autorisations</h3>
+            <p class="result-snippet">Diagramme et description des flux <mark>VPN</mark> CPAM 92 : passerelle nationale, authentification LDAP, autorisations par service, filtrage FortiGate. Document de référence pour la <mark>configuration</mark> d'un poste.</p>
+            <div class="result-meta">
+              <span class="domain-chip">Infra</span>
+              <span class="actor">Mohamed Zemouche</span>
+              <span class="sep">·</span>
+              <span>mis à jour il y a 3 mois</span>
+            </div>
+          </div>
+          <div class="result-side">
+            <span class="fresh warn">3 mois</span>
+            <span class="views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>124 vues</span>
+          </div>
+        </a>
+
+        <a class="result" href="#">
+          <div class="result-icon support"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg></div>
+          <div class="result-body">
+            <div class="result-breadcrumb"><strong>Support</strong> <span>›</span> <span>FAQ</span></div>
+            <h3 class="result-title"><mark>VPN</mark> ne se connecte pas — dépannage utilisateur</h3>
+            <p class="result-snippet">FAQ pour les cas les plus fréquents : compte verrouillé, mauvaise <mark>config</mark> certificat, DNS, proxy interne. Checklist à parcourir avant de soumettre un ticket.</p>
+            <div class="result-meta">
+              <span class="domain-chip">Support</span>
+              <span class="actor">Mohammed Diagana</span>
+              <span class="sep">·</span>
+              <span>mis à jour il y a 8 mois</span>
+            </div>
+          </div>
+          <div class="result-side">
+            <span class="fresh danger">8 mois</span>
+            <span class="views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>207 vues</span>
+          </div>
+        </a>
+
+      </div>
+
+      <!-- Empty state (pour exemple) -->
+      <div class="empty-card">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+          </svg>
+        </div>
+        <div class="empty-text">
+          <h4>Aucune fiche ne couvre précisément ce sujet ?</h4>
+          <p>Si vous êtes sûr qu'un document devrait exister mais que vous ne le trouvez pas, vous pouvez le créer ou signaler le manque à l'administrateur DSI.</p>
+        </div>
+        <button class="btn-create">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7h14"/></svg>
+          Créer « config vpn »
+        </button>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <span>Affichage <strong style="color:var(--navy-900); font-variant-numeric:tabular-nums;">1 – 12</strong> sur <strong style="color:var(--navy-900); font-variant-numeric:tabular-nums;">12</strong> résultats</span>
+        <div class="page-numbers">
+          <button disabled style="opacity:.4;">‹</button>
+          <button class="current">1</button>
+          <button>›</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ CTRL+K MODAL (démo ouverte) ============ -->
+<div class="ck-overlay">
+  <div class="ck-modal">
+    <div class="ck-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="ck-input" value="confg vpn" autofocus>
+      <span class="ck-close">esc</span>
+    </div>
+
+    <div class="ck-typo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      Faute de frappe corrigée : recherche étendue sur <strong>« config vpn »</strong>
+    </div>
+
+    <div class="ck-group-label">Documents · 4 résultats</div>
+
+    <a class="ck-item focus" href="#">
+      <div class="ck-ico infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+      <div class="ck-text">
+        <div class="ck-title">Configurer le <mark>VPN</mark> Always-On sur poste Windows 11</div>
+        <div class="ck-meta">Infrastructure · Procédure · 🟢 à jour · 312 vues</div>
+      </div>
+      <div class="ck-kbd"><kbd>↵</kbd></div>
+    </a>
+
+    <a class="ck-item" href="#">
+      <div class="ck-ico infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+      <div class="ck-text">
+        <div class="ck-title"><mark>VPN</mark> macOS — configuration profil MDM Jamf</div>
+        <div class="ck-meta">Infrastructure · Procédure · 🟢 à jour</div>
+      </div>
+    </a>
+
+    <a class="ck-item" href="#">
+      <div class="ck-ico support"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg></div>
+      <div class="ck-text">
+        <div class="ck-title"><mark>VPN</mark> ne se connecte pas — dépannage utilisateur</div>
+        <div class="ck-meta">Support · FAQ · 🔴 8 mois</div>
+      </div>
+    </a>
+
+    <div class="ck-group-label">Actions · 1</div>
+
+    <a class="ck-item" href="#">
+      <div class="ck-ico" style="background: var(--coral-bg); color: var(--coral);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7h14"/></svg></div>
+      <div class="ck-text">
+        <div class="ck-title">Créer la page « confg vpn »</div>
+        <div class="ck-meta">Démarrer un nouveau document vierge</div>
+      </div>
+    </a>
+
+    <div class="ck-footer">
+      <div class="ck-footer-nav">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Naviguer</span>
+        <span><kbd>↵</kbd> Ouvrir</span>
+        <span><kbd>esc</kbd> Fermer</span>
+      </div>
+      <span>Meilisearch · typo-tolérant · 24 ms</span>
+    </div>
+  </div>
+</div>
+
+<div class="indicator-demo">
+  <span class="pulse"></span>
+  Modale Ctrl+K ouverte — démo
+</div>
+
+</body>
+</html>

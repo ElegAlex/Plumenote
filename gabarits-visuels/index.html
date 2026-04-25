@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gabarits visuels — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Manrope', sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; -webkit-font-smoothing: antialiased; }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 48px 36px 80px; }
+  .hero {
+    background: linear-gradient(130deg, var(--navy-900), var(--navy-700) 55%, var(--coral) 120%);
+    color: var(--cream);
+    border-radius: 22px;
+    padding: 40px 44px;
+    margin-bottom: 36px;
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .hero::before {
+    content: ""; position: absolute; right: -70px; top: -70px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(244,233,216,.15), transparent 60%);
+  }
+  .brand-mark {
+    width: 56px; height: 56px; background: var(--cream); color: var(--navy-900);
+    border-radius: 14px; display: grid; place-items: center;
+    position: relative; z-index: 1;
+    box-shadow: 0 8px 22px rgba(20,35,92,.3);
+  }
+  .brand-mark svg { width: 28px; height: 28px; }
+  .hero-text { position: relative; z-index: 1; }
+  .hero-eyebrow {
+    font-size: 12px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--coral-soft);
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .hero-eyebrow::before { content: ""; width: 22px; height: 1.5px; background: var(--coral-soft); }
+  .hero h1 {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 38px; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--white);
+  }
+  .hero h1 em { font-style: italic; color: var(--coral-soft); font-weight: 500; }
+  .hero p { color: #C9CFE4; font-size: 14.5px; margin-top: 8px; line-height: 1.6; max-width: 580px; }
+
+  h2 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 22px; color: var(--navy-900); letter-spacing: -0.01em;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2 .count {
+    padding: 3px 10px; background: var(--cream); color: var(--navy-800);
+    font-size: 13px; font-weight: 700; border-radius: 6px;
+    font-family: 'Manrope', sans-serif; font-variant-numeric: tabular-nums;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 16px; padding: 22px 24px;
+    display: flex; flex-direction: column; gap: 10px;
+    text-decoration: none; color: inherit;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--navy-700); box-shadow: 0 12px 28px rgba(20,35,92,.08); }
+  .card-ref {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--coral);
+  }
+  .card-ref::before { content: "◆"; color: var(--coral-soft); }
+  .card h3 {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 20px; color: var(--navy-900);
+    letter-spacing: -0.01em; line-height: 1.2;
+  }
+  .card p {
+    font-size: 13px; color: var(--ink-soft); line-height: 1.55;
+    flex: 1;
+  }
+  .card-footer {
+    margin-top: 6px; padding-top: 12px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11.5px; color: var(--ink-muted);
+  }
+  .card-footer .open {
+    color: var(--navy-700); font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .card-footer .open svg { width: 12px; height: 12px; transition: transform .15s; }
+  .card:hover .card-footer .open svg { transform: translateX(3px); }
+  .card:hover .card-footer .open { color: var(--coral); }
+
+  footer {
+    margin-top: 48px; padding-top: 28px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-muted); font-size: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+  footer strong { color: var(--navy-800); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20 L 13 11"/>
+        <path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/>
+        <path d="M9 15 L 15 9"/>
+      </svg>
+    </div>
+    <div class="hero-text">
+      <div class="hero-eyebrow">Gabarits visuels · validation UX</div>
+      <h1>PlumeNote <em>webdesign</em></h1>
+      <p>10 écrans standalone, mêmes tokens (palette, typographie, espacements) que l'outil RECRUT. Aucune dépendance : ouvrez n'importe quel fichier au navigateur pour visualiser l'écran complet.</p>
+    </div>
+  </section>
+
+  <h2>Les 10 gabarits <span class="count">Cliquer pour ouvrir</span></h2>
+
+  <div class="grid">
+
+    <a class="card" href="g1-login.html">
+      <span class="card-ref">g1 · Authentification</span>
+      <h3>Connexion</h3>
+      <p>Split illustration (graphe de connaissances SVG) + formulaire auth locale. Pas de SSO au MVP.</p>
+      <div class="card-footer">
+        <span>Auth locale · US-201</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g2-accueil-dsi.html">
+      <span class="card-ref">g2 · Dashboard</span>
+      <h3>Accueil connecté (DSI)</h3>
+      <p>Greeting gradient, KPI 4-col, panels 2-col : récemment modifiés, activité, domaines, périmés, hint Ctrl+K.</p>
+      <div class="card-footer">
+        <span>Dashboard contributeur</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g3-accueil-public.html">
+      <span class="card-ref">g3 · Vue publique</span>
+      <h3>Accueil public (Sophie)</h3>
+      <p>Sans login. Hero + search géante + tuiles par domaine + CTA fallback GLPI (US-204).</p>
+      <div class="card-footer">
+        <span>US-202 · Visibilité publique</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g4-recherche.html">
+      <span class="card-ref">g4 · Recherche</span>
+      <h3>Ctrl+K + résultats</h3>
+      <p>Modale Ctrl+K overlay (live, typo-tolérance) + page résultats avec filtres facets, highlighting, empty state.</p>
+      <div class="card-footer">
+        <span>Meilisearch · EPIC-01</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g5-lecture-document.html">
+      <span class="card-ref">g5 · Lecture</span>
+      <h3>Document (vue lecteur)</h3>
+      <p>TOC sticky, breadcrumb, corps TipTap read-only, blocs code Shiki, callouts, badge fraîcheur, side-panel méta.</p>
+      <div class="card-footer">
+        <span>EPIC-03 · Consultation</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g6-editeur.html">
+      <span class="card-ref">g6 · Édition</span>
+      <h3>Éditeur TipTap</h3>
+      <p>Toolbar WYSIWYG + slash command menu + sidebar méta (domaine, type, template, tags, visibilité) + autosave + action bar.</p>
+      <div class="card-footer">
+        <span>EPIC-04 · Contribution</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g7-domaine.html">
+      <span class="card-ref">g7 · Navigation</span>
+      <h3>Liste par domaine (cards)</h3>
+      <p>Hero domaine avec stats fraîcheur, filtres type/fraîcheur, grille de cards documents, bascule cards/liste.</p>
+      <div class="card-footer">
+        <span>EPIC-06 · Organisation</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g8-import.html">
+      <span class="card-ref">g8 · Import</span>
+      <h3>Import dossier (4 étapes)</h3>
+      <p>Stepper Source / Preview / Conversion SSE live / Rapport. Compteurs succès/avertissements/erreurs, flux temps réel.</p>
+      <div class="card-footer">
+        <span>EPIC-07 · Pandoc + pdftotext</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g9-admin.html">
+      <span class="card-ref">g9 · Admin</span>
+      <h3>Administration</h3>
+      <p>Layout 3-col (sidebar + subnav admin + contenu). Version banner, KPI, table utilisateurs, diff template.</p>
+      <div class="card-footer">
+        <span>EPIC-08 · Backoffice</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="g10-compte.html">
+      <span class="card-ref">g10 · Utilisateur</span>
+      <h3>Mon compte</h3>
+      <p>Identity hero avatar-xl, tabs Profil/Sécurité/Préférences/Activité, formulaire profil, stats, badges, raccourcis.</p>
+      <div class="card-footer">
+        <span>US-206 · Profil utilisateur</span>
+        <span class="open">Ouvrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>
+    <div>
+      <strong>PlumeNote</strong> · gabarits visuels · palette et typographie calquées sur RECRUT
+    </div>
+    <div>
+      10 fichiers HTML standalone · aucune dépendance · ouvrir au navigateur
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

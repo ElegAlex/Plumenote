@@ -1,5 +1,11 @@
+// web/src/features/import/PreviewTree.tsx
+// Phase Aperçu — arbre de fichiers style g8 (bg-cream-light, JetBrains Mono 12,
+// emojis 📁 / 📄 / 📕 / 📝 selon type, skip list en italique ink-muted).
+//
+// L'interactivité checkbox (sélection partielle, toggle, indeterminate) est
+// préservée à l'identique — seule la présentation change.
 import { useState, useCallback, useMemo } from 'react'
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText } from 'lucide-react'
+import { ChevronRight, ChevronDown } from 'lucide-react'
 import type { TreeNode } from '@/lib/hooks/useFolderImport'
 
 interface PreviewTreeProps {
@@ -43,23 +49,54 @@ export default function PreviewTree({ tree, mode, selected, onSelectionChange }:
 
   return (
     <div>
-      <p className="text-sm text-ink-45 mb-3">
-        {mode === 'root' && <>{stats.domains} domaine{stats.domains > 1 ? 's' : ''} · </>}
-        {stats.folders} dossier{stats.folders > 1 ? 's' : ''} · {stats.files} fichier{stats.files > 1 ? 's' : ''} · {formatSize(stats.totalSize)}
-      </p>
-      <div className="border border-ink-10 rounded p-2 max-h-96 overflow-y-auto">
-        {tree.map(node => (
-          <TreeItem key={node.path} node={node} depth={0} mode={mode} selected={selected} onToggle={toggleNode} />
-        ))}
+      {/* Summary grid */}
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 text-[12.5px] mb-4">
+        {mode === 'root' && (
+          <>
+            <dt className="text-ink-soft font-semibold">Domaines détectés</dt>
+            <dd className="text-navy-900 font-semibold tabular-nums">
+              {stats.domains}
+            </dd>
+          </>
+        )}
+        <dt className="text-ink-soft font-semibold">Dossiers</dt>
+        <dd className="text-navy-900 font-semibold tabular-nums">{stats.folders}</dd>
+        <dt className="text-ink-soft font-semibold">Fichiers sélectionnés</dt>
+        <dd className="text-navy-900 font-semibold tabular-nums">
+          {stats.files} · {formatSize(stats.totalSize)}
+        </dd>
+      </dl>
+
+      {/* Tree */}
+      <div className="bg-cream-light border border-line-soft rounded-[10px] py-3.5 px-4 max-h-[280px] overflow-y-auto font-mono text-[12px] leading-[1.8] text-ink-soft">
+        {tree.length === 0 ? (
+          <div className="italic text-ink-muted">Aucun fichier compatible détecté.</div>
+        ) : (
+          tree.map(node => (
+            <TreeItem
+              key={node.path}
+              node={node}
+              depth={0}
+              mode={mode}
+              selected={selected}
+              onToggle={toggleNode}
+            />
+          ))
+        )}
       </div>
     </div>
   )
 }
 
-function TreeItem({ node, depth, mode, selected, onToggle }: {
-  node: TreeNode; depth: number; mode: 'root' | 'domain'
-  selected: Set<string>; onToggle: (node: TreeNode) => void
-}) {
+interface TreeItemProps {
+  node: TreeNode
+  depth: number
+  mode: 'root' | 'domain'
+  selected: Set<string>
+  onToggle: (node: TreeNode) => void
+}
+
+function TreeItem({ node, depth, mode, selected, onToggle }: TreeItemProps) {
   const [expanded, setExpanded] = useState(true)
   const allFiles = useMemo(() => getFilePaths(node), [node])
   const checkedCount = allFiles.filter(f => selected.has(f)).length
@@ -68,30 +105,70 @@ function TreeItem({ node, depth, mode, selected, onToggle }: {
   const isFile = node.type === 'file'
   const isDomain = mode === 'root' && depth === 0 && !isFile
 
+  const fileEmoji = isFile ? emojiForFile(node.name) : ''
+
   return (
     <div>
-      <div className="flex items-center gap-1 py-0.5 hover:bg-ink-05 rounded px-1"
-        style={{ paddingLeft: `${depth * 16 + 4}px` }}>
+      <div
+        className="flex items-center gap-1.5 py-[1px] hover:bg-white/60 rounded px-1"
+        style={{ paddingLeft: `${depth * 20 + 4}px` }}
+      >
         {!isFile && node.children && node.children.length > 0 ? (
-          <button onClick={() => setExpanded(!expanded)} className="p-0.5">
-            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="p-0.5 text-ink-muted hover:text-navy-800"
+            aria-label={expanded ? 'Réduire' : 'Déplier'}
+          >
+            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           </button>
-        ) : <span className="w-5" />}
+        ) : (
+          <span className="w-[17px]" aria-hidden />
+        )}
+
         <input
           type="checkbox"
           checked={isChecked}
           ref={el => { if (el) el.indeterminate = isIndeterminate }}
           onChange={() => onToggle(node)}
-          className="h-4 w-4 rounded border-ink-10"
+          className="h-[13px] w-[13px] accent-coral cursor-pointer"
+          aria-label={`Sélectionner ${node.name}`}
         />
-        {isFile ? <FileText className="h-4 w-4 text-ink-45 shrink-0" />
-          : expanded ? <FolderOpen className="h-4 w-4 text-ink-45 shrink-0" />
-          : <Folder className="h-4 w-4 text-ink-45 shrink-0" />}
-        <span className="text-sm truncate">{node.name}</span>
-        {isDomain && <span className="text-xs text-ink-45 ml-1">(Domaine)</span>}
+
+        {isFile ? (
+          <span className="select-none" aria-hidden>{fileEmoji}</span>
+        ) : (
+          <span className="select-none" aria-hidden>📁</span>
+        )}
+
+        <span
+          className={
+            isFile
+              ? 'truncate text-ink-soft'
+              : depth === 0
+                ? 'truncate font-semibold text-navy-800'
+                : 'truncate font-semibold text-navy-800'
+          }
+        >
+          {node.name}
+          {!isFile && '/'}
+        </span>
+
+        {isDomain && (
+          <span className="ml-1 text-[10px] font-bold uppercase tracking-[0.08em] text-coral">
+            · Domaine
+          </span>
+        )}
       </div>
       {!isFile && expanded && node.children?.map(child => (
-        <TreeItem key={child.path} node={child} depth={depth + 1} mode={mode} selected={selected} onToggle={onToggle} />
+        <TreeItem
+          key={child.path}
+          node={child}
+          depth={depth + 1}
+          mode={mode}
+          selected={selected}
+          onToggle={onToggle}
+        />
       ))}
     </div>
   )
@@ -101,6 +178,16 @@ function getFilePaths(node: TreeNode): string[] {
   if (node.type === 'file') return [node.path]
   if (!node.children) return []
   return node.children.flatMap(getFilePaths)
+}
+
+function emojiForFile(name: string): string {
+  const ext = name.substring(name.lastIndexOf('.')).toLowerCase()
+  if (ext === '.pdf') return '📕'
+  if (ext === '.md') return '📝'
+  if (ext === '.docx' || ext === '.doc') return '📄'
+  if (ext === '.pptx' || ext === '.ppt') return '📊'
+  if (ext === '.txt') return '📃'
+  return '📄'
 }
 
 function formatSize(bytes: number): string {

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modifier — PlumeNote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #14235C; --navy-800: #1E2D6B; --navy-700: #263688; --navy-600: #2E42A0;
+    --coral: #E8845C; --coral-soft: #F3B69A; --coral-bg: #FCEEE4;
+    --cream: #F4E9D8; --cream-light: #FAF3E6; --bg: #F7F4EC;
+    --ink: #1A1F3A; --ink-soft: #5A6380; --ink-muted: #8B93AE;
+    --line: #E4DBC9; --line-soft: #EFE8D6; --white: #FFFFFF;
+    --success: #2F7D5B; --success-bg: #E3F0E9;
+    --warn: #C97B1A; --warn-bg: #FBEBD0;
+    --danger: #B1304A; --danger-bg: #F9DFE4;
+    --plum: #7A3E8C; --plum-bg: #F0E5F3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Manrope', system-ui, sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; font-feature-settings: "ss01"; -webkit-font-smoothing: antialiased; }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+
+  .sidebar { background: var(--navy-900); color: #C9CFE4; padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand-mark { width: 40px; height: 40px; background: var(--cream); color: var(--navy-900); border-radius: 10px; display: grid; place-items: center; }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'Fraunces', serif; color: var(--white); font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .brand-name small { display: block; font: 500 10px/1 'Manrope'; color: #8A93B8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7A83A8; padding: 0 12px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px; color: #C9CFE4; text-decoration: none; font-weight: 500; font-size: 13.5px; position: relative; transition: all .15s; }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: var(--white); }
+  .nav-item.active { background: linear-gradient(180deg, rgba(232,132,92,.18), rgba(232,132,92,.08)); color: var(--white); }
+  .nav-item.active::before { content:""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; background: var(--coral); border-radius: 0 3px 3px 0; }
+  .nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-item .count { margin-left: auto; background: rgba(232,132,92,.2); color: var(--coral-soft); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+  .nav-section + .nav-section { margin-top: 18px; }
+
+  .main { display: flex; flex-direction: column; min-width: 0; padding-bottom: 80px; }
+
+  .header {
+    background: var(--white); border-bottom: 1px solid var(--line);
+    padding: 14px 32px; display: flex; align-items: center; gap: 20px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .crumb a { color: var(--ink-soft); text-decoration: none; }
+  .crumb strong { color: var(--navy-900); font-weight: 600; font-family: 'Fraunces', serif; }
+  .crumb-sep { color: var(--ink-muted); }
+
+  .edit-badge {
+    padding: 5px 11px; background: var(--coral-bg); color: var(--coral);
+    border-radius: 999px; font-size: 11px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-left: auto;
+  }
+  .edit-badge::before { content: ""; width: 7px; height: 7px; background: var(--coral); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+  .autosave {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; background: var(--success-bg); color: var(--success);
+    border-radius: 8px; font-size: 11.5px; font-weight: 600;
+  }
+  .autosave svg { width: 13px; height: 13px; }
+
+  .user-chip { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--coral)); color: var(--white); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+
+  /* Layout éditeur */
+  .edit-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 28px;
+    max-width: 1440px; width: 100%; margin: 0 auto;
+    padding: 28px 32px 60px;
+  }
+
+  /* Éditeur principal */
+  .editor-card {
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    min-height: 600px;
+    display: flex; flex-direction: column;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    background: var(--cream-light);
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+    position: sticky; top: 68px; z-index: 4;
+  }
+  .tb-group { display: flex; align-items: center; gap: 2px; }
+  .tb-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  .tb-btn {
+    min-width: 32px; height: 32px; padding: 0 8px;
+    background: transparent; border: none;
+    border-radius: 7px; cursor: pointer;
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: 5px;
+    transition: all .15s;
+  }
+  .tb-btn:hover { background: var(--white); color: var(--navy-800); }
+  .tb-btn.active { background: var(--navy-900); color: var(--white); }
+  .tb-btn svg { width: 14px; height: 14px; }
+  .tb-select {
+    padding: 6px 26px 6px 10px;
+    background: var(--white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%235A6380' stroke-width='1.5' fill='none'/></svg>") no-repeat right 8px center;
+    border: 1px solid var(--line); border-radius: 7px;
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--ink); appearance: none; outline: none; cursor: pointer;
+  }
+  .tb-badge {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--white); border: 1px solid var(--line);
+    border-radius: 7px; font-size: 11px; font-weight: 600; color: var(--ink-soft);
+  }
+  .tb-badge kbd {
+    padding: 1px 5px; background: var(--cream); border: 1px solid var(--line-soft);
+    border-radius: 3px; font: inherit; font-size: 10.5px; font-weight: 700;
+    color: var(--ink); font-family: inherit;
+  }
+
+  /* Editor body */
+  .editor-body {
+    padding: 36px 52px 48px;
+    flex: 1;
+    font-size: 15.5px; line-height: 1.75; color: var(--ink);
+    position: relative;
+  }
+
+  .editor-title-input {
+    width: 100%; border: none; outline: none;
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 42px; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--navy-900); background: transparent;
+    margin-bottom: 20px;
+    padding: 0;
+  }
+  .editor-title-input::placeholder { color: var(--ink-muted); font-weight: 500; }
+
+  .editor-meta {
+    padding: 12px 0 16px;
+    border-top: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+    font-size: 12.5px; color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+
+  .domain-chip { padding: 3px 10px; background: var(--coral-bg); color: var(--coral); border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+
+  .prose h2 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; line-height: 1.25; letter-spacing: -0.01em; color: var(--navy-900); margin-top: 32px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
+  .prose h2::before { content: "§ "; color: var(--coral); font-weight: 500; }
+  .prose p { margin-bottom: 16px; }
+  .prose ul, .prose ol { margin: 0 0 16px 24px; }
+  .prose li { margin-bottom: 4px; }
+  .prose li::marker { color: var(--coral); font-weight: 700; }
+  .prose strong { color: var(--navy-900); font-weight: 700; }
+  .prose a.internal { background: var(--coral-bg); color: var(--coral); padding: 1px 8px; border-radius: 5px; text-decoration: none; font-weight: 600; }
+  .prose code.inline {
+    background: var(--cream-light); padding: 1px 6px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+  }
+
+  /* Code block */
+  .code-block {
+    background: #0F1838; color: #E9ECF6;
+    border-radius: 12px; margin: 22px 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.65;
+    overflow: hidden;
+  }
+  .code-head {
+    padding: 10px 18px;
+    background: rgba(255,255,255,.04);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Manrope', sans-serif; font-size: 11.5px; font-weight: 600;
+    color: #9299BD; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .code-head .lang { color: var(--coral-soft); font-weight: 700; }
+  .code-body { padding: 16px 18px; overflow-x: auto; }
+  .c-kw { color: #F3B69A; } .c-str { color: #A8D8B9; } .c-com { color: #8B93AE; font-style: italic; }
+
+  /* Callout */
+  .callout {
+    margin: 22px 0; padding: 16px 20px; border-radius: 12px;
+    border-left: 4px solid var(--coral); background: var(--coral-bg);
+    display: flex; gap: 12px;
+  }
+  .callout-icon {
+    width: 28px; height: 28px; background: var(--white); color: var(--coral);
+    border-radius: 7px; display: grid; place-items: center; flex-shrink: 0;
+  }
+  .callout-icon svg { width: 14px; height: 14px; }
+  .callout-text { font-size: 13.5px; line-height: 1.55; color: var(--ink); }
+
+  /* Cursor + slash command */
+  .cursor-pos {
+    display: inline-block; width: 2px; height: 1.2em;
+    background: var(--coral);
+    vertical-align: middle; margin-left: 1px;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+
+  .slash-menu {
+    position: absolute;
+    left: 52px; top: 420px;
+    width: 340px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 18px 40px rgba(20,35,92,.15);
+    overflow: hidden;
+    z-index: 10;
+  }
+  .slash-head {
+    padding: 8px 14px;
+    background: var(--cream-light);
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-muted);
+  }
+  .slash-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background .1s;
+  }
+  .slash-item:hover, .slash-item.focus { background: var(--cream-light); }
+  .slash-item.focus { position: relative; }
+  .slash-item.focus::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--coral); border-radius: 0 3px 3px 0;
+  }
+  .slash-ico {
+    width: 36px; height: 36px; background: var(--cream); color: var(--navy-800);
+    border-radius: 8px; display: grid; place-items: center; flex-shrink: 0;
+  }
+  .slash-ico svg { width: 17px; height: 17px; }
+  .slash-text { flex: 1; min-width: 0; }
+  .slash-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .slash-desc { font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+  .slash-kbd {
+    font-size: 11px; font-weight: 600; color: var(--ink-muted);
+  }
+  .slash-kbd kbd {
+    background: var(--bg); border: 1px solid var(--line); padding: 2px 6px;
+    border-radius: 4px; font: inherit; font-size: 10.5px; color: var(--ink); font-family: inherit;
+  }
+
+  /* ============ SIDE META PANEL ============ */
+  .meta-side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 112px; align-self: start; max-height: calc(100vh - 140px); overflow-y: auto; }
+
+  .meta-card { background: var(--white); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .meta-card-head { padding: 14px 18px 10px; border-bottom: 1px solid var(--line-soft); }
+  .meta-card-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 14px; color: var(--navy-900); letter-spacing: -0.01em; }
+  .meta-card-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > label { font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; justify-content: space-between; }
+  .field > label .req { color: var(--coral); font-weight: 700; }
+  .control {
+    width: 100%; padding: 9px 12px;
+    font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 9px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .control:focus { border-color: var(--navy-600); box-shadow: 0 0 0 3px rgba(46,66,160,.1); }
+  select.control { appearance: none; background: var(--white) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%235A6380' stroke-width='1.5' fill='none'/></svg>") no-repeat right 12px center; padding-right: 32px; cursor: pointer; }
+
+  /* Tags editor */
+  .tag-input-wrap {
+    min-height: 38px;
+    padding: 6px 10px;
+    background: var(--white); border: 1px solid var(--line);
+    border-radius: 9px;
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    transition: border-color .15s;
+  }
+  .tag-input-wrap:focus-within { border-color: var(--navy-600); }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 3px 3px 10px; border-radius: 999px;
+    background: var(--cream); color: var(--navy-900);
+    font-size: 12px; font-weight: 600;
+    border: 1px solid var(--line-soft);
+  }
+  .tag-chip::before { content: "#"; color: var(--coral); font-weight: 700; margin-right: 2px; }
+  .tag-chip button {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: transparent; border: none; color: var(--ink-muted);
+    font-size: 12px; cursor: pointer; display: grid; place-items: center;
+    transition: color .15s;
+  }
+  .tag-chip button:hover { color: var(--coral); }
+  .tag-input-wrap input {
+    flex: 1; min-width: 80px; border: none; outline: none;
+    font: inherit; font-size: 12.5px; background: transparent;
+  }
+
+  /* Visibility radios */
+  .visib-grid { display: grid; gap: 6px; }
+  .visib-option {
+    display: flex; gap: 10px; padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all .15s;
+    position: relative;
+  }
+  .visib-option:hover { border-color: var(--navy-600); }
+  .visib-option input { display: none; }
+  .visib-option.active { border-color: var(--navy-800); background: var(--cream-light); }
+  .visib-option.active::after {
+    content: "✓"; position: absolute; top: 8px; right: 10px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--navy-800); color: var(--white);
+    font-size: 10px; font-weight: 700;
+    display: grid; place-items: center;
+  }
+  .visib-ico {
+    width: 28px; height: 28px; background: var(--white); color: var(--navy-700);
+    border-radius: 7px; display: grid; place-items: center; flex-shrink: 0;
+    border: 1px solid var(--line);
+  }
+  .visib-ico svg { width: 14px; height: 14px; }
+  .visib-text { flex: 1; min-width: 0; }
+  .visib-title { font-size: 12.5px; font-weight: 700; color: var(--navy-900); }
+  .visib-desc { font-size: 11px; color: var(--ink-soft); margin-top: 2px; line-height: 1.4; }
+
+  /* Status box */
+  .status-box {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--cream) 0%, var(--cream-light) 100%);
+    border: 1px solid var(--line); border-radius: 12px;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .status-ico { width: 32px; height: 32px; background: var(--white); color: var(--coral); border-radius: 8px; display: grid; place-items: center; }
+  .status-ico svg { width: 16px; height: 16px; }
+  .status-body { font-size: 12px; line-height: 1.4; color: var(--ink-soft); }
+  .status-body strong { display: block; color: var(--navy-900); font-weight: 700; font-size: 13px; }
+
+  /* Action bar sticky bottom */
+  .action-bar {
+    position: fixed; bottom: 0; left: 248px; right: 0;
+    background: var(--white); border-top: 1px solid var(--line);
+    padding: 14px 32px;
+    display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 -4px 18px rgba(20,35,92,.06);
+    z-index: 10;
+  }
+  .action-bar-left { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--ink-soft); }
+  .action-bar-left strong { color: var(--navy-900); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ab-sep { width: 1px; height: 18px; background: var(--line); }
+  .action-bar-right { margin-left: auto; display: flex; gap: 8px; }
+
+  .btn { padding: 11px 18px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: all .15s; border: 1.5px solid transparent; }
+  .btn svg { width: 14px; height: 14px; }
+  .btn-ghost { background: transparent; color: var(--ink-soft); }
+  .btn-ghost:hover { background: var(--cream-light); color: var(--navy-800); }
+  .btn-secondary { background: var(--white); color: var(--navy-800); border-color: var(--line); }
+  .btn-secondary:hover { border-color: var(--navy-800); background: var(--cream-light); }
+  .btn-primary { background: var(--navy-900); color: var(--white); box-shadow: 0 6px 16px rgba(20,35,92,.22); }
+  .btn-primary:hover { background: var(--navy-800); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(20,35,92,.28); }
+  .btn-primary svg { transition: transform .15s; }
+  .btn-primary:hover svg { transform: translateX(3px); }
+  .btn-cta {
+    background: var(--coral); color: var(--white);
+    box-shadow: 0 6px 18px rgba(232,132,92,.35);
+  }
+  .btn-cta:hover { background: #E0734A; transform: translateY(-1px); }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L 13 11"/><path d="M18.5 2 C 12 2.5 6.5 8 6 14.5 L 6 18 L 9.5 18 C 16 17.5 21.5 12 22 5.5 Z"/><path d="M9 15 L 15 9"/></svg></div>
+      <div class="brand-name">PlumeNote<small>Base de connaissances</small></div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Accueil</a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Recherche</a>
+        <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Mes documents <span class="count">24</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Domaines</div>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>Infrastructure <span class="count">86</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>Support <span class="count">54</span></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>SCI <span class="count">42</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="main">
+
+    <div class="header">
+      <nav class="crumb">
+        <a href="#">Accueil</a>
+        <span class="crumb-sep">›</span>
+        <a href="#">Infrastructure</a>
+        <span class="crumb-sep">›</span>
+        <strong>Configurer le VPN Always-On</strong>
+      </nav>
+      <span class="edit-badge">Mode édition</span>
+      <span class="autosave">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Enregistré · il y a 3 s
+      </span>
+      <button class="user-chip">
+        <span class="avatar-sm">AB</span>
+      </button>
+    </div>
+
+    <div class="edit-layout">
+
+      <!-- ÉDITEUR -->
+      <section class="editor-card">
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="tb-group">
+            <select class="tb-select">
+              <option>Paragraphe</option>
+              <option>Titre 1</option>
+              <option selected>Titre 2</option>
+              <option>Titre 3</option>
+              <option>Citation</option>
+            </select>
+          </div>
+          <div class="tb-sep"></div>
+          <div class="tb-group">
+            <button class="tb-btn" title="Gras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg></button>
+            <button class="tb-btn active" title="Italique"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></button>
+            <button class="tb-btn" title="Barré"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg></button>
+            <button class="tb-btn" title="Code en ligne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+          </div>
+          <div class="tb-sep"></div>
+          <div class="tb-group">
+            <button class="tb-btn" title="Liste à puces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+            <button class="tb-btn" title="Liste numérotée"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></button>
+            <button class="tb-btn" title="Case à cocher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>
+          </div>
+          <div class="tb-sep"></div>
+          <div class="tb-group">
+            <button class="tb-btn" title="Lien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+            <button class="tb-btn" title="Lien interne [[...]]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </button>
+            <button class="tb-btn" title="Image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+            <button class="tb-btn" title="Tableau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg></button>
+            <button class="tb-btn" title="Bloc de code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13l-2 2 2 2"/><path d="M14 17l2-2-2-2"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
+            <button class="tb-btn" title="Astuce / alerte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></button>
+          </div>
+          <span class="tb-badge">
+            Tapez <kbd>/</kbd> pour ouvrir le menu
+          </span>
+        </div>
+
+        <!-- Editor body -->
+        <div class="editor-body">
+
+          <input class="editor-title-input" type="text" value="Configurer le VPN Always-On sur poste Windows 11" placeholder="Titre du document…">
+
+          <div class="editor-meta">
+            <span class="domain-chip">Infrastructure</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-muted);">INF-VPN-001</span>
+            <span style="color:var(--ink-muted);">·</span>
+            <span>Type : <strong style="color:var(--ink); font-weight:600;">Procédure</strong></span>
+            <span style="color:var(--ink-muted);">·</span>
+            <span>Créé par <strong style="color:var(--ink); font-weight:600;">Mohamed Zemouche</strong> · 15 février 2026</span>
+          </div>
+
+          <div class="prose">
+            <p>Cette procédure décrit la configuration du <strong>VPN Always-On</strong> pour les postes utilisateurs DSI et des services de la CPAM 92, dans le cadre de la migration Windows 11 (MUDT).</p>
+
+            <h2>Contexte et pré-requis</h2>
+
+            <p>L'objectif est d'obtenir une connexion VPN qui démarre automatiquement à l'ouverture de session utilisateur, sans intervention manuelle, et qui couvre tous les flux DSI quel que soit le réseau source.</p>
+
+            <p><em>Avant de commencer</em>, vérifiez les pré-requis ci-dessous :</p>
+
+            <ul>
+              <li>Le poste doit être <strong>joint à l'annuaire national</strong> (CPAM*.CRAMIF.LOCAL).</li>
+              <li>Le <a class="internal" href="#">certificat machine AD-CS 2024</a> doit être présent dans le magasin local.</li>
+              <li>Windows 11 <strong>23H2 minimum</strong>.</li>
+            </ul>
+
+            <div class="callout">
+              <div class="callout-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+              <div class="callout-text"><strong>Astuce.</strong> Si votre poste a déjà été migré via l'outil MUDT, l'intégralité des pré-requis est déjà remplie.</div>
+            </div>
+
+            <h2>Installation du client</h2>
+            <p>Le client VPN est distribué par l'outil de déploiement MUDT :</p>
+
+            <div class="code-block">
+              <div class="code-head"><span class="lang">PowerShell</span></div>
+              <pre class="code-body"><code><span class="c-com"># Installation silencieuse</span>
+<span class="c-kw">$installer</span> = <span class="c-str">"\\srv-deploy\mudt$\vpn\CPAMVPNClient-2.4.1.msi"</span>
+Start-Process msiexec.exe <span class="c-str">"/i $installer /quiet"</span> -Wait</code></pre>
+            </div>
+
+            <!-- Curseur actif + slash menu -->
+            <p style="position: relative;">
+              <span class="cursor-pos"></span>
+            </p>
+
+          </div>
+
+          <!-- Slash command menu floating -->
+          <div class="slash-menu" role="menu">
+            <div class="slash-head">Insérer un bloc · tapez pour filtrer</div>
+            <div class="slash-item focus">
+              <div class="slash-ico" style="background:var(--coral-bg); color:var(--coral);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+              <div class="slash-text">
+                <div class="slash-title">Astuce / Alerte</div>
+                <div class="slash-desc">Callout avec icône (Astuce, Attention, Danger, Validé)</div>
+              </div>
+              <span class="slash-kbd"><kbd>↵</kbd></span>
+            </div>
+            <div class="slash-item">
+              <div class="slash-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+              <div class="slash-text">
+                <div class="slash-title">Bloc de code</div>
+                <div class="slash-desc">Coloration syntaxique Shiki (14 langages)</div>
+              </div>
+            </div>
+            <div class="slash-item">
+              <div class="slash-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg></div>
+              <div class="slash-text">
+                <div class="slash-title">Tableau</div>
+                <div class="slash-desc">Insérer un tableau éditable avec entêtes</div>
+              </div>
+            </div>
+            <div class="slash-item">
+              <div class="slash-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+              <div class="slash-text">
+                <div class="slash-title">Image</div>
+                <div class="slash-desc">Glisser-déposer ou parcourir. PNG, JPG, SVG, max 10 Mo</div>
+              </div>
+            </div>
+            <div class="slash-item">
+              <div class="slash-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></div>
+              <div class="slash-text">
+                <div class="slash-title">Lien interne [[...]]</div>
+                <div class="slash-desc">Auto-complétion vers un autre document</div>
+              </div>
+            </div>
+            <div class="slash-item">
+              <div class="slash-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+              <div class="slash-text">
+                <div class="slash-title">Diagramme Mermaid</div>
+                <div class="slash-desc">Flowcharts, séquences, gantt en syntaxe texte</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- META PANEL -->
+      <aside class="meta-side">
+
+        <div class="status-box">
+          <div class="status-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <div class="status-body">
+            <strong>Modification en cours</strong>
+            Version 8 · basée sur la publication du 22 avril
+          </div>
+        </div>
+
+        <div class="meta-card">
+          <div class="meta-card-head"><span class="meta-card-title">Classement</span></div>
+          <div class="meta-card-body">
+            <div class="field">
+              <label>Domaine <span class="req">*</span></label>
+              <select class="control">
+                <option>Infrastructure</option>
+                <option>Support</option>
+                <option>SCI</option>
+                <option>Études &amp; Dev</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Type de document <span class="req">*</span></label>
+              <select class="control">
+                <option>Procédure</option>
+                <option>Mode opératoire</option>
+                <option>FAQ</option>
+                <option>Architecture</option>
+                <option>Référence</option>
+                <option>Guide utilisateur</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Template</label>
+              <select class="control">
+                <option>Aucun</option>
+                <option selected>T-02 · Procédure DSI</option>
+                <option>T-03 · FAQ utilisateur</option>
+                <option>T-05 · Architecture</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tags <span style="color:var(--ink-muted); font-weight:500;">(séparés par entrée)</span></label>
+              <div class="tag-input-wrap">
+                <span class="tag-chip">vpn<button>×</button></span>
+                <span class="tag-chip">windows-11<button>×</button></span>
+                <span class="tag-chip">mudt<button>×</button></span>
+                <span class="tag-chip">always-on<button>×</button></span>
+                <span class="tag-chip">certificat<button>×</button></span>
+                <input type="text" placeholder="ajouter…">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="meta-card">
+          <div class="meta-card-head"><span class="meta-card-title">Visibilité</span></div>
+          <div class="meta-card-body">
+            <div class="visib-grid">
+              <label class="visib-option active">
+                <input type="radio" name="visib" checked>
+                <span class="visib-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></span>
+                <span class="visib-text">
+                  <span class="visib-title">DSI interne</span>
+                  <span class="visib-desc">Lisible par les agents DSI connectés (38 personnes)</span>
+                </span>
+              </label>
+              <label class="visib-option">
+                <input type="radio" name="visib">
+                <span class="visib-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg></span>
+                <span class="visib-text">
+                  <span class="visib-title">Public CPAM 92</span>
+                  <span class="visib-desc">Consultable sans login par tout agent (Sophie, DFC, MOA)</span>
+                </span>
+              </label>
+              <label class="visib-option">
+                <input type="radio" name="visib">
+                <span class="visib-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                <span class="visib-text">
+                  <span class="visib-title">Privé</span>
+                  <span class="visib-desc">Vous uniquement + administrateurs</span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="meta-card">
+          <div class="meta-card-head"><span class="meta-card-title">Aperçu recherche</span></div>
+          <div class="meta-card-body" style="background:var(--cream-light); margin:-1px; padding: 16px 18px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="width:28px; height:28px; background:var(--coral-bg); color:var(--coral); border-radius:7px; display:grid; place-items:center;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+              <div style="font-size:13px; font-weight:600; color:var(--ink); line-height:1.3;">Configurer le VPN Always-On…</div>
+            </div>
+            <div style="font-size:11.5px; color:var(--ink-soft); line-height:1.45;">Infrastructure · Procédure · 🟢 à jour · 312 vues</div>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+<!-- Action bar sticky -->
+<div class="action-bar">
+  <div class="action-bar-left">
+    <span>Dernière sauvegarde <strong>14:32:16</strong></span>
+    <span class="ab-sep"></span>
+    <span><strong>1 247</strong> mots · <strong>8 min</strong> de lecture estimée</span>
+    <span class="ab-sep"></span>
+    <span>6 liens internes · 1 image · 2 blocs de code</span>
+  </div>
+  <div class="action-bar-right">
+    <button class="btn btn-ghost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Abandonner
+    </button>
+    <button class="btn btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      Aperçu
+    </button>
+    <button class="btn btn-cta">
+      Publier la révision
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</div>
+
+</body>
+</html>

@@ -9,40 +9,63 @@ import {
   useImperativeHandle,
   useState,
   useCallback,
+  type ReactNode,
 } from 'react'
 import tippy, { type Instance as TippyInstance } from 'tippy.js'
 import type { Editor } from '@tiptap/react'
+import {
+  Heading4,
+  ListChecks,
+  Code2,
+  GitBranch,
+  Image as ImageIcon,
+  Table as TableIcon,
+  Lightbulb,
+  AlertTriangle,
+  AlertOctagon,
+  Link2,
+  Minus,
+} from 'lucide-react'
+import { Kbd } from '@/components/ui'
 
 interface SlashItem {
   title: string
   description: string
-  icon: string
+  icon: ReactNode
+  /** Classes Tailwind pour la pastille icône (fond + couleur). */
+  tone?: string
   command: (editor: Editor) => void
 }
+
+// Tons g6 : fond cream + navy par défaut, coral-bg + coral pour les alertes.
+const TONE_DEFAULT = 'bg-cream text-navy-800'
+const TONE_CORAL = 'bg-coral-bg text-coral'
+const TONE_WARN = 'bg-warn-bg text-warn'
+const TONE_DANGER = 'bg-danger-bg text-danger'
 
 const SLASH_ITEMS: SlashItem[] = [
   {
     title: 'Titre 4',
     description: 'Sous-sous-titre',
-    icon: 'H4',
+    icon: <Heading4 />,
     command: (editor) => editor.chain().focus().toggleHeading({ level: 4 }).run(),
   },
   {
-    title: 'Liste de taches',
-    description: 'Cases a cocher',
-    icon: '\u2611',
+    title: 'Liste de tâches',
+    description: 'Cases à cocher',
+    icon: <ListChecks />,
     command: (editor) => editor.chain().focus().toggleTaskList().run(),
   },
   {
     title: 'Bloc de code',
-    description: 'Bloc avec coloration syntaxique',
-    icon: '</>',
+    description: 'Coloration syntaxique (14 langages)',
+    icon: <Code2 />,
     command: (editor) => editor.chain().focus().toggleCodeBlock().run(),
   },
   {
     title: 'Diagramme Mermaid',
-    description: 'Inserer un diagramme Mermaid',
-    icon: '\u25C7',
+    description: 'Flowcharts, séquences, gantt',
+    icon: <GitBranch />,
     command: (editor) =>
       editor
         .chain()
@@ -53,8 +76,8 @@ const SLASH_ITEMS: SlashItem[] = [
   },
   {
     title: 'Image',
-    description: 'Inserer une image',
-    icon: '\uD83D\uDDBC',
+    description: 'Glisser-déposer ou parcourir. PNG, JPG, SVG, max 10 Mo',
+    icon: <ImageIcon />,
     command: (editor) => {
       const input = document.createElement('input')
       input.type = 'file'
@@ -79,39 +102,42 @@ const SLASH_ITEMS: SlashItem[] = [
   },
   {
     title: 'Tableau',
-    description: 'Inserer un tableau 3x3',
-    icon: '\uD83D\uDCCA',
+    description: 'Insérer un tableau 3×3 éditable avec entêtes',
+    icon: <TableIcon />,
     command: (editor) =>
       editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
-    title: 'Alerte info',
-    description: 'Bloc informatif bleu',
-    icon: '\uD83D\uDCA1',
+    title: 'Astuce / Info',
+    description: 'Callout bloc informatif coral',
+    icon: <Lightbulb />,
+    tone: TONE_CORAL,
     command: (editor) => editor.chain().focus().setAlert({ type: 'tip' }).run(),
   },
   {
     title: 'Alerte attention',
     description: 'Bloc avertissement orange',
-    icon: '\u26A0\uFE0F',
+    icon: <AlertTriangle />,
+    tone: TONE_WARN,
     command: (editor) => editor.chain().focus().setAlert({ type: 'warning' }).run(),
   },
   {
     title: 'Alerte danger',
     description: 'Bloc danger rouge',
-    icon: '\uD83D\uDD34',
+    icon: <AlertOctagon />,
+    tone: TONE_DANGER,
     command: (editor) => editor.chain().focus().setAlert({ type: 'danger' }).run(),
   },
   {
     title: 'Lien interne',
-    description: 'Lien vers un autre document',
-    icon: '\uD83D\uDD17',
+    description: 'Auto-complétion vers un autre document',
+    icon: <Link2 />,
     command: (editor) => editor.chain().focus().insertContent('[[').run(),
   },
   {
-    title: 'Separateur',
+    title: 'Séparateur',
     description: 'Ligne horizontale',
-    icon: '\u2014',
+    icon: <Minus />,
     command: (editor) => editor.chain().focus().setHorizontalRule().run(),
   },
 ]
@@ -158,27 +184,55 @@ const SlashList = forwardRef<SlashListRef, SlashListProps>(({ items, command }, 
 
   if (!items.length) {
     return (
-      <div className="bg-bg rounded-lg shadow-lg border p-3 text-sm text-ink-45">
-        Aucune commande trouvee
+      <div className="bg-white rounded-xl shadow-[0_18px_40px_rgba(20,35,92,0.15)] border border-line p-3 text-[13px] text-ink-muted min-w-[340px]">
+        Aucune commande trouvée
       </div>
     )
   }
 
   return (
-    <div className="bg-bg rounded-lg shadow-lg border overflow-hidden min-w-[220px] max-h-[300px] overflow-y-auto">
-      {items.map((item, i) => (
-        <button
-          key={item.title}
-          className={`flex items-center gap-3 w-full text-left px-3 py-2 text-sm ${i === selected ? 'bg-blue/10 text-blue' : 'hover:bg-ink-05'}`}
-          onClick={() => select(i)}
-        >
-          <span className="w-6 text-center text-base flex-shrink-0">{item.icon}</span>
-          <div>
-            <div className="font-medium">{item.title}</div>
-            <div className="text-xs text-ink-45">{item.description}</div>
-          </div>
-        </button>
-      ))}
+    <div
+      className="bg-white rounded-xl shadow-[0_18px_40px_rgba(20,35,92,0.15)] border border-line overflow-hidden w-[340px] max-h-[360px] overflow-y-auto"
+      role="menu"
+    >
+      <div className="px-3.5 py-2 bg-cream-light border-b border-line-soft text-[11px] font-bold tracking-[0.12em] uppercase text-ink-muted">
+        Insérer un bloc · tapez pour filtrer
+      </div>
+      {items.map((item, i) => {
+        const focused = i === selected
+        return (
+          <button
+            key={item.title}
+            type="button"
+            role="menuitem"
+            className={`relative flex items-center gap-3 w-full text-left px-3.5 py-2.5 transition-colors ${
+              focused ? 'bg-cream-light' : 'hover:bg-cream-light'
+            }`}
+            onClick={() => select(i)}
+          >
+            {focused && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-2 bottom-2 w-[3px] bg-coral rounded-r"
+              />
+            )}
+            <span
+              className={`w-9 h-9 grid place-items-center rounded-lg shrink-0 ${item.tone ?? TONE_DEFAULT} [&_svg]:w-[17px] [&_svg]:h-[17px]`}
+            >
+              {item.icon}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[13px] font-semibold text-ink truncate">{item.title}</span>
+              <span className="block text-[11.5px] text-ink-soft mt-0.5 truncate">{item.description}</span>
+            </span>
+            {focused && (
+              <span className="shrink-0">
+                <Kbd>↵</Kbd>
+              </span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 })
